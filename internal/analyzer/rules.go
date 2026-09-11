@@ -99,7 +99,7 @@ func (rule anyRule) Apply(repository Repository) (Finding, bool) {
 
 func (repository Repository) HasFile(name string) bool {
 	for _, file := range repository.Files {
-		if strings.EqualFold(filepath.Base(file), name) || strings.EqualFold(file, name) {
+		if samePathOrBase(file, name) {
 			return true
 		}
 	}
@@ -117,4 +117,8 @@ func (repository Repository) FilesWithExtension(extension string) []string {
 	}
 
 	return matches
+}
+
+func samePathOrBase(file string, name string) bool {
+	return strings.EqualFold(filepath.Base(file), name) || strings.EqualFold(file, name)
 }

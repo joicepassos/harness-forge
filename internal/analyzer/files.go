@@ -7,10 +7,20 @@ import (
 )
 
 func (repository Repository) FileContains(path string, text string) bool {
-	content, err := os.ReadFile(filepath.Join(repository.Path, path))
-	if err != nil {
-		return false
+	for _, file := range repository.Files {
+		if !samePathOrBase(file, path) {
+			continue
+		}
+
+		content, err := os.ReadFile(filepath.Join(repository.Path, file))
+		if err != nil {
+			continue
+		}
+
+		if strings.Contains(strings.ToLower(string(content)), strings.ToLower(text)) {
+			return true
+		}
 	}
 
-	return strings.Contains(strings.ToLower(string(content)), strings.ToLower(text))
+	return false
 }

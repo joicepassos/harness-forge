@@ -68,7 +68,7 @@ func collectFiles(repositoryPath string) ([]string, error) {
 
 		if entry.IsDir() {
 			switch entry.Name() {
-			case ".git", ".harness":
+			case ".git", ".harness", ".next", "build", "dist", "node_modules", "target":
 				return filepath.SkipDir
 			}
 			return nil

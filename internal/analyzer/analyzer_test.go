@@ -45,6 +45,27 @@ func TestAnalyzeDetectsCommonRepositorySignals(t *testing.T) {
 	assertFinding(t, analysis.Database, "Flyway")
 }
 
+func TestAnalyzeDetectsNestedProjectSignals(t *testing.T) {
+	dir := t.TempDir()
+
+	writeFile(t, dir, "backend/core/build.gradle", "implementation 'org.springframework.boot:spring-boot-starter-web'\nimplementation 'org.postgresql:postgresql'\n")
+	writeFile(t, dir, "backend/core/src/test/java/com/example/AppTest.java", "class AppTest {}")
+	writeFile(t, dir, "frontend/package.json", `{"dependencies":{"next":"latest","react":"latest"}}`)
+
+	analysis, err := Analyze(dir)
+	if err != nil {
+		t.Fatalf("Analyze() error = %v", err)
+	}
+
+	assertFinding(t, analysis.Build, "Gradle")
+	assertFinding(t, analysis.Build, "npm")
+	assertFinding(t, analysis.Frameworks, "Spring Boot")
+	assertFinding(t, analysis.Frameworks, "React")
+	assertFinding(t, analysis.Frameworks, "Next.js")
+	assertFinding(t, analysis.Database, "PostgreSQL")
+	assertFinding(t, analysis.Tests, "Java tests")
+}
+
 func writeFile(t *testing.T, dir string, name string, content string) {
 	t.Helper()
 

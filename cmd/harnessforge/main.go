@@ -37,10 +37,16 @@ func main() {
 	})
 
 	rootCmd.AddCommand(&cobra.Command{
-		Use:   "analyze",
-		Short: "Analyze the current repository",
+		Use:   "analyze [path]",
+		Short: "Analyze a repository",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			analysis, err := analyzer.Analyze(".")
+			repositoryPath := "."
+			if len(args) > 0 {
+				repositoryPath = args[0]
+			}
+
+			analysis, err := analyzer.Analyze(repositoryPath)
 			if err != nil {
 				return err
 			}
