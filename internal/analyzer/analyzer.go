@@ -1,8 +1,10 @@
 package analyzer
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 type Analysis struct {
@@ -13,6 +15,7 @@ type Analysis struct {
 	Infrastructure []Finding
 	Database       []Finding
 	Tests          []Finding
+	Git            []Finding
 	Files          int
 }
 
@@ -27,7 +30,15 @@ type Repository struct {
 	Files []string
 }
 
+type Options struct {
+	IncludeGit bool
+}
+
 func Analyze(repositoryPath string) (*Analysis, error) {
+	return AnalyzeWithOptions(context.Background(), repositoryPath, Options{})
+}
+
+func AnalyzeWithOptions(ctx context.Context, repositoryPath string, options Options) (*Analysis, error) {
 	absolutePath, err := filepath.Abs(repositoryPath)
 	if err != nil {
 		return nil, err
@@ -48,14 +59,59 @@ func Analyze(repositoryPath string) (*Analysis, error) {
 	}
 
 	analysis.Files = len(files)
-	analysis.Languages = languageDetector{}.Detect(repository)
-	analysis.Build = buildDetector{}.Detect(repository)
-	analysis.Frameworks = frameworkDetector{}.Detect(repository)
-	analysis.Infrastructure = infrastructureDetector{}.Detect(repository)
-	analysis.Database = databaseDetector{}.Detect(repository)
-	analysis.Tests = testDetector{}.Detect(repository)
+	results := runDetectors(ctx, repository, options)
+
+	analysis.Languages = results.languages
+	analysis.Build = results.build
+	analysis.Frameworks = results.frameworks
+	analysis.Infrastructure = results.infrastructure
+	analysis.Database = results.database
+	analysis.Tests = results.tests
+	analysis.Git = results.git
 
 	return analysis, nil
+}
+
+type detectionResults struct {
+	languages      []Finding
+	build          []Finding
+	frameworks     []Finding
+	infrastructure []Finding
+	database       []Finding
+	tests          []Finding
+	git            []Finding
+}
+
+func runDetectors(ctx context.Context, repository Repository, options Options) detectionResults {
+	var results detectionResults
+	var mutex sync.Mutex
+	var waitGroup sync.WaitGroup
+
+	run := func(assign func([]Finding), detector Detector) {
+		waitGroup.Add(1)
+		go func() {
+			defer waitGroup.Done()
+			findings := detector.Detect(ctx, repository)
+
+			mutex.Lock()
+			defer mutex.Unlock()
+			assign(findings)
+		}()
+	}
+
+	run(func(findings []Finding) { results.languages = findings }, languageDetector{})
+	run(func(findings []Finding) { results.build = findings }, buildDetector{})
+	run(func(findings []Finding) { results.frameworks = findings }, frameworkDetector{})
+	run(func(findings []Finding) { results.infrastructure = findings }, infrastructureDetector{})
+	run(func(findings []Finding) { results.database = findings }, databaseDetector{})
+	run(func(findings []Finding) { results.tests = findings }, testDetector{})
+
+	if options.IncludeGit {
+		run(func(findings []Finding) { results.git = findings }, gitDetector{})
+	}
+
+	waitGroup.Wait()
+	return results
 }
 
 func collectFiles(repositoryPath string) ([]string, error) {

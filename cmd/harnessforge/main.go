@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/config"
 	"harnessforge/internal/harness"
@@ -36,7 +37,7 @@ func main() {
 		},
 	})
 
-	rootCmd.AddCommand(&cobra.Command{
+	analyzeCmd := &cobra.Command{
 		Use:   "analyze [path]",
 		Short: "Analyze a repository",
 		Args:  cobra.MaximumNArgs(1),
@@ -46,7 +47,14 @@ func main() {
 				repositoryPath = args[0]
 			}
 
-			analysis, err := analyzer.Analyze(repositoryPath)
+			includeGit, err := cmd.Flags().GetBool("git")
+			if err != nil {
+				return err
+			}
+
+			analysis, err := analyzer.AnalyzeWithOptions(context.Background(), repositoryPath, analyzer.Options{
+				IncludeGit: includeGit,
+			})
 			if err != nil {
 				return err
 			}
@@ -54,7 +62,9 @@ func main() {
 			analyzer.Print(cmd.OutOrStdout(), analysis)
 			return nil
 		},
-	})
+	}
+	analyzeCmd.Flags().Bool("git", false, "Include Git repository metadata")
+	rootCmd.AddCommand(analyzeCmd)
 
 	cobra.CheckErr(rootCmd.Execute())
 }

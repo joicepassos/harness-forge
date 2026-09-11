@@ -17,6 +17,7 @@ func Print(writer io.Writer, analysis *Analysis) {
 	printSection(writer, "Infrastructure", analysis.Infrastructure)
 	printSection(writer, "Database", analysis.Database)
 	printSection(writer, "Tests", analysis.Tests)
+	printSection(writer, "Git", analysis.Git)
 
 	fmt.Fprintln(writer, "Summary")
 	fmt.Fprintf(writer, "Files: %d\n", analysis.Files)

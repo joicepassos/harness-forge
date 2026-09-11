@@ -1,12 +1,14 @@
 package analyzer
 
+import "context"
+
 type Detector interface {
-	Detect(repository Repository) []Finding
+	Detect(ctx context.Context, repository Repository) []Finding
 }
 
 type languageDetector struct{}
 
-func (languageDetector) Detect(repository Repository) []Finding {
+func (languageDetector) Detect(_ context.Context, repository Repository) []Finding {
 	return applyRules(repository, []Rule{
 		extensionRule{value: "Go", extension: ".go"},
 		extensionRule{value: "Java", extension: ".java"},
@@ -18,7 +20,7 @@ func (languageDetector) Detect(repository Repository) []Finding {
 
 type buildDetector struct{}
 
-func (buildDetector) Detect(repository Repository) []Finding {
+func (buildDetector) Detect(_ context.Context, repository Repository) []Finding {
 	return applyRules(repository, []Rule{
 		fileRule{value: "Go modules", paths: []string{"go.mod"}},
 		fileRule{value: "Maven", paths: []string{"pom.xml"}},
@@ -30,7 +32,7 @@ func (buildDetector) Detect(repository Repository) []Finding {
 
 type frameworkDetector struct{}
 
-func (frameworkDetector) Detect(repository Repository) []Finding {
+func (frameworkDetector) Detect(_ context.Context, repository Repository) []Finding {
 	return applyRules(repository, []Rule{
 		contentRule{value: "Spring Boot", path: "pom.xml", text: "spring-boot"},
 		contentRule{value: "Spring Boot", path: "build.gradle", text: "spring-boot"},
@@ -42,7 +44,7 @@ func (frameworkDetector) Detect(repository Repository) []Finding {
 
 type infrastructureDetector struct{}
 
-func (infrastructureDetector) Detect(repository Repository) []Finding {
+func (infrastructureDetector) Detect(_ context.Context, repository Repository) []Finding {
 	return applyRules(repository, []Rule{
 		fileRule{value: "Docker", paths: []string{"Dockerfile"}},
 		fileRule{value: "Docker Compose", paths: []string{"docker-compose.yml", "docker-compose.yaml"}},
@@ -52,7 +54,7 @@ func (infrastructureDetector) Detect(repository Repository) []Finding {
 
 type databaseDetector struct{}
 
-func (databaseDetector) Detect(repository Repository) []Finding {
+func (databaseDetector) Detect(_ context.Context, repository Repository) []Finding {
 	return applyRules(repository, []Rule{
 		anyRule{rules: []Rule{
 			contentRule{value: "PostgreSQL", path: "pom.xml", text: "postgresql"},
@@ -72,7 +74,7 @@ func (databaseDetector) Detect(repository Repository) []Finding {
 
 type testDetector struct{}
 
-func (testDetector) Detect(repository Repository) []Finding {
+func (testDetector) Detect(_ context.Context, repository Repository) []Finding {
 	return applyRules(repository, []Rule{
 		suffixRule{value: "Go tests", suffix: "_test.go"},
 		suffixRule{value: "Java tests", suffix: "Test.java"},
