@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-func fileContains(repositoryPath string, path string, text string) bool {
-	content, err := os.ReadFile(filepath.Join(repositoryPath, path))
+func (repository Repository) FileContains(path string, text string) bool {
+	content, err := os.ReadFile(filepath.Join(repository.Path, path))
 	if err != nil {
 		return false
 	}

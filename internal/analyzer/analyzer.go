@@ -3,7 +3,6 @@ package analyzer
 import (
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type Analysis struct {
@@ -23,6 +22,11 @@ type Finding struct {
 	Evidence   []string
 }
 
+type Repository struct {
+	Path  string
+	Files []string
+}
+
 func Analyze(repositoryPath string) (*Analysis, error) {
 	absolutePath, err := filepath.Abs(repositoryPath)
 	if err != nil {
@@ -38,13 +42,18 @@ func Analyze(repositoryPath string) (*Analysis, error) {
 		return nil, err
 	}
 
+	repository := Repository{
+		Path:  absolutePath,
+		Files: files,
+	}
+
 	analysis.Files = len(files)
-	analysis.Languages = detectLanguages(files)
-	analysis.Build = detectBuild(files)
-	analysis.Frameworks = detectFrameworks(absolutePath)
-	analysis.Infrastructure = detectInfrastructure(files)
-	analysis.Database = detectDatabase(absolutePath, files)
-	analysis.Tests = detectTests(files)
+	analysis.Languages = languageDetector{}.Detect(repository)
+	analysis.Build = buildDetector{}.Detect(repository)
+	analysis.Frameworks = frameworkDetector{}.Detect(repository)
+	analysis.Infrastructure = infrastructureDetector{}.Detect(repository)
+	analysis.Database = databaseDetector{}.Detect(repository)
+	analysis.Tests = testDetector{}.Detect(repository)
 
 	return analysis, nil
 }
@@ -78,38 +87,6 @@ func collectFiles(repositoryPath string) ([]string, error) {
 	}
 
 	return files, nil
-}
-
-func hasFile(files []string, name string) bool {
-	for _, file := range files {
-		if strings.EqualFold(filepath.Base(file), name) || strings.EqualFold(file, name) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func hasPrefix(files []string, prefix string) bool {
-	for _, file := range files {
-		if strings.HasPrefix(file, prefix) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func filesWithExtension(files []string, extension string) []string {
-	var matches []string
-
-	for _, file := range files {
-		if strings.EqualFold(filepath.Ext(file), extension) {
-			matches = append(matches, file)
-		}
-	}
-
-	return matches
 }
 
 func finding(value string, evidence ...string) Finding {
