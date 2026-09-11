@@ -1,10 +1,11 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/config"
 	"harnessforge/internal/harness"
+	"harnessforge/internal/llm"
 
 	"github.com/spf13/cobra"
 )
@@ -52,11 +53,24 @@ func main() {
 				return err
 			}
 
-			analysis, err := analyzer.AnalyzeWithOptions(context.Background(), repositoryPath, analyzer.Options{
+			format, err := cmd.Flags().GetString("format")
+			if err != nil {
+				return err
+			}
+
+			if format != "text" && format != "json" {
+				return fmt.Errorf("unsupported format %q", format)
+			}
+
+			analysis, err := analyzer.AnalyzeWithOptions(cmd.Context(), repositoryPath, analyzer.Options{
 				IncludeGit: includeGit,
 			})
 			if err != nil {
 				return err
+			}
+
+			if format == "json" {
+				return analyzer.PrintJSON(cmd.OutOrStdout(), analysis)
 			}
 
 			analyzer.Print(cmd.OutOrStdout(), analysis)
@@ -64,7 +78,44 @@ func main() {
 		},
 	}
 	analyzeCmd.Flags().Bool("git", false, "Include Git repository metadata")
+	analyzeCmd.Flags().String("format", "text", "Output format: text or json")
 	rootCmd.AddCommand(analyzeCmd)
+
+	askCmd := &cobra.Command{
+		Use:   "ask [prompt]",
+		Short: "Ask the configured LLM provider",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			model, err := cmd.Flags().GetString("model")
+			if err != nil {
+				return err
+			}
+
+			providerName, err := cmd.Flags().GetString("provider")
+			if err != nil {
+				return err
+			}
+			provider, err := llm.NewProviderFromEnv(providerName, model)
+			if err != nil {
+				return err
+			}
+
+			response, err := provider.Generate(cmd.Context(), llm.Request{
+				SystemPrompt: "You are HarnessForge, a concise assistant for repository analysis.",
+				Prompt:       args[0],
+				Temperature:  0.2,
+			})
+			if err != nil {
+				return err
+			}
+
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), response.Content)
+			return err
+		},
+	}
+	askCmd.Flags().String("model", "", "Model to use (provider default when omitted)")
+	askCmd.Flags().String("provider", "openai", "LLM provider: openai or deepseek")
+	rootCmd.AddCommand(askCmd)
 
 	cobra.CheckErr(rootCmd.Execute())
 }

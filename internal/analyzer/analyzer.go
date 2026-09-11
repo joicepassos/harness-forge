@@ -8,21 +8,22 @@ import (
 )
 
 type Analysis struct {
-	Project        string
-	Languages      []Finding
-	Build          []Finding
-	Frameworks     []Finding
-	Infrastructure []Finding
-	Database       []Finding
-	Tests          []Finding
-	Git            []Finding
-	Files          int
+	Project        string    `json:"project"`
+	Languages      []Finding `json:"languages,omitempty"`
+	Build          []Finding `json:"build,omitempty"`
+	Frameworks     []Finding `json:"frameworks,omitempty"`
+	Infrastructure []Finding `json:"infrastructure,omitempty"`
+	Database       []Finding `json:"database,omitempty"`
+	Tests          []Finding `json:"tests,omitempty"`
+	Git            []Finding `json:"git,omitempty"`
+	Files          int       `json:"files"`
 }
 
 type Finding struct {
-	Value      string
-	Confidence float64
-	Evidence   []string
+	Value         string   `json:"value"`
+	Confidence    float64  `json:"confidence"`
+	Evidence      []string `json:"evidence,omitempty"`
+	EvidenceCount int      `json:"evidence_count,omitempty"`
 }
 
 type Repository struct {
@@ -147,8 +148,19 @@ func collectFiles(repositoryPath string) ([]string, error) {
 
 func finding(value string, evidence ...string) Finding {
 	return Finding{
-		Value:      value,
-		Confidence: 1.0,
-		Evidence:   evidence,
+		Value:         value,
+		Confidence:    1.0,
+		Evidence:      evidenceSample(evidence),
+		EvidenceCount: len(evidence),
 	}
+}
+
+func evidenceSample(evidence []string) []string {
+	const limit = 10
+
+	if len(evidence) <= limit {
+		return evidence
+	}
+
+	return evidence[:limit]
 }

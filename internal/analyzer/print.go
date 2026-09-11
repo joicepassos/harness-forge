@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 )
@@ -33,4 +34,10 @@ func printSection(writer io.Writer, title string, findings []Finding) {
 		fmt.Fprintf(writer, "- %s\n", item.Value)
 	}
 	fmt.Fprintln(writer)
+}
+
+func PrintJSON(writer io.Writer, analysis *Analysis) error {
+	encoder := json.NewEncoder(writer)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(analysis)
 }
