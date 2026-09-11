@@ -1,19 +1,12 @@
 package llm
 
-import "context"
+import (
+	"harnessforge/internal/llm/application"
+	"harnessforge/internal/llm/infrastructure/chatcompat"
+	"os"
+)
 
-type Provider interface {
-	Generate(ctx context.Context, request Request) (*Response, error)
-}
-
-type Request struct {
-	SystemPrompt string
-	Prompt       string
-	Temperature  float64
-}
-
-type Response struct {
-	Content      string
-	InputTokens  int
-	OutputTokens int
+// NewAsk composes the application with environment-backed infrastructure.
+func NewAsk() *application.Ask {
+	return application.NewAsk(chatcompat.NewRegistry(os.Getenv))
 }

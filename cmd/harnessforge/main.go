@@ -95,16 +95,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			provider, err := llm.NewProviderFromEnv(providerName, model)
-			if err != nil {
-				return err
-			}
-
-			response, err := provider.Generate(cmd.Context(), llm.Request{
-				SystemPrompt: "You are HarnessForge, a concise assistant for repository analysis.",
-				Prompt:       args[0],
-				Temperature:  0.2,
-			})
+			response, err := llm.NewAsk().Execute(cmd.Context(), providerName, model, args[0])
 			if err != nil {
 				return err
 			}
@@ -114,7 +105,7 @@ func main() {
 		},
 	}
 	askCmd.Flags().String("model", "", "Model to use (provider default when omitted)")
-	askCmd.Flags().String("provider", "openai", "LLM provider: openai or deepseek")
+	askCmd.Flags().String("provider", "openai", "LLM provider: openai, deepseek, gemini, groq or ollama")
 	rootCmd.AddCommand(askCmd)
 
 	cobra.CheckErr(rootCmd.Execute())

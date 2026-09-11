@@ -1,4 +1,4 @@
-package llm
+package chatcompat
 
 import (
 	"context"
@@ -57,7 +57,7 @@ func TestGenerateHTTPContract(t *testing.T) {
 		{"empty content", 200, `{"choices":[{"message":{"content":""}}]}`, "did not include text"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			provider := &OpenAIProvider{apiKey: "test-key", model: "test-model", client: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			provider := &Client{apiKey: "test-key", model: "test-model", client: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				if r.Method != "POST" || r.URL.String() != "https://api.openai.com/v1/chat/completions" {
 					t.Errorf("unexpected endpoint: %s %s", r.Method, r.URL)
 				}

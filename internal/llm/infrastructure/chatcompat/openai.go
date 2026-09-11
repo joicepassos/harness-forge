@@ -1,20 +1,19 @@
-package llm
+package chatcompat
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
+
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 )
 
 const defaultOpenAIModel = "gpt-4o-mini"
 
-type OpenAIProvider struct {
+type Client struct {
 	endpoint string
 	name     string
 	apiKey   string
@@ -22,24 +21,11 @@ type OpenAIProvider struct {
 	client   *http.Client
 }
 
-func NewOpenAIProviderFromEnv(model string) (*OpenAIProvider, error) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		return nil, errors.New("OPENAI_API_KEY is not set")
-	}
-
-	if model == "" {
-		model = defaultOpenAIModel
-	}
-
-	return &OpenAIProvider{
-		apiKey: apiKey,
-		model:  model,
-		client: &http.Client{Timeout: 60 * time.Second},
-	}, nil
+func NewOpenAIProviderFromEnv(model string) (*Client, error) {
+	return NewRegistry(os.Getenv).create("openai", model)
 }
 
-func (provider *OpenAIProvider) Generate(ctx context.Context, request Request) (*Response, error) {
+func (provider *Client) Generate(ctx context.Context, request Request) (*Response, error) {
 	body := openAIRequest{
 		Model:       provider.model,
 		Temperature: request.Temperature,
@@ -63,7 +49,9 @@ func (provider *OpenAIProvider) Generate(ctx context.Context, request Request) (
 		return nil, err
 	}
 
-	httpRequest.Header.Set("Authorization", "Bearer "+provider.apiKey)
+	if provider.apiKey != "" {
+		httpRequest.Header.Set("Authorization", "Bearer "+provider.apiKey)
+	}
 	httpRequest.Header.Set("Content-Type", "application/json")
 
 	httpResponse, err := provider.client.Do(httpRequest)
