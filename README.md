@@ -64,6 +64,17 @@ The command returns candidate procedures with file and symbol examples plus limi
 
 After human review, pass the selected proposal JSON to `skill generate` with `--approve`. Generation creates `.harness/skills/<id>/SKILL.md` and adds an approved, evidence-backed reference to the Harness IR. Existing generated IDs are left unchanged. A pre-existing manual `skills` section or skill directory is never overwritten and must be updated manually.
 
+### Evaluation
+
+Run a deterministic evaluation with a versioned YAML dataset and a versioned results file:
+
+```powershell
+go run ./cmd/harnessforge eval run examples/evals/dataset.yaml examples/evals/results.yaml
+go run ./cmd/harnessforge eval compare baseline-report.json candidate-report.json
+```
+
+Each report records dataset, index, model, prompt and rubric versions. It reports per-case and aggregate Recall@K, Precision@K, deterministic correctness, citation-grounding faithfulness, tokens, latency and visible failures. Retrieval uses exact source IDs; correctness matches required terms; faithfulness only verifies cited retrieved sources against the expected source set. These measures cannot establish answer truth, and no LLM judge is used. Human review remains necessary.
+
 ### Structured AI Output
 
 `ask --format json` requests JSON from the provider and validates it locally with `schemas/architecture-analysis.schema.json`. Output contains `architecture` and `patterns`; each pattern requires a name, confidence from 0 to 1 and literal citations from the prompt or selected repository context. Extra fields, duplicate keys, truncated output, citations absent from selected context and invalid JSON are rejected before anything is written to stdout.

@@ -1,0 +1,25 @@
+index_version: fixture-index-v1
+model: deterministic-fixture
+prompt_version: fixture-prompt-v1
+rubric_version: human-v1
+cases:
+  - id: endpoint-procedure
+    retrieved_sources:
+      - controller
+      - service
+      - migration
+      - integration-test
+    cited_sources:
+      - controller
+      - service
+    answer: Add a controller, service, migration and integration test.
+    tokens: 80
+    latency_ms: 12
+  - id: irrelevant-document
+    retrieved_sources:
+      - frontend-style
+    cited_sources:
+      - frontend-style
+    answer: The style is defined in the frontend style files.
+    tokens: 25
+    latency_ms: 4

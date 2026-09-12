@@ -1,0 +1,21 @@
+version: 1
+dataset_version: v1
+cases:
+  - id: endpoint-procedure
+    query: How is a backend endpoint added?
+    relevant_sources:
+      - controller
+      - service
+      - migration
+      - integration-test
+    required_terms:
+      - controller
+      - service
+      - migration
+      - test
+  - id: irrelevant-document
+    query: Where is frontend styling defined?
+    relevant_sources:
+      - frontend-style
+    required_terms:
+      - style

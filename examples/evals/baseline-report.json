@@ -1,0 +1,18 @@
+{
+  "dataset_version": "v1",
+  "index_version": "fixture-index-v0",
+  "model": "deterministic-fixture",
+  "prompt_version": "fixture-prompt-v0",
+  "rubric_version": "human-v1",
+  "cases": [],
+  "aggregate": {
+    "recall_at_k": 0.5,
+    "precision_at_k": 0.5,
+    "correctness": 0.5,
+    "faithfulness": 0.5,
+    "tokens": 130,
+    "latency_ms": 20,
+    "failures": 1
+  },
+  "limitations": ["Fixture baseline."]
+}

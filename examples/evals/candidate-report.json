@@ -1,0 +1,18 @@
+{
+  "dataset_version": "v1",
+  "index_version": "fixture-index-v1",
+  "model": "deterministic-fixture",
+  "prompt_version": "fixture-prompt-v1",
+  "rubric_version": "human-v1",
+  "cases": [],
+  "aggregate": {
+    "recall_at_k": 1,
+    "precision_at_k": 1,
+    "correctness": 1,
+    "faithfulness": 1,
+    "tokens": 105,
+    "latency_ms": 16,
+    "failures": 0
+  },
+  "limitations": ["Fixture candidate."]
+}
