@@ -37,8 +37,11 @@ type Rule struct {
 	Evidence    []Evidence `json:"evidence,omitempty"`
 }
 type Skill struct {
-	ID          string `json:"id"`
-	Description string `json:"description"`
+	ID          string     `json:"id"`
+	Description string     `json:"description"`
+	Path        string     `json:"path,omitempty"`
+	Status      string     `json:"status,omitempty"`
+	Evidence    []Evidence `json:"evidence,omitempty"`
 }
 type QualityGate struct {
 	ID      string `json:"id"`
@@ -93,6 +96,14 @@ func (h Harness) Validate() error {
 		}
 		if strings.TrimSpace(s.Description) == "" {
 			return fmt.Errorf("%s.description: must not be empty", field)
+		}
+		if s.Status != "" && s.Status != "approved" {
+			return fmt.Errorf("%s.status: expected approved when present", field)
+		}
+		for j, e := range s.Evidence {
+			if strings.TrimSpace(e.File) == "" {
+				return fmt.Errorf("%s.evidence[%d].file: must not be empty", field, j)
+			}
 		}
 	}
 	ids = map[string]bool{}

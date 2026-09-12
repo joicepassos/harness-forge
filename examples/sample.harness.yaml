@@ -1,5 +1,5 @@
-# Exemplo manual baseado nas linguagens detectadas em um projeto.
-# As regras abaixo são propostas ilustrativas, não decisões aprovadas do time.
+# Manual example based on detected project languages.
+# The rules below are illustrative proposals, not approved team decisions.
 version: 1
 project:
   name: sample-project
@@ -9,6 +9,6 @@ project:
     - Python
 rules:
   - id: review-database-migrations
-    description: Revisar as migrações do banco antes de integrar alterações.
+    description: Review database migrations before integrating changes.
     origin: human
     status: candidate

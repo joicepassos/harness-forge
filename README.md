@@ -52,6 +52,18 @@ The explain output includes included and excluded excerpts with source IDs, path
 
 The current retrieval layer is local and heuristic. It does not embed code, execute semantic search or prove that the highest-ranked excerpt is architecturally correct. Human review and evidence validation remain required.
 
+### Skill Discovery
+
+Discover recurring backend development procedures without changing the repository:
+
+```powershell
+go run ./cmd/harnessforge skill discover C:\path\to\your-project
+```
+
+The command returns candidate procedures with file and symbol examples plus limitations. It currently recognizes a Java backend chain containing controller, service, persistence, database migration and integration-test evidence. It is a heuristic, not proof that the procedure is required or correct.
+
+After human review, pass the selected proposal JSON to `skill generate` with `--approve`. Generation creates `.harness/skills/<id>/SKILL.md` and adds an approved, evidence-backed reference to the Harness IR. Existing generated IDs are left unchanged. A pre-existing manual `skills` section or skill directory is never overwritten and must be updated manually.
+
 ### Structured AI Output
 
 `ask --format json` requests JSON from the provider and validates it locally with `schemas/architecture-analysis.schema.json`. Output contains `architecture` and `patterns`; each pattern requires a name, confidence from 0 to 1 and literal citations from the prompt or selected repository context. Extra fields, duplicate keys, truncated output, citations absent from selected context and invalid JSON are rejected before anything is written to stdout.
