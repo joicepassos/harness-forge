@@ -10,7 +10,7 @@ import (
 )
 
 func TestReviewPreservesBytesAndControlsTransitions(t *testing.T) {
-	original := []byte("# cabeçalho\r\nversion: 1\r\nproject: {name: mili}\r\nrules:\r\n  - id: sample\r\n    description: 'Manually written' # keep\r\n    origin: human\r\n    status: 'candidate' # decision\r\n")
+	original := []byte("# cabeçalho\r\nversion: 1\r\nproject: {name: sample-project}\r\nrules:\r\n  - id: sample\r\n    description: 'Manually written' # keep\r\n    origin: human\r\n    status: 'candidate' # decision\r\n")
 	path := filepath.Join(t.TempDir(), "harness.yaml")
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)

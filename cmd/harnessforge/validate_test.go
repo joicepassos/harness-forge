@@ -41,14 +41,14 @@ func TestValidateInitAndPreserveManualFile(t *testing.T) {
 	}
 }
 func TestValidateRejectsInvalidDocuments(t *testing.T) {
-	base := "version: 1\nproject:\n  name: mili\n"
+	base := "version: 1\nproject:\n  name: sample-project\n"
 	rule := "rules:\n  - id: sample\n    description: Example\n    origin: human\n    status: candidate\n"
 	cases := []struct{ name, text, want string }{
 		{"null collection", base + "rules: null\n", "null is not allowed"},
 		{"version", strings.Replace(base, "version: 1", "version: 2", 1), "version"},
 		{"missing name", "version: 1\nproject: {}", "project.name"},
 		{"unknown field", base + "secret: value\n", "unknown field"},
-		{"wrong type", strings.Replace(base, "name: mili", "name: 123", 1), "cannot unmarshal"},
+		{"wrong type", strings.Replace(base, "name: sample-project", "name: 123", 1), "cannot unmarshal"},
 		{"duplicate key", base + "version: 1\n", "already defined"},
 		{"multiple documents", base + "---\n" + base, "one YAML document"},
 		{"duplicate id", base + rule + "  - id: sample\n    description: Other\n    origin: human\n    status: approved\n", "duplicate"},

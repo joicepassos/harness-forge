@@ -48,7 +48,7 @@ func TestGenerateHTTPContract(t *testing.T) {
 		body      string
 		wantError string
 	}{
-		{"success", 200, `{"choices":[{"message":{"content":"Mili summary"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":3}}`, ""},
+		{"success", 200, `{"choices":[{"message":{"content":"Project summary"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":3}}`, ""},
 		{"authentication", 401, `{"error":{"message":"Invalid key"}}`, "HTTP 401"},
 		{"rate limit", 429, `{"error":{"message":"Rate limited"}}`, "HTTP 429"},
 		{"proxy failure", 502, `<html>Bad gateway</html>`, "HTTP 502"},
@@ -68,12 +68,12 @@ func TestGenerateHTTPContract(t *testing.T) {
 				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 					t.Fatal(err)
 				}
-				if payload.Model != "test-model" || len(payload.Messages) != 2 || payload.Messages[1].Content != "Mili" {
+				if payload.Model != "test-model" || len(payload.Messages) != 2 || payload.Messages[1].Content != "Project" {
 					t.Errorf("unexpected payload: %+v", payload)
 				}
 				return &http.Response{StatusCode: tc.status, Body: io.NopCloser(strings.NewReader(tc.body)), Header: make(http.Header)}, nil
 			})}}
-			result, err := provider.Generate(context.Background(), Request{SystemPrompt: "Summarize", Prompt: "Mili", Temperature: 0.2})
+			result, err := provider.Generate(context.Background(), Request{SystemPrompt: "Summarize", Prompt: "Project", Temperature: 0.2})
 			if tc.wantError != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
 					t.Fatalf("error = %v, want %s", err, tc.wantError)
@@ -83,7 +83,7 @@ func TestGenerateHTTPContract(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if result.Content != "Mili summary" || result.InputTokens != 12 || result.OutputTokens != 3 {
+			if result.Content != "Project summary" || result.InputTokens != 12 || result.OutputTokens != 3 {
 				t.Fatalf("unexpected result: %+v", result)
 			}
 		})

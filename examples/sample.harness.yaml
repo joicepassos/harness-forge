@@ -1,8 +1,8 @@
-# Exemplo manual baseado nas linguagens detectadas no Mili.
+# Exemplo manual baseado nas linguagens detectadas em um projeto.
 # As regras abaixo são propostas ilustrativas, não decisões aprovadas do time.
 version: 1
 project:
-  name: mili
+  name: sample-project
   languages:
     - Java
     - TypeScript

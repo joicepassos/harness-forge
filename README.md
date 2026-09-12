@@ -9,7 +9,7 @@ Baixe o binário da release correspondente ao seu sistema ou execute a partir do
 ```powershell
 go run ./cmd/harnessforge version
 go run ./cmd/harnessforge init
-go run ./cmd/harnessforge analyze --git --format json C:\Users\joice\mili
+go run ./cmd/harnessforge analyze --git --format json C:\caminho\para\seu-projeto
 ```
 
 `init` cria `.harness/harness.yaml` e recusa sobrescrever arquivos existentes. `analyze` faz análise local determinística. Com `--git`, inclui branches locais/remotos conhecidos, arquivos pendentes, autores, contagem de commits e mensagens/arquivos dos últimos 20 commits. Repositórios sem commits são aceitos; erros Git são reportados, não descartados. Nenhum fetch é executado.
@@ -21,7 +21,7 @@ go run ./cmd/harnessforge config set provider deepseek
 go run ./cmd/harnessforge config get provider
 go run ./cmd/harnessforge ask "Olá"
 go run ./cmd/harnessforge ask --stream "Explique Strategy em uma frase"
-go run ./cmd/harnessforge ask --format json --repository C:\Users\joice\mili "Liste padrões sustentados pelo relatório"
+go run ./cmd/harnessforge ask --format json --repository C:\caminho\para\seu-projeto "Liste padrões sustentados pelo relatório"
 ```
 
 | Provedor | Variável de ambiente | Modelo padrão |
@@ -54,8 +54,8 @@ Há até 3 tentativas para HTTP 429, 500, 502, 503 e 504, com espera progressiva
 
 ```powershell
 go run ./cmd/harnessforge validate
-go run ./cmd/harnessforge validate examples/mili.harness.yaml
-go run ./cmd/harnessforge validate caminho/harness.yaml --repository C:\Users\joice\mili
+go run ./cmd/harnessforge validate examples/sample.harness.yaml
+go run ./cmd/harnessforge validate caminho/harness.yaml --repository C:\caminho\para\seu-projeto
 go run ./cmd/harnessforge review minha-regra approved --file caminho/harness.yaml
 go run ./cmd/harnessforge review minha-regra candidate --file caminho/harness.yaml
 ```
@@ -68,7 +68,7 @@ Regras exigem `id`, `description`, `origin` (`human`/`ai`) e `status` (`candidat
 
 `review` permite candidate → approved/rejected e approved/rejected → candidate. Uma decisão deve ser reaberta antes de ser invertida. A edição modifica apenas o escalar de status, preservando comentários, ordem, aspas e quebras de linha; usa arquivo temporário, bloqueio entre operações de review e detecção de alterações concorrentes. Status com aliases, anchors ou sintaxe multilinha devem ser editados manualmente. Não existe reserialização geral do YAML nesta versão.
 
-A edição manual pode declarar qualquer status válido; não há autenticação de aprovador. O histórico Git fornece rastreabilidade. O exemplo Mili é ilustrativo e contém uma regra candidata, não uma decisão adotada no projeto.
+A edição manual pode declarar qualquer status válido; não há autenticação de aprovador. O histórico Git fornece rastreabilidade. O exemplo incluído é ilustrativo e contém uma regra candidata, não uma decisão adotada no projeto.
 
 ## Arquitetura e validação
 
@@ -79,6 +79,6 @@ go test ./...
 go vet ./...
 ```
 
-Testes cobrem schemas, citações, falhas HTTP, retry, streaming truncado, Git com/sem commits, revisão e preservação de edição manual. DeepSeek foi validado ao vivo com o Mili em JSON e streaming. OpenAI, Gemini, Groq e Ollama têm testes simulados; execução real exige saldo/credenciais/servidor de cada ambiente. Anthropic permanece uma integração opcional não implementada.
+Testes cobrem schemas, citações, falhas HTTP, retry, streaming truncado, Git com/sem commits, revisão e preservação de edição manual. DeepSeek foi validado ao vivo em JSON e streaming. OpenAI, Gemini, Groq e Ollama têm testes simulados; execução real exige saldo/credenciais/servidor de cada ambiente. Anthropic permanece uma integração opcional não implementada.
 
 Referências de protocolo: [OpenAI](https://developers.openai.com/api/docs/guides/structured-outputs), [DeepSeek](https://api-docs.deepseek.com/api/create-chat-completion/), [Gemini](https://ai.google.dev/gemini-api/docs/openai), [Groq](https://console.groq.com/docs/openai), [Ollama](https://docs.ollama.com/api/openai-compatibility).
