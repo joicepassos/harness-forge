@@ -41,3 +41,32 @@ go vet ./...
 ```
 
 Os testes de contrato HTTP usam respostas simuladas. A integração DeepSeek também foi validada com uma chamada real usando o relatório do Mili. Gemini, Groq e Ollama exigem validação real no ambiente configurado pelo usuário.
+
+## Fase 6 — Multi-provider / BYOK
+
+```powershell
+go run ./cmd/harnessforge config set provider deepseek
+go run ./cmd/harnessforge config get provider
+go run ./cmd/harnessforge ask "Olá"
+```
+
+A preferência vale para todos os repositórios do usuário. Ela é salva em `harnessforge/preferences.json` dentro do diretório retornado por `os.UserConfigDir` (no Windows, `%APPDATA%`). Apenas o nome do provedor é persistido; as chaves continuam exclusivamente nas variáveis de ambiente. Sem preferência salva, usa OpenAI. A flag `ask --provider` prevalece sobre a preferência sem alterá-la. O modelo continua sendo selecionado por `--model` ou pelo padrão do provedor.
+
+A configuração segue a mesma separação: domínio contém preferências, aplicação valida o provedor por um catálogo e infraestrutura persiste o JSON. Configurar um provedor não exige chave nem faz chamadas à API.
+
+O roteiro detalhado em Go define fase 6 como Multi-provider/BYOK e fase 7 como Harness IR. A fase 5 do roteiro pede saída estruturada **do modelo**; o JSON atual de `analyze` é a saída determinística do scanner e não conclui esse requisito.
+
+## Fase 7 — Harness IR manual
+
+```powershell
+go run ./cmd/harnessforge validate
+go run ./cmd/harnessforge validate examples/mili.harness.yaml
+```
+
+`validate` lê `.harness/harness.yaml` por padrão, não altera arquivos e não chama IA nem executa quality gates. Erros encerram a CLI com código diferente de zero. `init` agora recusa sobrescrever arquivos existentes.
+
+O contrato v1 está em `schemas/harness-v1.schema.json`. Apenas `version: 1` e `project.name` são obrigatórios no documento mínimo. Se presentes, regras exigem `id`, `description`, `origin` (`human` ou `ai`) e `status` (`candidate`, `approved` ou `rejected`). Regras de IA exigem evidências com `file`; `symbol` e `revision` são opcionais. Regras humanas não exigem pontuação de confiança. IDs devem ser únicos dentro de cada coleção. O schema descreve a estrutura; a validação do domínio também verifica unicidade.
+
+Seções opcionais: `project.languages`, `architecture.styles`, `rules`, `skills` (id/description) e `quality_gates` (id/command). Escopos usam `scope.paths`; nesta fase são apenas metadados. Evidências são referências declaradas: validar não prova sua veracidade nem a existência dos arquivos. `approved` é uma declaração manual, não uma aprovação autenticada.
+
+O exemplo Mili contém uma regra candidata ilustrativa. Ele não altera as decisões do projeto Mili. O validador preserva os bytes originais; edição automática e escrita com preservação de comentários ficam para uma etapa futura.

@@ -1,0 +1,24 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema",
+ "title":"Harness IR v1",
+ "type":"object","additionalProperties":false,"required":["version","project"],
+ "properties":{
+  "version":{"const":1},
+  "project":{"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":{"$ref":"#/$defs/text"},"languages":{"$ref":"#/$defs/texts"}}},
+  "architecture":{"type":"object","additionalProperties":false,"properties":{"styles":{"$ref":"#/$defs/texts"}}},
+  "rules":{"type":"array","items":{"$ref":"#/$defs/rule"}},
+  "skills":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["id","description"],"properties":{"id":{"$ref":"#/$defs/text"},"description":{"$ref":"#/$defs/text"}}}},
+  "quality_gates":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["id","command"],"properties":{"id":{"$ref":"#/$defs/text"},"command":{"$ref":"#/$defs/text"}}}}
+ },
+ "$defs":{
+  "text":{"type":"string","pattern":"\\S"},
+  "texts":{"type":"array","items":{"$ref":"#/$defs/text"}},
+  "evidence":{"type":"object","additionalProperties":false,"required":["file"],"properties":{"file":{"$ref":"#/$defs/text"},"symbol":{"type":"string"},"revision":{"type":"string"}}},
+  "rule":{"type":"object","additionalProperties":false,"required":["id","description","origin","status"],"properties":{
+   "id":{"$ref":"#/$defs/text"},"description":{"$ref":"#/$defs/text"},
+   "origin":{"enum":["human","ai"]},"status":{"enum":["candidate","approved","rejected"]},
+   "scope":{"type":"object","additionalProperties":false,"properties":{"paths":{"$ref":"#/$defs/texts"}}},
+   "evidence":{"type":"array","items":{"$ref":"#/$defs/evidence"}}
+  },"allOf":[{"if":{"properties":{"origin":{"const":"ai"}},"required":["origin"]},"then":{"required":["evidence"],"properties":{"evidence":{"minItems":1}}}}]}
+ }
+}

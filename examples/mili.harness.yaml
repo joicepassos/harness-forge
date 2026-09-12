@@ -1,0 +1,14 @@
+# Exemplo manual baseado nas linguagens detectadas no Mili.
+# As regras abaixo são propostas ilustrativas, não decisões aprovadas do time.
+version: 1
+project:
+  name: mili
+  languages:
+    - Java
+    - TypeScript
+    - Python
+rules:
+  - id: review-database-migrations
+    description: Revisar as migrações do banco antes de integrar alterações.
+    origin: human
+    status: candidate

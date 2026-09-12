@@ -91,7 +91,7 @@ func main() {
 				return err
 			}
 
-			providerName, err := cmd.Flags().GetString("provider")
+			providerName, err := selectedProvider(cmd)
 			if err != nil {
 				return err
 			}
@@ -105,8 +105,8 @@ func main() {
 		},
 	}
 	askCmd.Flags().String("model", "", "Model to use (provider default when omitted)")
-	askCmd.Flags().String("provider", "openai", "LLM provider: openai, deepseek, gemini, groq or ollama")
-	rootCmd.AddCommand(askCmd)
+	askCmd.Flags().String("provider", "openai", "Override saved provider: openai, deepseek, gemini, groq or ollama")
+	rootCmd.AddCommand(askCmd, newConfigCommand(), newValidateCommand())
 
 	cobra.CheckErr(rootCmd.Execute())
 }

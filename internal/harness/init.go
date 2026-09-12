@@ -19,7 +19,12 @@ func Init(repositoryPath string) (string, error) {
 		return "", err
 	}
 
-	if err := os.WriteFile(harnessFile, []byte(defaultHarnessYAML), 0644); err != nil {
+	file, err := os.OpenFile(harnessFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	if _, err := file.WriteString(defaultHarnessYAML); err != nil {
 		return "", err
 	}
 

@@ -52,3 +52,9 @@ func (registry *Registry) create(name, model string) (*Client, error) {
 	}
 	return &Client{name: name, endpoint: config.endpoint, apiKey: key, model: model, client: &http.Client{Timeout: 60 * time.Second}}, nil
 }
+
+// Supports checks configuration without requiring credentials or making API calls.
+func (registry *Registry) Supports(name string) bool {
+	_, ok := registry.definitions[name]
+	return ok
+}
