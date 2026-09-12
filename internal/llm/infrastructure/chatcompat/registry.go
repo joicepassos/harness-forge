@@ -58,3 +58,11 @@ func (registry *Registry) Supports(name string) bool {
 	_, ok := registry.definitions[name]
 	return ok
 }
+
+func (registry *Registry) DefaultModel(name string) string {
+	config, ok := registry.definitions[strings.ToLower(strings.TrimSpace(name))]
+	if !ok {
+		return ""
+	}
+	return config.defaultModel
+}

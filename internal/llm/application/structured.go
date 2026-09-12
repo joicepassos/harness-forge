@@ -10,16 +10,20 @@ import (
 )
 
 func (ask *Ask) Structured(ctx context.Context, name, model, prompt, repositoryAnalysis string) (*domain.ArchitectureAnalysis, error) {
+	sources := map[string]string{"prompt": prompt}
+	if repositoryAnalysis != "" {
+		sources["repository-analysis"] = repositoryAnalysis
+	}
+	return ask.StructuredWithSources(ctx, name, model, prompt, sources)
+}
+
+func (ask *Ask) StructuredWithSources(ctx context.Context, name, model, prompt string, sources map[string]string) (*domain.ArchitectureAnalysis, error) {
 	if strings.TrimSpace(prompt) == "" {
 		return nil, fmt.Errorf("prompt must not be empty")
 	}
 	provider, err := ask.providers.Resolve(name, model)
 	if err != nil {
 		return nil, err
-	}
-	sources := map[string]string{"prompt": prompt}
-	if repositoryAnalysis != "" {
-		sources["repository-analysis"] = repositoryAnalysis
 	}
 	contextJSON, err := json.Marshal(sources)
 	if err != nil {

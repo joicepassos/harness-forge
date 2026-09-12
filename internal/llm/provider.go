@@ -10,3 +10,7 @@ import (
 func NewAsk() *application.Ask {
 	return application.NewAsk(chatcompat.NewRegistry(os.Getenv))
 }
+
+func DefaultModel(provider string) string {
+	return chatcompat.NewRegistry(os.Getenv).DefaultModel(provider)
+}

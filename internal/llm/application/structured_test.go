@@ -43,3 +43,26 @@ func TestStructuredOutputRejectsInvalidSchemaAndCitations(t *testing.T) {
 		})
 	}
 }
+
+func TestStructuredWithSourcesLimitsCitationsToSelectedContext(t *testing.T) {
+	provider := &structuredProvider{content: `{"architecture":[],"patterns":[{"name":"webhook","confidence":0.6,"evidence":[{"source":"repository-file:internal/webhook/handler.go","quote":"webhook authentication"}]}]}`}
+	resolver := &fakeResolver{strategy: provider}
+	analysis, err := NewAsk(resolver).StructuredWithSources(context.Background(), "deepseek", "", "How are webhooks authenticated?", map[string]string{
+		"prompt": "How are webhooks authenticated?",
+		"repository-file:internal/webhook/handler.go": "webhook authentication",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(analysis.Patterns) != 1 {
+		t.Fatalf("patterns = %d, want 1", len(analysis.Patterns))
+	}
+
+	provider.content = `{"architecture":[],"patterns":[{"name":"webhook","confidence":0.6,"evidence":[{"source":"repository-file:internal/webhook/handler.go","quote":"not selected"}]}]}`
+	if _, err := NewAsk(resolver).StructuredWithSources(context.Background(), "deepseek", "", "How are webhooks authenticated?", map[string]string{
+		"prompt": "How are webhooks authenticated?",
+		"repository-file:internal/webhook/handler.go": "webhook authentication",
+	}); err == nil {
+		t.Fatal("unselected citation accepted")
+	}
+}
