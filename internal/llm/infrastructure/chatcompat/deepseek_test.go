@@ -24,7 +24,7 @@ func TestDeepSeekProvider(t *testing.T) {
 		if r.Header.Get("Authorization") != "Bearer test-deepseek" {
 			t.Fatal("wrong credential")
 		}
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"choices":[{"message":{"content":"ok"}}]}`))}, nil
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}`))}, nil
 	})
 	if _, err := p.Generate(context.Background(), Request{Prompt: "test"}); err != nil {
 		t.Fatal(err)

@@ -36,7 +36,7 @@ func TestRegistryRoutesProviders(t *testing.T) {
 				if r.Header.Get("Authorization") != wantAuth {
 					t.Fatal("wrong authorization")
 				}
-				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"choices":[{"message":{"content":"ok"}}]}`))}, nil
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}`))}, nil
 			})
 			if _, err := p.Generate(context.Background(), Request{Prompt: "hello"}); err != nil {
 				t.Fatal(err)

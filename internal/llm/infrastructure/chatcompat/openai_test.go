@@ -48,13 +48,13 @@ func TestGenerateHTTPContract(t *testing.T) {
 		body      string
 		wantError string
 	}{
-		{"success", 200, `{"choices":[{"message":{"content":"Mili summary"}}],"usage":{"prompt_tokens":12,"completion_tokens":3}}`, ""},
+		{"success", 200, `{"choices":[{"message":{"content":"Mili summary"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":3}}`, ""},
 		{"authentication", 401, `{"error":{"message":"Invalid key"}}`, "HTTP 401"},
 		{"rate limit", 429, `{"error":{"message":"Rate limited"}}`, "HTTP 429"},
 		{"proxy failure", 502, `<html>Bad gateway</html>`, "HTTP 502"},
 		{"invalid json", 200, `{`, "decode openai response"},
 		{"no choices", 200, `{"choices":[]}`, "did not include choices"},
-		{"empty content", 200, `{"choices":[{"message":{"content":""}}]}`, "did not include text"},
+		{"empty content", 200, `{"choices":[{"message":{"content":""},"finish_reason":"stop"}]}`, "did not include text"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			provider := &Client{apiKey: "test-key", model: "test-model", client: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {

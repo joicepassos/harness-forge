@@ -50,7 +50,7 @@ func (registry *Registry) create(name, model string) (*Client, error) {
 			return nil, fmt.Errorf("%s is not set", config.keyVariable)
 		}
 	}
-	return &Client{name: name, endpoint: config.endpoint, apiKey: key, model: model, client: &http.Client{Timeout: 60 * time.Second}}, nil
+	return &Client{attempts: 3, name: name, endpoint: config.endpoint, apiKey: key, model: model, client: &http.Client{Timeout: 60 * time.Second}}, nil
 }
 
 // Supports checks configuration without requiring credentials or making API calls.

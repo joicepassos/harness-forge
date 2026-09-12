@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/config"
 	"harnessforge/internal/harness"
-	"harnessforge/internal/llm"
+	"os"
+	"os/signal"
 
 	"github.com/spf13/cobra"
 )
@@ -81,32 +83,9 @@ func main() {
 	analyzeCmd.Flags().String("format", "text", "Output format: text or json")
 	rootCmd.AddCommand(analyzeCmd)
 
-	askCmd := &cobra.Command{
-		Use:   "ask [prompt]",
-		Short: "Ask the configured LLM provider",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			model, err := cmd.Flags().GetString("model")
-			if err != nil {
-				return err
-			}
+	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newReviewCommand())
 
-			providerName, err := selectedProvider(cmd)
-			if err != nil {
-				return err
-			}
-			response, err := llm.NewAsk().Execute(cmd.Context(), providerName, model, args[0])
-			if err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintln(cmd.OutOrStdout(), response.Content)
-			return err
-		},
-	}
-	askCmd.Flags().String("model", "", "Model to use (provider default when omitted)")
-	askCmd.Flags().String("provider", "openai", "Override saved provider: openai, deepseek, gemini, groq or ollama")
-	rootCmd.AddCommand(askCmd, newConfigCommand(), newValidateCommand())
-
-	cobra.CheckErr(rootCmd.Execute())
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	cobra.CheckErr(rootCmd.ExecuteContext(ctx))
 }

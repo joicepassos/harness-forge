@@ -125,3 +125,26 @@ func nonemptyList(field string, values []string) error {
 	}
 	return nil
 }
+
+// ReviewRule controls explicit review transitions. Reopening is required before reversing a decision.
+func (h *Harness) ReviewRule(id, status string) error {
+	transitions := map[string]map[string]bool{
+		"candidate": {"approved": true, "rejected": true},
+		"approved":  {"candidate": true}, "rejected": {"candidate": true},
+	}
+	for i := range h.Rules {
+		rule := &h.Rules[i]
+		if rule.ID != id {
+			continue
+		}
+		if rule.Status == status {
+			return nil
+		}
+		if !transitions[rule.Status][status] {
+			return fmt.Errorf("rule %s: invalid transition %s -> %s; reopen as candidate first", id, rule.Status, status)
+		}
+		rule.Status = status
+		return nil
+	}
+	return fmt.Errorf("rule %q not found", id)
+}

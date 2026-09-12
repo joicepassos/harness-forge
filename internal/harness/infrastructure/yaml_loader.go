@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go.yaml.in/yaml/v3"
 	"harnessforge/internal/harness/domain"
+	"harnessforge/schemas"
 	"io"
 	"os"
 )
@@ -40,6 +41,12 @@ func (YAMLLoader) Load(path string) (domain.Harness, error) {
 	strict.DisallowUnknownFields()
 	if err := strict.Decode(&h); err != nil {
 		return h, fmt.Errorf("%s: %w", path, err)
+	}
+	if err := h.Validate(); err != nil {
+		return h, err
+	}
+	if err := schemas.Validate("harness-v1.schema.json", data); err != nil {
+		return h, err
 	}
 	return h, nil
 }

@@ -49,7 +49,7 @@ func AnalyzeWithOptions(ctx context.Context, repositoryPath string, options Opti
 		Project: filepath.Base(absolutePath),
 	}
 
-	files, err := collectFiles(absolutePath)
+	files, err := collectFilesContext(ctx, absolutePath)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +61,12 @@ func AnalyzeWithOptions(ctx context.Context, repositoryPath string, options Opti
 
 	analysis.Files = len(files)
 	results := runDetectors(ctx, repository, options)
+	if results.err != nil {
+		return nil, results.err
+	}
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 
 	analysis.Languages = results.languages
 	analysis.Build = results.build
@@ -74,6 +80,7 @@ func AnalyzeWithOptions(ctx context.Context, repositoryPath string, options Opti
 }
 
 type detectionResults struct {
+	err            error
 	languages      []Finding
 	build          []Finding
 	frameworks     []Finding
@@ -108,7 +115,15 @@ func runDetectors(ctx context.Context, repository Repository, options Options) d
 	run(func(findings []Finding) { results.tests = findings }, testDetector{})
 
 	if options.IncludeGit {
-		run(func(findings []Finding) { results.git = findings }, gitDetector{})
+		waitGroup.Add(1)
+		go func() {
+			defer waitGroup.Done()
+			findings, err := (gitDetector{}).Detect(ctx, repository)
+			mutex.Lock()
+			defer mutex.Unlock()
+			results.git = findings
+			results.err = err
+		}()
 	}
 
 	waitGroup.Wait()
@@ -116,9 +131,15 @@ func runDetectors(ctx context.Context, repository Repository, options Options) d
 }
 
 func collectFiles(repositoryPath string) ([]string, error) {
+	return collectFilesContext(context.Background(), repositoryPath)
+}
+func collectFilesContext(ctx context.Context, repositoryPath string) ([]string, error) {
 	var files []string
 
 	err := filepath.WalkDir(repositoryPath, func(path string, entry os.DirEntry, err error) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		if err != nil {
 			return err
 		}

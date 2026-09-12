@@ -1,0 +1,15 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema",
+ "type":"object","additionalProperties":false,"required":["architecture","patterns"],
+ "properties":{
+  "architecture":{"type":"array","uniqueItems":true,"items":{"type":"string","enum":["ddd","hexagonal","layered","clean-architecture","event-driven","microservices","monolith","mvc"]}},
+  "patterns":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["name","confidence","evidence"],"properties":{
+   "name":{"type":"string","pattern":"\\S"},
+   "confidence":{"type":"number","minimum":0,"maximum":1},
+   "evidence":{"type":"array","minItems":1,"items":{"type":"object","additionalProperties":false,"required":["source","quote"],"properties":{
+    "source":{"enum":["prompt","repository-analysis"]},"quote":{"type":"string","pattern":"\\S"}
+   }}}
+  }}}
+ }
+}
+
