@@ -83,7 +83,7 @@ func main() {
 	analyzeCmd.Flags().String("format", "text", "Output format: text or json")
 	rootCmd.AddCommand(analyzeCmd)
 
-	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand())
+	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand(), newDoctorCommand())
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

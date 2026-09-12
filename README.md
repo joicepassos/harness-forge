@@ -109,6 +109,15 @@ Rules require `id`, `description`, `origin` (`human` or `ai`) and `status` (`can
 
 Manual editing can declare any valid status. There is no approver authentication. Git history provides traceability. The included example is illustrative and contains a candidate rule, not an adopted project decision.
 
+### Harness Health Diagnostics
+
+```powershell
+go run ./cmd/harnessforge doctor .harness/harness.yaml --repository C:\path\to\your-project
+go run ./cmd/harnessforge doctor --fix
+```
+
+`doctor` is read-only. It emits JSON diagnostics with severity, evidence and a suggested action for invalid Harness IR, potentially duplicate instructions, unsafe declared paths, invalid local evidence and oversized Harness IR. `--fix` does not edit files: it labels the output as proposals for a human to review and apply manually. The context warning threshold is 65,536 Harness IR bytes; it is a byte-size boundary, not a token count or health score. Diagnostics do not establish that instructions are correct, and text similarity can identify intentional repetition. Evidence verification requires `--repository` and checks only local paths, revisions and literal symbols.
+
 ## Architecture And Validation
 
 Domain packages define contracts, messages, Harness IR and context data. Application packages coordinate use cases and selection strategies. Infrastructure packages implement HTTP, filesystem, Git, YAML and persistence. Provider selection uses Strategy; providers with the same protocol share the Chat Completions adapter.
