@@ -1,0 +1,7 @@
+{
+  "api_version": "harnessforge.plugin/v1",
+  "name": "word-count",
+  "description": "Counts words in supplied text without changing HarnessForge domain code.",
+  "command": ["go", "run", "."],
+  "capabilities": ["analyzer"]
+}

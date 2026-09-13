@@ -49,6 +49,12 @@ go run ./cmd/harnessforge --language pt-BR analyze --format json C:\path\to\your
 
 `rag REPOSITORY QUERY --k 5` runs query embedding, retrieval, bounded source selection and provider generation. Provider JSON is withheld unless every citation names a retrieved chunk; a grounded claim without citations and any fabricated citation are rejected. Zero-overlap retrieval returns `insufficient_evidence` without calling the provider. Reports retain retrieved excerpts, source lines, input/output tokens and end-to-end latency. `--direct` explicitly skips retrieval and rejects repository citation claims. Retrieved text is framed as untrusted data. Citation validation establishes provenance, not answer truth; human or deterministic evaluation remains necessary.
 
+### Plugins
+
+Plugins use the versioned `harnessforge.plugin/v1` JSON contract over standard input and output. `plugin discover DIRECTORY` validates and lists manifests but never installs or executes them. `plugin run DIRECTORY NAME INPUT-JSON --capability analyzer --authorize` is the only execution path; `--authorize` is required for every invocation and execution is bounded by a configurable timeout and 1 MiB messages. HarnessForge forwards only a minimal process environment, excluding provider tokens and repository credentials by default. Plugin output, errors, undeclared capabilities and incompatible versions are surfaced explicitly.
+
+The example in `examples/plugins/word-count` runs cross-platform when Go is installed: `go run ./cmd/harnessforge plugin run ./examples/plugins/word-count word-count '{"text":"two words"}' --authorize`. Executables can be distributed instead of `go run`, but publishers must provide and verify builds for every target platform. Subprocess JSON was selected over native Go plugins because it provides process isolation, language independence and Windows support; native Go plugins have ABI/toolchain coupling and are not supported on Windows. Plugins remain untrusted executable code despite process separation: review manifests and binaries, grant only necessary filesystem access, and use operating-system sandboxing for stronger isolation. Declarative rules and skills remain preferred when execution is unnecessary.
+
 ```powershell
 go run ./cmd/harnessforge config set provider deepseek
 go run ./cmd/harnessforge config get provider
