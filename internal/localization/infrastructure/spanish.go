@@ -26,6 +26,7 @@ var spanish = map[string]string{
 	"embedding.short":            "Crear y comparar embeddings independientes",
 	"embedding.create.short":     "Crear un embedding para un texto corto",
 	"embedding.similarity.short": "Calcular similitud coseno",
+	"symbols.short":              "Extraer símbolos estructurales del código",
 	"output.created":             "Creado %s\n",
 	"output.valid":               "Harness IR válido: %s\n",
 	"output.rule":                "Regla %s: %s\n",
