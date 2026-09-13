@@ -29,6 +29,10 @@ go run ./cmd/harnessforge --language pt-BR analyze --format json C:\path\to\your
 
 ## AI And BYOK
 
+### Standalone Embeddings
+
+`embedding create "short text"` calls the OpenAI embeddings endpoint using `OPENAI_API_KEY` from the process environment and emits the model, dimensionality, token count, and vector as JSON. `embedding similarity FIRST_JSON SECOND_JSON` calculates cosine similarity offline and rejects zero vectors, non-finite values, dimension differences, and model mismatches. Embedding generation is separate from text generation and does not persist credentials or vectors. Inputs are limited to 32 KiB and responses to 4 MiB. The default model is `text-embedding-3-small`; use `--model` to record another compatible model. Live validation is optional and requires an authorized API key.
+
 ```powershell
 go run ./cmd/harnessforge config set provider deepseek
 go run ./cmd/harnessforge config get provider
