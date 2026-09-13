@@ -144,6 +144,8 @@ go run ./cmd/harnessforge github learn owner/repository
 
 ### Drift Detection
 
+Each evidence entry is evaluated separately. Declared Git revisions are resolved and checked as historical baselines before comparing the working copy; invalid baselines and reader failures are marked `not_evaluated`. Reports include the declared revision and baseline status. Historical and current content reads are bounded to 4 MiB, and cancellation propagates to Git. A missing current file or symbol is a difference requiring review, with both legitimate-change and violation explanations.
+
 ```powershell
 go run ./cmd/harnessforge drift .harness/harness.yaml --repository C:\path\to\your-project
 ```
