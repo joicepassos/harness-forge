@@ -45,6 +45,10 @@ go run ./cmd/harnessforge --language pt-BR analyze --format json C:\path\to\your
 
 `search REPOSITORY QUERY --k 5` embeds only the query with the index model, ranks chunks by cosine score and emits the source, line range, excerpt and stable chunk ID. `--path` filters source prefixes. `--relevant id1,id2` reports deterministic Recall@K and Precision@K for an authorized relevance fixture. Empty indexes, changed or deleted source files, model mismatches, dimension mismatches and invalid K values fail explicitly. Search reads the index and does not call a text-generation model. The built-in score reflects lexical overlap rather than semantic meaning.
 
+### Grounded Answers
+
+`rag REPOSITORY QUERY --k 5` runs query embedding, retrieval, bounded source selection and provider generation. Provider JSON is withheld unless every citation names a retrieved chunk; a grounded claim without citations and any fabricated citation are rejected. Zero-overlap retrieval returns `insufficient_evidence` without calling the provider. Reports retain retrieved excerpts, source lines, input/output tokens and end-to-end latency. `--direct` explicitly skips retrieval and rejects repository citation claims. Retrieved text is framed as untrusted data. Citation validation establishes provenance, not answer truth; human or deterministic evaluation remains necessary.
+
 ```powershell
 go run ./cmd/harnessforge config set provider deepseek
 go run ./cmd/harnessforge config get provider

@@ -103,7 +103,7 @@ func newRootCommand() *cobra.Command {
 	analyzeCmd.Flags().String("format", "text", "Output format: text or json")
 	rootCmd.AddCommand(analyzeCmd)
 
-	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand(), newDoctorCommand(), newGitHubCommand(), newDriftCommand(), newEmbeddingCommand(), newSymbolsCommand(), newGenerateCommand(), newDiscoverCommand(), newIndexCommand(), newSearchCommand())
+	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand(), newDoctorCommand(), newGitHubCommand(), newDriftCommand(), newEmbeddingCommand(), newSymbolsCommand(), newGenerateCommand(), newDiscoverCommand(), newIndexCommand(), newSearchCommand(), newRAGCommand())
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		l, err := newLocalizer(string(language))
 		if err != nil {
