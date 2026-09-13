@@ -135,12 +135,14 @@ go run ./cmd/harnessforge doctor --fix
 
 ### GitHub Knowledge Extraction
 
+The reader includes issue comments, PR conversation comments, reviews, and inline review comments, retaining parent URLs and available file/line/revision context. API redirects are rejected; active credentials echoed in a response are withheld. Each complete read has a two-minute deadline and accepts at most 100 parent issues/PRs. Exhausted pagination and rate limits return explicit errors. Discussion text and file names remain untrusted evidence and are never executed or used as local write paths.
+
 ```powershell
 $env:GITHUB_TOKEN = "your-token"
 go run ./cmd/harnessforge github learn owner/repository
 ```
 
-`github learn` only sends bounded GET requests to GitHub and never posts, edits or approves content. The repository is supplied as `owner/repository`; the token is read from `GITHUB_TOKEN` (or `--token-env`) only at runtime and is never written to the Harness IR, configuration, or output. The report preserves source URLs, pull revisions and comment context, and marks every extracted candidate as requiring human review. Only text explicitly prefixed with `Decision:` is classified as a decision; recurring discussion or model interpretation is not proof of a rule. Requests are cancellable, time out after 20 seconds, fetch at most 10 pages per endpoint, and reject individual API responses above 16 KiB. These safety limits can omit content; rate-limit and API errors are returned explicitly.
+`github learn` only sends bounded GET requests to GitHub and never posts, edits or approves content. The repository is supplied as `owner/repository`; the token is read from `GITHUB_TOKEN` (or `--token-env`) only at runtime and is never written to the Harness IR, configuration, or output. The report preserves source URLs, pull revisions and comment context, and marks every extracted candidate as requiring human review. Only text explicitly prefixed with `Decision:` is classified as a decision; recurring discussion or model interpretation is not proof of a rule. Requests are cancellable, time out after 20 seconds, fetch at most 10 pages per endpoint, and reject individual API responses above 1 MiB. Limit exhaustion, rate-limit and API errors are returned explicitly.
 
 ### Drift Detection
 

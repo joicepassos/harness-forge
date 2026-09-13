@@ -1,12 +1,15 @@
 package domain
 
 type Discussion struct {
-	Kind     string `json:"kind"`
-	Number   int    `json:"number"`
-	Revision string `json:"revision,omitempty"`
-	URL      string `json:"url"`
-	Author   string `json:"author,omitempty"`
-	Body     string `json:"body"`
+	Kind      string `json:"kind"`
+	Number    int    `json:"number"`
+	Revision  string `json:"revision,omitempty"`
+	URL       string `json:"url"`
+	Author    string `json:"author,omitempty"`
+	Body      string `json:"body"`
+	ParentURL string `json:"parent_url,omitempty"`
+	Path      string `json:"path,omitempty"`
+	Line      int    `json:"line,omitempty"`
 }
 
 type Candidate struct {

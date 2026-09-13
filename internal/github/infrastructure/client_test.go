@@ -28,6 +28,8 @@ func TestClientPaginatesPreservesSourcesAndDoesNotMutate(t *testing.T) {
 			w.Write([]byte(`[{"number":4,"body":"Please add a test","html_url":"https://example.test/pull/4#review","commit_id":"abc","user":{"login":"b"}}]`))
 		case "/repos/acme/demo/commits":
 			w.Write([]byte(`[{"sha":"def","html_url":"https://example.test/commit/def","commit":{"message":"Document limits"}}]`))
+		case "/repos/acme/demo/issues/2/comments", "/repos/acme/demo/issues/4/comments", "/repos/acme/demo/pulls/4/comments":
+			w.Write([]byte("[]"))
 		default:
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}

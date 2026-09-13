@@ -33,7 +33,11 @@ func (e *Extract) Execute(ctx context.Context, repository string) (domain.Report
 		"Only explicit decision markers are classified as decisions; all candidates require human review before any rule approval.",
 		"The reader is bounded by configured page and content limits and may omit older or oversized discussions.",
 	}}
+	groups := map[string]int{}
 	for _, d := range discussions {
+		if err := ctx.Err(); err != nil {
+			return domain.Report{}, err
+		}
 		statement := strings.TrimSpace(d.Body)
 		if statement == "" {
 			continue
@@ -42,6 +46,20 @@ func (e *Extract) Execute(ctx context.Context, repository string) (domain.Report
 		if strings.HasPrefix(strings.ToLower(statement), "decision:") {
 			classification = "decision"
 		}
+		key := strings.Join(strings.Fields(strings.ToLower(statement)), " ")
+		if index, ok := groups[key]; ok {
+			duplicate := false
+			for _, source := range report.Candidates[index].Sources {
+				if source == d.URL {
+					duplicate = true
+				}
+			}
+			if !duplicate {
+				report.Candidates[index].Sources = append(report.Candidates[index].Sources, d.URL)
+			}
+			continue
+		}
+		groups[key] = len(report.Candidates)
 		report.Candidates = append(report.Candidates, domain.Candidate{Statement: statement, Classification: classification, Sources: []string{d.URL}, RequiresHumanReview: true})
 	}
 	return report, nil
