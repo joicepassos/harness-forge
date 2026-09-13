@@ -14,6 +14,15 @@ go run ./cmd/harnessforge analyze --git --format json C:\path\to\your-project
 
 `init` creates `.harness/harness.yaml` and refuses to overwrite an existing file. `analyze` performs deterministic local analysis. With `--git`, it includes known local and remote branches, pending files, authors, commit counts and the messages/files from the latest 20 commits. Repositories without commits are accepted. Git errors are reported rather than discarded, and no fetch is performed.
 
+## CLI Language
+
+English (`en`) is the default. Use the global `--language pt-BR` option for Brazilian Portuguese help and common command messages. Unsupported language values fail clearly; no language preference is written to project files or the Harness IR.
+
+```powershell
+go run ./cmd/harnessforge --language pt-BR --help
+go run ./cmd/harnessforge --language pt-BR analyze --format json C:\path\to\your-project
+```
+
 ## AI And BYOK
 
 ```powershell

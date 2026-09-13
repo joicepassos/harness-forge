@@ -13,16 +13,29 @@ import (
 )
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	cobra.CheckErr(newRootCommand().ExecuteContext(ctx))
+}
+
+func newRootCommand() *cobra.Command {
+	var language string
 	rootCmd := &cobra.Command{
 		Use:   "harnessforge",
 		Short: "HarnessForge creates and maintains coding-agent harnesses",
 	}
+	rootCmd.PersistentFlags().StringVar(&language, "language", "en", "Language for CLI help and common output (en or pt-BR)")
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "Print the HarnessForge version",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			_, err := newLocalizer(language)
+			if err != nil {
+				return err
+			}
 			cmd.Println("harnessforge version " + config.Version)
+			return nil
 		},
 	})
 
@@ -30,13 +43,16 @@ func main() {
 		Use:   "init",
 		Short: "Create the initial harness configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			l, err := newLocalizer(language)
+			if err != nil {
+				return err
+			}
 			path, err := harness.Init(".")
 			if err != nil {
 				return err
 			}
 
-			cmd.Printf("Created %s\n", path)
-			return nil
+			return l.printf(cmd, "output.created", path)
 		},
 	})
 
@@ -45,6 +61,10 @@ func main() {
 		Short: "Analyze a repository",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			l, err := localizerFor(cmd)
+			if err != nil {
+				return err
+			}
 			repositoryPath := "."
 			if len(args) > 0 {
 				repositoryPath = args[0]
@@ -61,7 +81,7 @@ func main() {
 			}
 
 			if format != "text" && format != "json" {
-				return fmt.Errorf("unsupported format %q", format)
+				return fmt.Errorf(l.text("error.unsupported_format"), format)
 			}
 
 			analysis, err := analyzer.AnalyzeWithOptions(cmd.Context(), repositoryPath, analyzer.Options{
@@ -84,8 +104,20 @@ func main() {
 	rootCmd.AddCommand(analyzeCmd)
 
 	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand(), newDoctorCommand(), newGitHubCommand(), newDriftCommand())
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-	cobra.CheckErr(rootCmd.ExecuteContext(ctx))
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		l, err := newLocalizer(language)
+		if err != nil {
+			return err
+		}
+		applyLanguage(rootCmd, l)
+		return nil
+	}
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		l, err := newLocalizer(language)
+		if err == nil {
+			applyLanguage(rootCmd, l)
+		}
+		cmd.Print(cmd.UsageString())
+	})
+	return rootCmd
 }
