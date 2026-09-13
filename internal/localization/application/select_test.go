@@ -10,7 +10,7 @@ import (
 
 func TestSelectSupportsEnglishAndBrazilianPortuguese(t *testing.T) {
 	catalog := infrastructure.Catalog{}
-	for _, input := range []string{"en", "pt-BR"} {
+	for _, input := range []string{"en", "pt-BR", "es"} {
 		selected, err := application.Select(catalog, input)
 		if err != nil || selected != domain.Language(input) {
 			t.Fatalf("Select(%q) = %q, %v", input, selected, err)

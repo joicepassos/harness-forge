@@ -12,7 +12,7 @@ type Catalog interface {
 func Select(catalog Catalog, value string) (domain.Language, error) {
 	language := domain.Language(value)
 	if !catalog.Supports(language) {
-		return "", fmt.Errorf("unsupported language %q; supported languages are en and pt-BR", value)
+		return "", fmt.Errorf("unsupported language %q; supported languages are en, pt-BR and es", value)
 	}
 	return language, nil
 }

@@ -76,3 +76,44 @@ func TestLocalizedHelpIncludesHeadingsAndFlags(t *testing.T) {
 		}
 	}
 }
+
+func TestSpanishHelpErrorsAndOutput(t *testing.T) {
+	output, err := executeRoot("analyze", "--language=es", "--help")
+	if err != nil || !strings.Contains(output, "Analizar un repositorio") || !strings.Contains(output, "Opciones:") {
+		t.Fatalf("%s: %v", output, err)
+	}
+	_, err = executeRoot("--language=es", "analyze", "--format=invalid")
+	if err == nil || !strings.Contains(err.Error(), "formato no compatible") {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "harness.yaml")
+	data := []byte("version: 1\nproject:\n  name: sample\n")
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	output, err = executeRoot("validate", "--language=es", path)
+	if err != nil || !strings.Contains(output, "Harness IR válido") {
+		t.Fatalf("%s: %v", output, err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(data, after) {
+		t.Fatal("validation changed the source")
+	}
+}
+
+func TestLocalePreservesMachineReadableOutput(t *testing.T) {
+	repository := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repository, "README.md"), []byte("# Sample\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	baseline, err := executeRoot("analyze", repository, "--format=json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, locale := range []string{"pt-BR", "es"} {
+		output, err := executeRoot("analyze", repository, "--format=json", "--language="+locale)
+		if err != nil || output != baseline {
+			t.Fatalf("locale %s changed JSON: %v", locale, err)
+		}
+	}
+}

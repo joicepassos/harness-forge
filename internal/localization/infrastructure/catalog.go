@@ -8,14 +8,13 @@ import (
 type Catalog struct{}
 
 func (Catalog) Supports(language domain.Language) bool {
-	return language == domain.English || language == domain.BrazilianPortuguese
+	return language == domain.English || language == domain.BrazilianPortuguese || language == domain.Spanish
 }
 
 func (Catalog) Text(language domain.Language, key string) string {
-	if language == domain.BrazilianPortuguese {
-		if translated, ok := portuguese[key]; ok {
-			return translated
-		}
+	catalogs := map[domain.Language]map[string]string{domain.BrazilianPortuguese: portuguese, domain.Spanish: spanish}
+	if translated, ok := catalogs[language][key]; ok {
+		return translated
 	}
 	if value, ok := english[key]; ok {
 		return value
@@ -24,6 +23,12 @@ func (Catalog) Text(language domain.Language, key string) string {
 }
 
 func (Catalog) Presentation(language domain.Language, value string) string {
+	if language == domain.Spanish {
+		if translated, ok := presentationES[value]; ok {
+			return translated
+		}
+		return strings.NewReplacer("Available Commands:", "Comandos disponibles:", "Global Flags:", "Opciones globales:", "Flags:", "Opciones:", "Usage:", "Uso:", "help for ", "ayuda para ").Replace(value)
+	}
 	if language != domain.BrazilianPortuguese {
 		return value
 	}
@@ -36,7 +41,7 @@ func (Catalog) Presentation(language domain.Language, value string) string {
 var presentationPT = map[string]string{
 	"Help about any command":                                                       "Ajuda sobre qualquer comando",
 	"Generate the autocompletion script for the specified shell":                   "Gerar o script de preenchimento automático para o shell especificado",
-	"Language for CLI help and common output (en or pt-BR)":                        "Idioma da ajuda e das mensagens comuns (en ou pt-BR)",
+	"Language for CLI help and common output (en, pt-BR or es)":                    "Idioma da ajuda e das mensagens comuns (en, pt-BR ou es)",
 	"Include Git repository metadata":                                              "Incluir metadados Git do repositório",
 	"Output format: text or json":                                                  "Formato de saída: text ou json",
 	"Verify evidence files and literal symbols in this repository":                 "Verificar arquivos de evidência e símbolos literais neste repositório",
