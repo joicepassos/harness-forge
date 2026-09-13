@@ -127,6 +127,14 @@ go run ./cmd/harnessforge github learn owner/repository
 
 `github learn` only sends bounded GET requests to GitHub and never posts, edits or approves content. The repository is supplied as `owner/repository`; the token is read from `GITHUB_TOKEN` (or `--token-env`) only at runtime and is never written to the Harness IR, configuration, or output. The report preserves source URLs, pull revisions and comment context, and marks every extracted candidate as requiring human review. Only text explicitly prefixed with `Decision:` is classified as a decision; recurring discussion or model interpretation is not proof of a rule. Requests are cancellable, time out after 20 seconds, fetch at most 10 pages per endpoint, and reject individual API responses above 16 KiB. These safety limits can omit content; rate-limit and API errors are returned explicitly.
 
+### Drift Detection
+
+```powershell
+go run ./cmd/harnessforge drift .harness/harness.yaml --repository C:\path\to\your-project
+```
+
+`drift` is read-only. Its first structural strategy evaluates approved rules with literal evidence symbols, reporting an aligned location when the symbol remains present. Rules without a literal symbol are explicitly not evaluated. A missing symbol is reported as a difference, never automatically as a defect: the output presents violation, intentional architectural change, and stale-rule explanations together with separate review-only code-fix and Harness-update proposals. It does not edit code, evidence, statuses, or manual Harness IR content. It rejects unsafe evidence paths and symlinks outside the repository. The initial check is literal text matching, not AST analysis or proof of architectural compliance.
+
 ## Architecture And Validation
 
 Domain packages define contracts, messages, Harness IR and context data. Application packages coordinate use cases and selection strategies. Infrastructure packages implement HTTP, filesystem, Git, YAML and persistence. Provider selection uses Strategy; providers with the same protocol share the Chat Completions adapter.
