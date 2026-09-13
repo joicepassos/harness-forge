@@ -41,6 +41,10 @@ go run ./cmd/harnessforge --language pt-BR analyze --format json C:\path\to\your
 
 `index REPOSITORY` scans Markdown and README documents, chunks them at headings or an 80-line boundary, and atomically writes `.harness/index.json`. Chunks retain source paths, line ranges and hashes. Reindexing reuses unchanged vectors, updates changed chunks and removes deleted entries. Reports show added, updated, removed, reused, embedded and token counts. The deterministic `lexical-hash-v1` vector allows offline indexing without text generation; it is not semantic embedding quality. `.git`, `.harness`, `vendor` and `node_modules` are excluded, scans stop at 10,000 files and documents above 1 MiB are skipped. The JSON store suits one process and small repositories; PostgreSQL with pgvector is preferred for concurrent or large deployments because it offers transactions and vector indexes.
 
+### Retrieval
+
+`search REPOSITORY QUERY --k 5` embeds only the query with the index model, ranks chunks by cosine score and emits the source, line range, excerpt and stable chunk ID. `--path` filters source prefixes. `--relevant id1,id2` reports deterministic Recall@K and Precision@K for an authorized relevance fixture. Empty indexes, changed or deleted source files, model mismatches, dimension mismatches and invalid K values fail explicitly. Search reads the index and does not call a text-generation model. The built-in score reflects lexical overlap rather than semantic meaning.
+
 ```powershell
 go run ./cmd/harnessforge config set provider deepseek
 go run ./cmd/harnessforge config get provider
