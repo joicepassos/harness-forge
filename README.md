@@ -124,6 +124,8 @@ Manual editing can declare any valid status. There is no approver authentication
 
 ### Harness Health Diagnostics
 
+Diagnostics report invalid repository roots and incomplete scans explicitly. Repository scanning checks at most 20,000 entries and skips `.git`, `vendor`, and `node_modules`; test detection currently recognizes only regular Go test files. The diagnostic input limit is 4 MiB. Every rule and skill evidence entry is checked independently, and skill references resolving outside the repository are rejected.
+
 ```powershell
 go run ./cmd/harnessforge doctor .harness/harness.yaml --repository C:\path\to\your-project
 go run ./cmd/harnessforge doctor --fix
