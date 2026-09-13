@@ -19,18 +19,18 @@ func main() {
 }
 
 func newRootCommand() *cobra.Command {
-	var language string
+	language := languageValue("en")
 	rootCmd := &cobra.Command{
 		Use:   "harnessforge",
 		Short: "HarnessForge creates and maintains coding-agent harnesses",
 	}
-	rootCmd.PersistentFlags().StringVar(&language, "language", "en", "Language for CLI help and common output (en or pt-BR)")
+	rootCmd.PersistentFlags().Var(&language, "language", "Language for CLI help and common output (en or pt-BR)")
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "Print the HarnessForge version",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := newLocalizer(language)
+			_, err := newLocalizer(string(language))
 			if err != nil {
 				return err
 			}
@@ -43,7 +43,7 @@ func newRootCommand() *cobra.Command {
 		Use:   "init",
 		Short: "Create the initial harness configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			l, err := newLocalizer(language)
+			l, err := newLocalizer(string(language))
 			if err != nil {
 				return err
 			}
@@ -105,7 +105,7 @@ func newRootCommand() *cobra.Command {
 
 	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand(), newDoctorCommand(), newGitHubCommand(), newDriftCommand())
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		l, err := newLocalizer(language)
+		l, err := newLocalizer(string(language))
 		if err != nil {
 			return err
 		}
@@ -113,11 +113,11 @@ func newRootCommand() *cobra.Command {
 		return nil
 	}
 	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		l, err := newLocalizer(language)
+		l, err := newLocalizer(string(language))
 		if err == nil {
 			applyLanguage(rootCmd, l)
 		}
-		cmd.Print(cmd.UsageString())
+		cmd.Printf("%s\n\n%s", cmd.Short, cmd.UsageString())
 	})
 	return rootCmd
 }

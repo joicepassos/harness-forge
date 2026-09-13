@@ -18,6 +18,8 @@ go run ./cmd/harnessforge analyze --git --format json C:\path\to\your-project
 
 English (`en`) is the default. Use the global `--language pt-BR` option for Brazilian Portuguese help and common command messages. Unsupported language values fail clearly; no language preference is written to project files or the Harness IR.
 
+Language selection is explicit and independent of the operating system locale. Missing translations fall back to English. Help headings, command descriptions, option descriptions, and common validation messages are localized; machine-readable JSON fields, evidence, provider output, and underlying operating-system diagnostics retain their original wording. Invalid language options fail even with `--help` before any command executes.
+
 ```powershell
 go run ./cmd/harnessforge --language pt-BR --help
 go run ./cmd/harnessforge --language pt-BR analyze --format json C:\path\to\your-project

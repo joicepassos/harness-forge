@@ -56,3 +56,23 @@ func TestUnsupportedLanguageReturnsClearError(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestInvalidLanguageCannotBypassValidationWithHelp(t *testing.T) {
+	for _, args := range [][]string{{"--language", "fr", "--help"}, {"validate", "--help", "--language=fr"}, {"--language=", "version"}} {
+		if _, err := executeRoot(args...); err == nil {
+			t.Fatalf("accepted invalid language: %v", args)
+		}
+	}
+}
+
+func TestLocalizedHelpIncludesHeadingsAndFlags(t *testing.T) {
+	output, err := executeRoot("analyze", "--language=pt-BR", "--help")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Uso:", "Opções:", "Incluir metadados Git", "Analisar um repositório"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("missing %q in %s", want, output)
+		}
+	}
+}
