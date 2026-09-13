@@ -112,6 +112,10 @@ HTTP 429, 500, 502, 503 and 504 responses are retried up to three times with pro
 
 ## Harness IR: Manual Editing And Review
 
+### Evidence-backed discovery
+
+`discover propose REPOSITORY PROMPT` builds bounded repository context and returns AI rule proposals with literal file evidence without modifying files. Confidence remains an uncalibrated estimate. `discover apply PROPOSAL_JSON --approve --repository REPOSITORY --file HARNESS` requires explicit human approval, validates every referenced file and literal symbol, and appends an approved AI rule atomically. Existing bytes, comments and decisions are preserved; an existing rule ID makes application idempotent. Rejected or unapplied proposals never change the Harness IR. Reload and review the proposal whenever the harness changes concurrently.
+
 ### Agent Instruction Adapters
 
 `generate codex --file HARNESS --repository REPOSITORY` renders `AGENTS.md`; `generate claude` renders `CLAUDE.md`. Both adapters deterministically include only approved rules, their declared scopes, and quality-gate commands. Generated files carry an ownership marker and can be regenerated atomically. A manual file, symlink, unknown output path, or output above 1 MiB is rejected before replacement. Candidate and rejected rules remain in the Harness IR and are not rendered. Review the Harness IR before generation; the command does not decide whether an approved rule is correct.
