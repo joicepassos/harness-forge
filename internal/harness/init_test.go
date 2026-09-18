@@ -3,6 +3,7 @@ package harness
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -30,5 +31,18 @@ project:
 `
 	if string(content) != want {
 		t.Fatalf("harness.yaml = %q, want %q", string(content), want)
+	}
+}
+
+func TestInitRejectsRedirectedHarnessDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires developer mode or elevated privileges")
+	}
+	dir, outside := t.TempDir(), t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(dir, ".harness")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Init(dir); err == nil {
+		t.Fatal("redirected .harness directory accepted")
 	}
 }

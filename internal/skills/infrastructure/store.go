@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"fmt"
 	"harnessforge/internal/harness/infrastructure"
+	"harnessforge/internal/securityboundary"
 	"harnessforge/internal/skills/domain"
 	"os"
 	"path/filepath"
@@ -21,7 +22,11 @@ func (Store) Generate(repository string, proposal domain.Proposal) error {
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("repository must be a directory")
 	}
-	harnessPath := filepath.Join(root, ".harness", "harness.yaml")
+	harnessDir, err := securityboundary.PrepareDirectory(root, ".harness")
+	if err != nil {
+		return err
+	}
+	harnessPath := filepath.Join(harnessDir, "harness.yaml")
 	h, err := (infrastructure.YAMLLoader{}).Load(harnessPath)
 	if err != nil {
 		return err
@@ -36,7 +41,7 @@ func (Store) Generate(repository string, proposal domain.Proposal) error {
 			return fmt.Errorf("skill reference already exists but is incomplete")
 		}
 	}
-	skillsRoot := filepath.Join(root, ".harness", "skills")
+	skillsRoot := filepath.Join(harnessDir, "skills")
 	if parent, err := os.Lstat(skillsRoot); err == nil && parent.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("skills directory cannot be a symlink")
 	} else if err != nil && !os.IsNotExist(err) {

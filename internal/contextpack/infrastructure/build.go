@@ -7,6 +7,7 @@ import (
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/contextpack/application"
 	"harnessforge/internal/contextpack/domain"
+	"harnessforge/internal/securityboundary"
 	"io"
 	"os"
 	"path/filepath"
@@ -156,6 +157,10 @@ func candidatesFromFiles(ctx context.Context, root string, files []string, promp
 			candidates = append(candidates, excluded(rel, "binary or non-UTF-8 file skipped"))
 			continue
 		}
+		if securityboundary.ContainsSensitiveContent(content) {
+			candidates = append(candidates, excluded(rel, "sensitive content skipped"))
+			continue
+		}
 		text := strings.TrimSpace(string(content))
 		if text == "" {
 			candidates = append(candidates, excluded(rel, "empty file skipped"))
@@ -182,9 +187,13 @@ func candidatesFromFiles(ctx context.Context, root string, files []string, promp
 }
 
 func collectFiles(ctx context.Context, root string, limit int) ([]string, []domain.Excerpt, error) {
+	ignored, err := securityboundary.LoadGitIgnore(root)
+	if err != nil {
+		return nil, nil, err
+	}
 	var files []string
 	var exclusions []domain.Excerpt
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -203,6 +212,9 @@ func collectFiles(ctx context.Context, root string, limit int) ([]string, []doma
 			return err
 		}
 		rel = filepath.ToSlash(rel)
+		if ignored.Match(rel) {
+			return nil
+		}
 		if len(files) >= limit {
 			exclusions = append(exclusions, excluded(rel, "file limit reached"))
 			return filepath.SkipAll

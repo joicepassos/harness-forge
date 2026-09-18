@@ -89,3 +89,14 @@ func TestGenerateHTTPContract(t *testing.T) {
 		})
 	}
 }
+
+func TestProviderErrorsDoNotEchoCredentials(t *testing.T) {
+	key := "sk-fictional-secret-key-value"
+	provider := &Client{apiKey: key, client: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 401, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"invalid ` + key + `"}}`)), Header: make(http.Header)}, nil
+	})}}
+	_, err := provider.Generate(context.Background(), Request{})
+	if err == nil || strings.Contains(err.Error(), key) {
+		t.Fatalf("credential leaked in error: %v", err)
+	}
+}
