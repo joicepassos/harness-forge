@@ -25,16 +25,19 @@ func TestGoExtractsDeclarationsInsteadOfCommentsAndStrings(t *testing.T) {
 }
 
 func TestJavaExtractsDeclarationsInsteadOfCommentsAndStrings(t *testing.T) {
-	source := []byte("package fixture;\n// class Fake {}\nnString text = \"interface False {}\";\ninterface Port {}\nclass Service implements Port { }\n")
+	source := []byte("package fixture;\n// class Fake {}\nString text = \"interface False {}\";\ninterface Port { void connect(); }\nclass Service implements Port { public void connect() {} private String render(int count) { return \"ok\"; } }\n")
 	symbols, err := (Java{}).Parse(context.Background(), "Service.java", source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(symbols) != 2 || symbols[0].Name != "Port" || symbols[1].Kind != "implementation" || symbols[1].Implements[0] != "Port" {
+	if len(symbols) != 5 || symbols[0].Name != "Port" || symbols[1].Kind != "implementation" || symbols[1].Implements[0] != "Port" || symbols[2].Kind != "method" || symbols[2].Name != "connect" || symbols[4].Name != "render" {
 		t.Fatalf("%#v", symbols)
 	}
 	if _, err := (Java{}).Parse(context.Background(), "Bad.java", []byte("class Broken { String value = \"")); err == nil {
 		t.Fatal("unterminated literal accepted")
+	}
+	if _, err := (Java{}).Parse(context.Background(), "Bad.java", []byte("class Broken { void run() {}")); err == nil {
+		t.Fatal("unclosed brace accepted")
 	}
 }
 

@@ -49,3 +49,45 @@ func TestStoreRejectsInvalidEvidenceWithoutChangingHarness(t *testing.T) {
 		t.Fatal("failed application changed harness")
 	}
 }
+
+func TestStoreInsertsIntoExistingRulesBeforeFollowingSections(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "harness.yaml")
+	source := filepath.Join(dir, "port.go")
+	original := []byte("version: 1\nproject: {name: sample}\nrules:\n  # existing decision\n  - id: manual\n    description: Keep it\n    origin: human\n    status: approved\nquality_gates:\n  - id: test\n    command: go test ./...\n")
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(source, []byte("type Port interface{}"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	proposal := domain.Proposal{ID: "use-ports", Description: "Use ports", Evidence: []domain.Evidence{{File: "port.go", Symbol: "Port"}}}
+	if err := (Store{}).Apply(dir, path, proposal); err != nil {
+		t.Fatal(err)
+	}
+	updated, _ := os.ReadFile(path)
+	if !bytes.Contains(updated, []byte("    status: approved\n  - id: use-ports")) || !bytes.Contains(updated, []byte("    revision: \"\"\nquality_gates:")) {
+		t.Fatalf("rule was not inserted into its sequence:\n%s", updated)
+	}
+}
+
+func TestStoreExpandsExplicitEmptyRulesBeforeFollowingSections(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "harness.yaml")
+	source := filepath.Join(dir, "port.go")
+	original := []byte("version: 1\nproject: {name: sample}\nrules: []\nquality_gates:\n  - id: test\n    command: go test ./...\n")
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(source, []byte("type Port interface{}"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	proposal := domain.Proposal{ID: "use-ports", Description: "Use ports", Evidence: []domain.Evidence{{File: "port.go", Symbol: "Port"}}}
+	if err := (Store{}).Apply(dir, path, proposal); err != nil {
+		t.Fatal(err)
+	}
+	updated, _ := os.ReadFile(path)
+	if !bytes.Contains(updated, []byte("rules:\n  - id: use-ports")) || !bytes.Contains(updated, []byte("    revision: \"\"\nquality_gates:")) {
+		t.Fatalf("empty rules were not expanded in place:\n%s", updated)
+	}
+}
