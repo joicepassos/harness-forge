@@ -2,6 +2,8 @@
 
 HarnessForge is a Go CLI for deterministic repository analysis, AI-assisted architecture review and editable agent harness files.
 
+Read the [Security policy](SECURITY.md) before using AI-backed commands or authorized plugins.
+
 ## Install And First Commands
 
 Download the release binary for your system or run from source with Go 1.23+:
@@ -53,7 +55,7 @@ go run ./cmd/harnessforge --language pt-BR analyze --format json C:\path\to\your
 
 Plugins use the versioned `harnessforge.plugin/v1` JSON contract over standard input and output. `plugin discover DIRECTORY` validates and lists manifests but never installs or executes them. `plugin run DIRECTORY NAME INPUT-JSON --capability analyzer --authorize` is the only execution path; `--authorize` is required for every invocation and execution is bounded by a configurable timeout and 1 MiB messages. HarnessForge forwards only a minimal process environment, excluding provider tokens and repository credentials by default. Plugin output, errors, undeclared capabilities and incompatible versions are surfaced explicitly.
 
-The example in `examples/plugins/word-count` runs cross-platform when Go is installed: `go run ./cmd/harnessforge plugin run ./examples/plugins/word-count word-count '{"text":"two words"}' --authorize`. Executables can be distributed instead of `go run`, but publishers must provide and verify builds for every target platform. Subprocess JSON was selected over native Go plugins because it provides process isolation, language independence and Windows support; native Go plugins have ABI/toolchain coupling and are not supported on Windows. Plugins remain untrusted executable code despite process separation: review manifests and binaries, grant only necessary filesystem access, and use operating-system sandboxing for stronger isolation. Declarative rules and skills remain preferred when execution is unnecessary.
+The example in `examples/plugins/word-count` runs cross-platform when Go is installed: `go run ./cmd/harnessforge plugin run ./examples/plugins/word-count word-count '{"text":"two words"}' --authorize`. Executables can be distributed instead of `go run`, but publishers must provide and verify builds for every target platform. Subprocess JSON gives language independence and Windows support; it does not provide OS isolation. `--authorize` is not a sandbox: authorized plugins run as local programs with the launching account's permissions and may access files, networks, or child processes unless independently restricted. Review plugin artifacts and generated instructions, use a dedicated low-privilege account or OS/container isolation with explicit filesystem and network policy, and verify process-tree termination. Declarative rules and skills remain preferred when execution is unnecessary.
 
 ```powershell
 go run ./cmd/harnessforge config set provider deepseek
@@ -72,7 +74,7 @@ go run ./cmd/harnessforge context explain C:\path\to\your-project "How are webho
 | groq | GROQ_API_KEY | Provide `--model` |
 | ollama | None for a local server | Provide `--model` |
 
-API keys stay only in the process environment. `.env` files are not loaded. Ollama must be running at `localhost:11434` with the selected model installed. The global provider preference is saved as `harnessforge/preferences.json` under `os.UserConfigDir` (Windows: `%APPDATA%`). Only the provider name is persisted. `--provider` overrides the saved preference for one run; without a preference, HarnessForge uses OpenAI.
+Set API keys in the process environment or an approved secret manager; `.env` files are not loaded. Do not put them in command arguments, shell history, committed `.env` files, Harness YAML, logs, generated files, or plugin manifests. Environment variables can still be inherited or exposed by other processes, so rotate and revoke a key after suspected exposure. Ollama must be running at `localhost:11434` with the selected model installed. The global provider preference is saved as `harnessforge/preferences.json` under `os.UserConfigDir` (Windows: `%APPDATA%`). Only the provider name is persisted. `--provider` overrides the saved preference for one run; without a preference, HarnessForge uses OpenAI.
 
 Text mode sends only the prompt. `--repository`, available with `--format json`, builds a bounded repository context and sends only selected excerpts plus the prompt to the chosen provider. No query modifies the repository.
 
