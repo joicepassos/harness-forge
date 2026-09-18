@@ -1,6 +1,10 @@
 # Release operations
 
-This document separates using a release from producing one. This repository produces immutable GitHub Release archives, checksums, and the checksum-verifying `install.sh` and `install.ps1` installers. Contributors should follow the review and release procedure in [CONTRIBUTING.md](../CONTRIBUTING.md). Keep credentials out of the repository and in protected GitHub Environments or the relevant account settings.
+This document separates using a release from producing one. This repository produces immutable GitHub Release archives, checksums, GitHub build attestations, and the checksum-verifying `install.sh` and `install.ps1` installers. Contributors should follow the review and release procedure in [CONTRIBUTING.md](../CONTRIBUTING.md). Keep credentials out of the repository and in protected GitHub Environments or the relevant account settings.
+
+## Release-builder policy
+
+The release workflows use Go 1.26.2, a currently supported patched toolchain selected independently from the `go 1.23` module compatibility directive. The fixed version is reviewed after every Go security release; a maintainer updates the workflow, runs the full native CI matrix, and records the change in the pull request before accepting it. Release tooling is fixed in `.tool-versions` and every GitHub Action is referenced by an immutable commit ID with the reviewed tag in a comment. Dependency updates must change both the fixed reference and this review record, never silently follow a major tag or version range.
 
 ## Published platforms
 
@@ -16,10 +20,10 @@ Every archive has a corresponding line in `harnessforge_<version>_checksums.txt`
 
 ## Release procedure
 
-1. Start from a reviewed commit with a clean working tree and run the required Go checks from the contributing guide.
+1. Start from a reviewed commit with a clean working tree and run the required Go checks from the contributing guide using Go 1.26.2.
 2. Choose an unused semantic version and review the generated release notes and archive names.
-3. Create and push an annotated `v1.*` tag. The release workflow runs only for that tag pattern. It tests each published Go target, then creates archives, checksums, and GitHub release notes with GoReleaser.
-4. Confirm the release's version, commit, build date, checksum manifest, archive contents, and both installer scripts before announcing it.
+3. Create and push an annotated `v1.*` tag. The release workflow runs only for that tag pattern. It runs tests, vetting, and source vulnerability checks natively on Linux, macOS, and Windows; creates a candidate archive set; and performs clean installer smoke tests on each operating system before publication.
+4. Confirm the release's version, commit, build date, checksum manifest, archive contents, release-binary vulnerability scan, installer scripts, and build attestations before announcing it.
 
 The core workflow creates the authoritative GitHub Release. No npm, Homebrew, or Scoop publication is part of the initial distribution plan. Users install from the release page or inspect and run the matching installer described in [Installation](INSTALLATION.md).
 
@@ -37,4 +41,20 @@ The release workflow checks out the tagged commit with full history, derives `SO
 
 This is a reproducibility-oriented configuration, not a claim that every byte has been independently reproduced. Contributors can compare a local cross-build from the same Go toolchain and source revision with the published checksums. Differences in toolchain, archive implementation, or release metadata can still affect bytes and must be investigated rather than ignored.
 
-SHA-256 protects distribution-channel consumers against corrupted or substituted archive bytes when the official checksum manifest is trusted. It is not a signed provenance guarantee. Planned hardening is to sign checksums and release artifacts with a project-controlled identity, publish Sigstore-style attestations linking source revision, builder, and artifacts, and verify that identity in release review and future installers. Until then, download only from the official release URL, validate the checksum, and inspect the release metadata.
+SHA-256 protects distribution-channel consumers against corrupted or substituted archive bytes when the official checksum manifest is trusted. Each archive and checksum manifest is also submitted to GitHub's artifact-attestation service from the protected release workflow. Before announcing a release, verify both the digest and provenance locally with the GitHub CLI:
+
+```sh
+gh release download vVERSION --repo joicepassos/harness-forge \
+  --pattern 'harnessforge_VERSION_checksums.txt' \
+  --pattern 'harnessforge_VERSION_linux_amd64.tar.gz'
+sha256sum --check --ignore-missing harnessforge_VERSION_checksums.txt
+gh attestation verify harnessforge_VERSION_linux_amd64.tar.gz \
+  --repo joicepassos/harness-forge \
+  --signer-repo joicepassos/harness-forge
+```
+
+Replace `VERSION` with the exact published version without a leading `v`, and choose the archive for the platform under review. `gh attestation verify` must identify the HarnessForge repository as the signer and must succeed for the downloaded bytes. The CLI verifier validates the Sigstore bundle and GitHub OIDC identity; a checksum alone is not equivalent provenance.
+
+## Required GitHub controls
+
+Workflow YAML cannot enforce account-level protections. Before enabling releases, repository administrators must separately verify that the default branch requires the pull-request checks, `v1.*` tag creation is limited to release maintainers, the `release` environment requires reviewers, and only the release workflow receives `contents: write`, `attestations: write`, and `id-token: write`. Record that review in the release PR or change request; do not treat the presence of this file as proof that those controls are active.

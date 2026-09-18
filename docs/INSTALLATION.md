@@ -15,7 +15,7 @@ Both installers select the platform and architecture, download the matching arch
 Download the script to a file, inspect it, and then execute it:
 
 ```sh
-VERSION=1.0.0
+VERSION=0.0.1
 curl --fail --location --proto '=https' --tlsv1.2 \
   "https://github.com/joicepassos/harness-forge/releases/download/v${VERSION}/install.sh" \
   --output install-harnessforge.sh
@@ -30,7 +30,7 @@ The script accepts `--install-dir` and does not modify `PATH`. Add `$HOME/.local
 Download and inspect the PowerShell script before executing it:
 
 ```powershell
-$Version = '1.0.0'
+$Version = '0.0.1'
 Invoke-WebRequest "https://github.com/joicepassos/harness-forge/releases/download/v$Version/install.ps1" -OutFile .\install-harnessforge.ps1
 Get-Content .\install-harnessforge.ps1
 Set-ExecutionPolicy -Scope Process Bypass
