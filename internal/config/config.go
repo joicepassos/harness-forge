@@ -1,3 +1,7 @@
 package config
 
-const Version = "0.0.1"
+var (
+	Version   = "dev"
+	Commit    = "none"
+	BuildDate = "unknown"
+)

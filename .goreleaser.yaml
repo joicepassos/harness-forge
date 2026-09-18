@@ -1,0 +1,48 @@
+version: 2
+
+project_name: harnessforge
+
+builds:
+  - id: harnessforge
+    main: ./cmd/harnessforge
+    binary: harnessforge
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+      - -buildvcs=false
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    ldflags:
+      - -s -w -X harnessforge/internal/config.Version={{ .Version }} -X harnessforge/internal/config.Commit={{ .Commit }} -X harnessforge/internal/config.BuildDate={{ .CommitDate }}
+
+archives:
+  - id: release
+    builds:
+      - harnessforge
+    formats:
+      - tar.gz
+    name_template: "harnessforge_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "harnessforge_{{ .Version }}_checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+release:
+  draft: false
+  prerelease: auto
+
+dist: dist

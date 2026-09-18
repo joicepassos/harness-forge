@@ -28,13 +28,13 @@ func newRootCommand() *cobra.Command {
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",
-		Short: "Print the HarnessForge version",
+		Short: "Print HarnessForge build metadata",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := newLocalizer(string(language))
 			if err != nil {
 				return err
 			}
-			cmd.Println("harnessforge version " + config.Version)
+			cmd.Printf("harnessforge version %s\ncommit %s\nbuild date %s\n", config.Version, config.Commit, config.BuildDate)
 			return nil
 		},
 	})
