@@ -11,14 +11,19 @@ import (
 type Java struct{}
 
 var javaDeclaration = regexp.MustCompile(`(?m)\b(class|interface|record|enum)\s+([A-Za-z_$][A-Za-z0-9_$]*)(?:\s+extends\s+([A-Za-z_$][A-Za-z0-9_$]*))?(?:\s+implements\s+([A-Za-z0-9_$.,\s]+))?\s*\{`)
+var javaMethod = regexp.MustCompile(`(?m)\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^{};]*\)\s*(?:throws\s+[A-Za-z0-9_$.,\s]+)?\s*(?:\{|;)`)
 
 func (Java) Parse(ctx context.Context, path string, source []byte) ([]domain.Symbol, error) {
 	clean, err := stripJava(source)
 	if err != nil {
 		return nil, err
 	}
+	if err := balancedJava(clean); err != nil {
+		return nil, err
+	}
 	var symbols []domain.Symbol
-	for _, match := range javaDeclaration.FindAllSubmatchIndex(clean, -1) {
+	types := javaDeclaration.FindAllSubmatchIndex(clean, -1)
+	for _, match := range types {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -41,10 +46,65 @@ func (Java) Parse(ctx context.Context, path string, source []byte) ([]domain.Sym
 		start := 1 + strings.Count(string(clean[:match[0]]), "\n")
 		symbols = append(symbols, domain.Symbol{Kind: kind, Name: name, File: path, StartLine: start, EndLine: start + strings.Count(string(clean[match[0]:match[1]]), "\n"), Implements: implemented})
 	}
+	for _, match := range javaMethod.FindAllSubmatchIndex(clean, -1) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		name := string(clean[match[2]:match[3]])
+		if !insideJavaType(clean, match[0], types) || isJavaControl(name) {
+			continue
+		}
+		start := 1 + strings.Count(string(clean[:match[0]]), "\n")
+		symbols = append(symbols, domain.Symbol{Kind: "method", Name: name, File: path, StartLine: start, EndLine: start + strings.Count(string(clean[match[0]:match[1]]), "\n")})
+	}
 	if len(symbols) == 0 && strings.Contains(string(clean), "class ") {
 		return nil, fmt.Errorf("parse Java source: malformed declaration")
 	}
 	return symbols, nil
+}
+
+func balancedJava(source []byte) error {
+	depth := 0
+	for _, char := range source {
+		switch char {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth < 0 {
+				return fmt.Errorf("parse Java source: unexpected closing brace")
+			}
+		}
+	}
+	if depth != 0 {
+		return fmt.Errorf("parse Java source: unclosed brace")
+	}
+	return nil
+}
+
+func insideJavaType(source []byte, position int, types [][]int) bool {
+	for _, declaration := range types {
+		if declaration[1] > position {
+			continue
+		}
+		depth := 0
+		for _, char := range source[declaration[1]:position] {
+			switch char {
+			case '{':
+				depth++
+			case '}':
+				depth--
+			}
+		}
+		if depth >= 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func isJavaControl(name string) bool {
+	return map[string]bool{"if": true, "for": true, "while": true, "switch": true, "catch": true, "return": true, "new": true}[name]
 }
 
 func stripJava(source []byte) ([]byte, error) {

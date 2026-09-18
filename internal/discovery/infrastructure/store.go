@@ -52,17 +52,85 @@ func (Store) Apply(repository, path string, proposal domain.Proposal) error {
 	if err != nil {
 		return err
 	}
-	addition := []byte{}
-	if len(h.Rules) == 0 {
-		addition = []byte("\nrules:\n" + indentYAML(encoded))
+	updated, err := appendRule(original, encoded)
+	if err != nil {
+		return err
 	}
-	return appendRule(path, original, addition, encoded, info.Mode().Perm(), len(h.Rules) == 0)
+	return writeValidated(path, original, updated, info.Mode().Perm())
 }
-func appendRule(path string, original, addition, encoded []byte, mode os.FileMode, newSection bool) error {
-	if !newSection {
-		addition = []byte(indentYAML(encoded))
+func appendRule(original, encoded []byte) ([]byte, error) {
+	var document yaml.Node
+	if err := yaml.Unmarshal(original, &document); err != nil {
+		return nil, err
 	}
-	updated := append(append([]byte{}, original...), addition...)
+	if len(document.Content) == 0 || document.Content[0].Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("harness must be a YAML mapping")
+	}
+	mapping := document.Content[0]
+	for index := 0; index < len(mapping.Content); index += 2 {
+		key, value := mapping.Content[index], mapping.Content[index+1]
+		if key.Value != "rules" {
+			continue
+		}
+		if value.Kind != yaml.SequenceNode {
+			return nil, fmt.Errorf("rules must be a YAML sequence")
+		}
+		if len(value.Content) == 0 && value.Style&yaml.FlowStyle != 0 {
+			scalarStart := offsetAt(original, value.Line, value.Column)
+			start := scalarStart
+			for start > 0 && (original[start-1] == ' ' || original[start-1] == '\t') {
+				start--
+			}
+			end := scalarStart + 2
+			if end < len(original) && original[end] == '\r' {
+				end++
+			}
+			if end < len(original) && original[end] == '\n' {
+				end++
+			}
+			return replace(original, start, end, []byte("\n"+indentYAML(encoded))), nil
+		}
+		insertAt := len(original)
+		if index+2 < len(mapping.Content) {
+			next := mapping.Content[index+2]
+			insertAt = offsetAt(original, next.Line, next.Column)
+		}
+		return insert(original, insertAt, []byte(indentYAML(encoded))), nil
+	}
+	addition := []byte("\nrules:\n" + indentYAML(encoded))
+	return append(append([]byte{}, original...), addition...), nil
+}
+
+func offsetAt(data []byte, line, column int) int {
+	if line <= 1 {
+		return max(column-1, 0)
+	}
+	offset := 0
+	for current := 1; current < line && offset < len(data); current++ {
+		next := bytes.IndexByte(data[offset:], '\n')
+		if next < 0 {
+			return len(data)
+		}
+		offset += next + 1
+	}
+	return min(offset+max(column-1, 0), len(data))
+}
+
+func insert(data []byte, at int, addition []byte) []byte {
+	updated := make([]byte, 0, len(data)+len(addition))
+	updated = append(updated, data[:at]...)
+	updated = append(updated, addition...)
+	return append(updated, data[at:]...)
+}
+
+func replace(data []byte, start, end int, value []byte) []byte {
+	updated := make([]byte, 0, len(data)-end+start+len(value))
+	updated = append(updated, data[:start]...)
+	updated = append(updated, value...)
+	return append(updated, data[end:]...)
+}
+
+func writeValidated(path string, original, updated []byte, mode os.FileMode) error {
 	if len(updated) == 0 || updated[len(updated)-1] != '\n' {
 		updated = append(updated, '\n')
 	}
