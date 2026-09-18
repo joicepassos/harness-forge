@@ -1,9 +1,11 @@
 package infrastructure
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"harnessforge/internal/harness/domain"
+	"harnessforge/internal/inputlimits"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,10 +43,16 @@ func CheckEvidence(ctx context.Context, root string, h domain.Harness) error {
 				}
 				show := exec.CommandContext(ctx, "git", "show", strings.TrimSpace(string(revision))+":"+filepath.ToSlash(rel))
 				show.Dir = root
-				data, err = show.Output()
+				var output boundedOutput
+				show.Stdout = &output
+				err = show.Run()
+				if output.exceeded {
+					return fmt.Errorf("%s.file: historical evidence exceeds %d bytes", field, inputlimits.HistoricalEvidenceBytes)
+				}
 				if err != nil {
 					return fmt.Errorf("%s.file: %w", field, err)
 				}
+				data = output.Bytes()
 			} else {
 				resolved, err := filepath.EvalSymlinks(path)
 				if err != nil {
@@ -58,10 +66,10 @@ func CheckEvidence(ctx context.Context, root string, h domain.Harness) error {
 				if err != nil {
 					return err
 				}
-				if !info.Mode().IsRegular() || info.Size() > 4<<20 {
+				if !info.Mode().IsRegular() || info.Size() > inputlimits.HistoricalEvidenceBytes {
 					return fmt.Errorf("%s.file: expected regular file up to 4 MiB", field)
 				}
-				data, err = os.ReadFile(resolved)
+				data, err = inputlimits.ReadFile(resolved, inputlimits.HistoricalEvidenceBytes, "evidence")
 				if err != nil {
 					return err
 				}
@@ -72,4 +80,17 @@ func CheckEvidence(ctx context.Context, root string, h domain.Harness) error {
 		}
 	}
 	return ctx.Err()
+}
+
+type boundedOutput struct {
+	bytes.Buffer
+	exceeded bool
+}
+
+func (b *boundedOutput) Write(data []byte) (int, error) {
+	if int64(b.Len()+len(data)) > inputlimits.HistoricalEvidenceBytes {
+		b.exceeded = true
+		return 0, fmt.Errorf("historical evidence exceeds limit")
+	}
+	return b.Buffer.Write(data)
 }

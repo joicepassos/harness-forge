@@ -46,6 +46,31 @@ func TestDocumentsExcludeIgnoredAndSensitiveContent(t *testing.T) {
 		t.Fatalf("documents=%#v err=%v", documents, err)
 	}
 }
+
+func TestDocumentsHonorNestedIgnoreAndQuotedCredentials(t *testing.T) {
+	dir := t.TempDir()
+	for path, content := range map[string]string{
+		".gitignore":            "private/\n",
+		"sub/.gitignore":        "notes.md\n",
+		"docs/private/notes.md": "private document",
+		"sub/notes.md":          "nested private document",
+		"quoted.md":             `password = "fictional-password-for-test"`,
+		"credentials.md":        "non-secret wording",
+		"safe.md":               "safe documentation",
+	} {
+		full := filepath.Join(dir, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	documents, err := (Documents{}).Documents(context.Background(), dir)
+	if err != nil || len(documents) != 1 || documents[0].Path != "safe.md" {
+		t.Fatalf("documents=%#v err=%v", documents, err)
+	}
+}
 func TestJSONStoreRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	text := "document text"

@@ -11,7 +11,7 @@ import (
 type Java struct{}
 
 var javaDeclaration = regexp.MustCompile(`(?m)\b(class|interface|record|enum)\s+([A-Za-z_$][A-Za-z0-9_$]*)(?:\s+extends\s+([A-Za-z_$][A-Za-z0-9_$]*))?(?:\s+implements\s+([A-Za-z0-9_$.,\s]+))?\s*\{`)
-var javaMethod = regexp.MustCompile(`(?m)\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^{};]*\)\s*(?:throws\s+[A-Za-z0-9_$.,\s]+)?\s*(?:\{|;)`)
+var javaMethod = regexp.MustCompile(`(?m)(?:^|[;{}])\s*(?:(?:public|protected|private|static|final|abstract|synchronized|native|strictfp|default)\s+)*(?:[A-Za-z_$][A-Za-z0-9_$]*(?:\s*<[^{};()]*>)?(?:\s*\[\])?\s+)([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^{};]*\)\s*(?:throws\s+[A-Za-z0-9_$.,\s]+)?\s*(?:\{|;)`)
 
 func (Java) Parse(ctx context.Context, path string, source []byte) ([]domain.Symbol, error) {
 	clean, err := stripJava(source)
@@ -51,10 +51,10 @@ func (Java) Parse(ctx context.Context, path string, source []byte) ([]domain.Sym
 			return nil, err
 		}
 		name := string(clean[match[2]:match[3]])
-		if !insideJavaType(clean, match[0], types) || isJavaControl(name) {
+		if !insideJavaType(clean, match[2], types) || isJavaControl(name) {
 			continue
 		}
-		start := 1 + strings.Count(string(clean[:match[0]]), "\n")
+		start := 1 + strings.Count(string(clean[:match[2]]), "\n")
 		symbols = append(symbols, domain.Symbol{Kind: "method", Name: name, File: path, StartLine: start, EndLine: start + strings.Count(string(clean[match[0]:match[1]]), "\n")})
 	}
 	if len(symbols) == 0 && strings.Contains(string(clean), "class ") {

@@ -31,7 +31,8 @@ archives:
       - tar.gz
     # Installers deliberately accept only the executable. Do not add licenses,
     # README files, directories, links, or other archive entries here.
-    files: none
+    files:
+      - none*
     name_template: "harnessforge_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:

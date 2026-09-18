@@ -12,8 +12,8 @@ permissions:
 env:
   # Release-builder policy. This is intentionally separate from go.mod's
   # compatibility directive.
-  GO_VERSION: 1.26.2
-  GOVULNCHECK_VERSION: v1.1.4
+  GO_VERSION: 1.27.1
+  GOVULNCHECK_VERSION: v1.8.0
 
 jobs:
   test:

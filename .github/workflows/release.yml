@@ -10,8 +10,8 @@ permissions:
 
 env:
   # A patched release builder, not the module's minimum supported Go version.
-  GO_VERSION: 1.26.2
-  GOVULNCHECK_VERSION: v1.1.4
+  GO_VERSION: 1.27.1
+  GOVULNCHECK_VERSION: v1.8.0
 
 jobs:
   native-test:
@@ -135,12 +135,12 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
       - run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-      - name: Create release artifacts
+      - name: Build unpublished release artifacts
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser
           version-file: .tool-versions
-          args: release --clean
+          args: release --clean --skip=publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Scan source and release binaries for known vulnerabilities
@@ -153,6 +153,10 @@ jobs:
           subject-path: |
             dist/harnessforge_*.tar.gz
             dist/harnessforge_*_checksums.txt
+      - name: Publish scanned release artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "${GITHUB_REF_NAME}" dist/harnessforge_*.tar.gz dist/harnessforge_*_checksums.txt --generate-notes
       - name: Upload reviewed installers
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

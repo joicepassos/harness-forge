@@ -1,20 +1,122 @@
 # HarnessForge
 
-HarnessForge is a Go CLI for deterministic repository analysis, AI-assisted architecture review and editable agent harness files.
+HarnessForge is a Go command-line tool for understanding a repository, maintaining reviewed agent instructions, and using AI with bounded, inspectable repository evidence.
 
-Read the [Security policy](SECURITY.md) before using AI-backed commands or authorized plugins.
+It is designed to keep the important decisions in your repository: the Harness IR is a normal YAML file that people can review and edit, while generated `AGENTS.md` and `CLAUDE.md` files are reproducible from approved rules.
 
-## Install And First Commands
+## Start here
 
-Download the release binary for your system or run from source with Go 1.23+:
+There is no separate documentation site. This README is the entry point, and the hands-on [Usage guide](docs/USAGE.md) explains the common workflows step by step.
+
+| If you want to… | Start with… |
+| --- | --- |
+| Understand an unfamiliar codebase | [Analyze a repository](docs/USAGE.md#1-understand-a-repository) |
+| Create instructions for Codex or Claude | [Create and generate a harness](docs/USAGE.md#2-create-and-generate-a-harness) |
+| Ask questions grounded in project documents | [Search and grounded answers](docs/USAGE.md#3-search-project-documentation-and-ask-grounded-questions) |
+| Use a model to propose a rule, but keep approval human | [Propose and approve a rule](docs/USAGE.md#4-propose-and-approve-a-rule) |
+| Check whether instructions still match the code | [Validate, diagnose, and detect drift](docs/USAGE.md#5-validate-diagnose-and-check-for-drift) |
+| Find every available command | [Command map](docs/USAGE.md#command-map) |
+
+## Install
+
+Use a release binary when one is available for your platform, or run from source with Go 1.23 or later. The examples below use `go run` so they work from a clone without a global installation.
 
 ```powershell
+git clone <repository-url>
+Set-Location harness-forge
 go run ./cmd/harnessforge version
-go run ./cmd/harnessforge init
-go run ./cmd/harnessforge analyze --git --format json C:\path\to\your-project
 ```
 
-`init` creates `.harness/harness.yaml` and refuses to overwrite an existing file. `analyze` performs deterministic local analysis. With `--git`, it includes known local and remote branches, pending files, authors, commit counts and the messages/files from the latest 20 commits. Repositories without commits are accepted. Git errors are reported rather than discarded, and no fetch is performed.
+To avoid repeating `go run`, build a local executable:
+
+```powershell
+go build -o harnessforge.exe ./cmd/harnessforge
+.\harnessforge.exe --help
+```
+
+## Five-minute first run
+
+Run these commands from the repository you want to understand. Replace the command prefix with `harnessforge` after installing or building the executable.
+
+```powershell
+# 1. Inspect the repository without changing it.
+go run ./cmd/harnessforge analyze --git --format json C:\path\to\your-project
+
+# 2. Create the editable project harness in the current directory.
+Set-Location C:\path\to\your-project
+go run C:\path\to\harness-forge\cmd\harnessforge init
+
+# 3. Check the generated YAML, then validate it.
+go run C:\path\to\harness-forge\cmd\harnessforge validate
+```
+
+`init` creates `.harness/harness.yaml` and never overwrites an existing file. `analyze` is deterministic and local; adding `--git` includes local repository metadata without fetching or changing Git state. Continue with the [Usage guide](docs/USAGE.md) to turn approved harness rules into agent instructions.
+
+## Releases, updates, and uninstalling
+
+Official release archives are produced for macOS (`arm64`, `amd64`), Linux (`arm64`, `amd64`), and Windows (`amd64`). Every installer downloads the matching archive and `harnessforge_<version>_checksums.txt`, verifies SHA-256 before extraction, and installs only the expected executable.
+
+For macOS or Linux, download the installer first, inspect it, then run it with the release version and an explicit destination:
+
+```sh
+curl --fail --location --proto '=https' --tlsv1.2 \
+  https://github.com/joicepassos/harness-forge/releases/download/v1.0.0/install.sh \
+  --output install-harnessforge.sh
+less install-harnessforge.sh
+sh install-harnessforge.sh --version 1.0.0 --install-dir "$HOME/.local/bin"
+```
+
+The shorter `curl ... | sh` pattern is intentionally not recommended: it executes content before you can inspect or retain the exact script. If you use it in a disposable environment, pin the release URL and understand that HTTPS and checksum verification do not make an unreviewed script safe to execute.
+
+For Windows PowerShell, download and inspect the script before running it. PowerShell may require an execution-policy exception for the current process only:
+
+```powershell
+Invoke-WebRequest https://github.com/joicepassos/harness-forge/releases/download/v1.0.0/install.ps1 -OutFile .\install-harnessforge.ps1
+Get-Content .\install-harnessforge.ps1
+Set-ExecutionPolicy -Scope Process Bypass
+.\install-harnessforge.ps1 -Version 1.0.0 -InstallDir "$env:USERPROFILE\bin"
+```
+
+The default destinations are `$HOME/.local/bin` on macOS/Linux and `%USERPROFILE%\bin` on Windows. Add the chosen directory to `PATH` if necessary; the installers do not silently change shell or system configuration. The Windows release is amd64 only.
+
+To update, run the installer again with a new version and the same destination, after reviewing the new release checksums. To uninstall, remove the exact executable installed by the command (`$HOME/.local/bin/harnessforge` or `%USERPROFILE%\bin\harnessforge.exe`) and remove its directory from `PATH` if it is no longer used. Never bypass a checksum failure or replace an archive under an existing version.
+
+If installation fails, an unsupported-platform message means the current OS/CPU pair is outside the published targets. A checksum failure means the downloaded artifact must be discarded and re-downloaded from the release page. Confirm the installed metadata with `harnessforge version`.
+
+`harnessforge version` prints the version, commit, and build date. Development builds deliberately report `dev`, `none`, and `unknown`; tagged release builds receive their values through linker flags.
+
+For the installer details and security notes, see [Installation](docs/INSTALLATION.md). For the publisher-facing release and rollback process, provenance, reproducibility boundaries, and the planned signing and attestation work, see [Release operations](docs/RELEASES.md).
+
+## What HarnessForge changes
+
+Most commands are read-only. Commands that can write are deliberately explicit:
+
+| Command | What it writes | Guardrail |
+| --- | --- | --- |
+| `init` | `.harness/harness.yaml` | Refuses to overwrite a file |
+| `discover apply --approve` | An approved rule in the Harness IR | Requires an explicit approval flag |
+| `skill generate --approve` | `.harness/skills/<id>/SKILL.md` | Preserves existing manual files |
+| `generate codex` / `generate claude` | Owned `AGENTS.md` / `CLAUDE.md` | Rejects manual or unsafe targets |
+| `index` | `.harness/index.json` | Atomically updates the local index |
+
+HarnessForge reads provider credentials at runtime and does not intentionally persist them in its preferences or Harness IR. Environment variables are not a secret vault, and provider errors, shell history, logs, generated artifacts, and plugins can still expose sensitive data. See the [Security policy](SECURITY.md#credentials-and-byok) before using AI-backed commands.
+
+## Documentation map
+
+- [Usage guide](docs/USAGE.md) — copyable end-to-end workflows and a command map.
+- [Security policy](SECURITY.md) — reporting, credential handling, data flows, and plugin trust boundaries.
+- This README — installation, safety model, AI setup, and detailed behavior guarantees.
+- [Contributing guide](CONTRIBUTING.md) — project conventions and local checks.
+
+## Help and language
+
+Use built-in help for flags and subcommands:
+
+```powershell
+go run ./cmd/harnessforge --help
+go run ./cmd/harnessforge rag --help
+go run ./cmd/harnessforge --language pt-BR --help
+```
 
 ## CLI Language
 
@@ -30,6 +132,8 @@ go run ./cmd/harnessforge --language pt-BR analyze --format json C:\path\to\your
 ```
 
 ## AI And BYOK
+
+AI-backed commands send their request content to the selected provider. Use them only with material your organization has approved for that provider, and review its retention and logging terms. Indexes, prompts, selected context, reports, logs, and caches may be confidential. Read [Security policy](SECURITY.md) for the full data-flow and credential guidance.
 
 ### Standalone Embeddings
 

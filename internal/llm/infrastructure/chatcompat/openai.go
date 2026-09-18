@@ -58,7 +58,7 @@ func (provider *Client) Generate(ctx context.Context, request Request) (*Respons
 }
 func validFinish(reason string) error {
 	if reason != "" && reason != "stop" {
-		return fmt.Errorf("incomplete model output (finish_reason=%s)", reason)
+		return fmt.Errorf("incomplete model output")
 	}
 	return nil
 }

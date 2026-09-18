@@ -60,6 +60,9 @@ func (Documents) Documents(ctx context.Context, root string) ([]domain.Document,
 		if ignored.Match(rel) {
 			return nil
 		}
+		if securityboundary.SensitivePath(rel) {
+			return nil
+		}
 		if !entry.Type().IsRegular() || !(strings.HasSuffix(name, ".md") || name == "readme") {
 			return nil
 		}

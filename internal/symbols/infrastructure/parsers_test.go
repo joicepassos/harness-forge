@@ -25,7 +25,7 @@ func TestGoExtractsDeclarationsInsteadOfCommentsAndStrings(t *testing.T) {
 }
 
 func TestJavaExtractsDeclarationsInsteadOfCommentsAndStrings(t *testing.T) {
-	source := []byte("package fixture;\n// class Fake {}\nString text = \"interface False {}\";\ninterface Port { void connect(); }\nclass Service implements Port { public void connect() {} private String render(int count) { return \"ok\"; } }\n")
+	source := []byte("package fixture;\n// class Fake {}\nString text = \"interface False {}\";\ninterface Port { void connect(); }\nclass Service implements Port { public void connect() { client.send(); } private String render(int count) { return \"ok\"; } }\n")
 	symbols, err := (Java{}).Parse(context.Background(), "Service.java", source)
 	if err != nil {
 		t.Fatal(err)
@@ -38,6 +38,11 @@ func TestJavaExtractsDeclarationsInsteadOfCommentsAndStrings(t *testing.T) {
 	}
 	if _, err := (Java{}).Parse(context.Background(), "Bad.java", []byte("class Broken { void run() {}")); err == nil {
 		t.Fatal("unclosed brace accepted")
+	}
+	for _, symbol := range symbols {
+		if symbol.Name == "send" {
+			t.Fatalf("method invocation was parsed as a declaration: %#v", symbols)
+		}
 	}
 }
 

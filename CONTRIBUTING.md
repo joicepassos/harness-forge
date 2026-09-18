@@ -4,7 +4,7 @@ Write source identifiers, comments, documentation, examples, fixtures, commit me
 
 Keep domain rules independent of CLI, filesystem, HTTP, and provider implementations. Application services depend on small ports; infrastructure adapters implement variable behavior. Preserve manual Harness IR content and require explicit review before approving generated instructions.
 
-Use synthetic fixtures or an authorized local repository for validation. Do not commit credentials, private paths, external test-project names, or conversation links. Keep credentials in the process environment. Avoid source comments except necessary public API documentation.
+Use synthetic fixtures or an authorized local repository for validation. Do not commit credentials, private paths, external test-project names, or conversation links. Keep credentials in GitHub Environments, OIDC/trusted-publisher settings, or the process environment. Avoid source comments except necessary public API documentation.
 
 Before committing an issue, run `go test ./...`, `go vet ./...`, and `git diff --check`. Exercise meaningful behavior and failure boundaries, including read-only smoke tests for repository readers. Record the relevant validation when closing the issue.
 

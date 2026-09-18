@@ -100,3 +100,14 @@ func TestProviderErrorsDoNotEchoCredentials(t *testing.T) {
 		t.Fatalf("credential leaked in error: %v", err)
 	}
 }
+
+func TestFinishReasonDoesNotEchoCredentials(t *testing.T) {
+	key := "sk-fictional-finish-secret"
+	provider := &Client{apiKey: key, client: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"choices":[{"message":{"content":"partial"},"finish_reason":"` + key + `"}]}`)), Header: make(http.Header)}, nil
+	})}}
+	_, err := provider.Generate(context.Background(), Request{})
+	if err == nil || strings.Contains(err.Error(), key) {
+		t.Fatalf("credential leaked in finish reason: %v", err)
+	}
+}

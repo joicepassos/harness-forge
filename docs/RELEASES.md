@@ -4,7 +4,7 @@ This document separates using a release from producing one. This repository prod
 
 ## Release-builder policy
 
-The release workflows use Go 1.26.2, a currently supported patched toolchain selected independently from the `go 1.23` module compatibility directive. The fixed version is reviewed after every Go security release; a maintainer updates the workflow, runs the full native CI matrix, and records the change in the pull request before accepting it. Release tooling is fixed in `.tool-versions` and every GitHub Action is referenced by an immutable commit ID with the reviewed tag in a comment. Dependency updates must change both the fixed reference and this review record, never silently follow a major tag or version range.
+The release workflows use Go 1.27.1, a currently supported patched toolchain selected independently from the `go 1.23` module compatibility directive. The fixed version is reviewed after every Go security release; a maintainer updates the workflow, runs the full native CI matrix, and records the change in the pull request before accepting it. Release tooling is fixed in `.tool-versions` and every GitHub Action is referenced by an immutable commit ID with the reviewed tag in a comment. Dependency updates must change both the fixed reference and this review record, never silently follow a major tag or version range.
 
 ## Published platforms
 
@@ -20,7 +20,7 @@ Every archive has a corresponding line in `harnessforge_<version>_checksums.txt`
 
 ## Release procedure
 
-1. Start from a reviewed commit with a clean working tree and run the required Go checks from the contributing guide using Go 1.26.2.
+1. Start from a reviewed commit with a clean working tree and run the required Go checks from the contributing guide using Go 1.27.1.
 2. Choose an unused semantic version and review the generated release notes and archive names.
 3. Create and push an annotated `v1.*` tag. The release workflow runs only for that tag pattern. It runs tests, vetting, and source vulnerability checks natively on Linux, macOS, and Windows; creates a candidate archive set; and performs clean installer smoke tests on each operating system before publication.
 4. Confirm the release's version, commit, build date, checksum manifest, archive contents, release-binary vulnerability scan, installer scripts, and build attestations before announcing it.

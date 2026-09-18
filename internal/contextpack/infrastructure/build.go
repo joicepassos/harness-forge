@@ -140,7 +140,7 @@ func candidatesFromFiles(ctx context.Context, root string, files []string, promp
 			candidates = append(candidates, excluded(rel, "non-regular file skipped"))
 			continue
 		}
-		if looksSecret(rel) {
+		if looksSecret(rel) || securityboundary.SensitivePath(rel) {
 			candidates = append(candidates, excluded(rel, "secret-like path skipped"))
 			continue
 		}
@@ -304,6 +304,9 @@ func binary(data []byte) bool {
 }
 
 func looksSecret(path string) bool {
+	if securityboundary.SensitivePath(path) {
+		return true
+	}
 	name := strings.ToLower(filepath.Base(path))
 	extension := strings.ToLower(filepath.Ext(name))
 	configLike := extension == ".env" || extension == ".properties" || extension == ".yml" || extension == ".yaml" || extension == ".json" || extension == ".toml" || extension == ".ini" || extension == ".conf" || extension == ".config" || extension == ".xml"
