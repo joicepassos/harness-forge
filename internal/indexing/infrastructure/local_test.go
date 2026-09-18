@@ -48,7 +48,14 @@ func TestDocumentsExcludeIgnoredAndSensitiveContent(t *testing.T) {
 }
 func TestJSONStoreRoundTrip(t *testing.T) {
 	dir := t.TempDir()
-	index := domain.Index{Version: "index-v1", Model: "m", Dimensions: 2, Chunks: []domain.Chunk{{ID: "one"}}}
+	text := "document text"
+	index := domain.Index{
+		Version: "index-v1", Model: "m", Dimensions: 2,
+		Chunks: []domain.Chunk{{
+			ID: hash([]byte("one")), Source: "README.md", SourceHash: hash([]byte("source")),
+			Text: text, Hash: hash([]byte(text)), Model: "m", StartLine: 1, EndLine: 1, Vector: []float64{1, 0},
+		}},
+	}
 	store := JSONStore{}
 	if err := store.Save(dir, index); err != nil {
 		t.Fatal(err)
@@ -68,5 +75,25 @@ func TestJSONStoreRejectsRedirectedHarnessDirectory(t *testing.T) {
 	}
 	if err := (JSONStore{}).Save(dir, domain.Index{}); err == nil {
 		t.Fatal("redirected .harness directory accepted")
+	}
+}
+
+func TestJSONStoreRejectsMalformedAndOversizedIndexes(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, ".harness"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, ".harness", "index.json")
+	if err := os.WriteFile(path, []byte(`{"Version":"old"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (JSONStore{}).Load(dir); err == nil {
+		t.Fatal("malformed index accepted")
+	}
+	if err := os.WriteFile(path, make([]byte, 16<<20+1), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (JSONStore{}).Load(dir); err == nil {
+		t.Fatal("oversized index accepted")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"harnessforge/internal/inputlimits"
 	"io"
 	"os"
 	"os/exec"
@@ -60,7 +61,7 @@ func (r *FileReader) Contains(ctx context.Context, path, symbol string) (bool, e
 	if err != nil {
 		return false, err
 	}
-	if !info.Mode().IsRegular() || info.Size() > 4<<20 {
+	if !info.Mode().IsRegular() || info.Size() > inputlimits.HistoricalEvidenceBytes {
 		return false, fmt.Errorf("evidence must be a regular file up to 4 MiB")
 	}
 	file, err := os.Open(resolved)
@@ -68,11 +69,11 @@ func (r *FileReader) Contains(ctx context.Context, path, symbol string) (bool, e
 		return false, err
 	}
 	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, (4<<20)+1))
+	data, err := io.ReadAll(io.LimitReader(file, inputlimits.HistoricalEvidenceBytes+1))
 	if err != nil {
 		return false, err
 	}
-	if len(data) > 4<<20 {
+	if int64(len(data)) > inputlimits.HistoricalEvidenceBytes {
 		return false, fmt.Errorf("evidence exceeds 4 MiB")
 	}
 	return strings.Contains(string(data), symbol), ctx.Err()
@@ -105,7 +106,7 @@ func (r *FileReader) ContainsAt(ctx context.Context, path, symbol, revision stri
 type boundedOutput struct{ bytes.Buffer }
 
 func (b *boundedOutput) Write(data []byte) (int, error) {
-	if b.Len()+len(data) > 4<<20 {
+	if int64(b.Len()+len(data)) > inputlimits.HistoricalEvidenceBytes {
 		return 0, fmt.Errorf("historical evidence exceeds 4 MiB")
 	}
 	return b.Buffer.Write(data)

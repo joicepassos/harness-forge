@@ -1,7 +1,7 @@
 package analyzer
 
 import (
-	"os"
+	"harnessforge/internal/inputlimits"
 	"path/filepath"
 	"strings"
 )
@@ -12,7 +12,7 @@ func (repository Repository) FileContains(path string, text string) bool {
 			continue
 		}
 
-		content, err := os.ReadFile(filepath.Join(repository.Path, file))
+		content, err := inputlimits.ReadFile(filepath.Join(repository.Path, file), inputlimits.SourceFileBytes, "source file")
 		if err != nil {
 			continue
 		}

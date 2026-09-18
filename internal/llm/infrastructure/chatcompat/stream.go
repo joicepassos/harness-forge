@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"harnessforge/internal/inputlimits"
 	"strings"
 	"time"
 )
@@ -19,12 +20,14 @@ func (provider *Client) Stream(ctx context.Context, request Request, emit func(s
 	}
 	defer response.Body.Close()
 	scanner := bufio.NewScanner(response.Body)
-	scanner.Buffer(make([]byte, 4096), 1<<20)
+	scanner.Buffer(make([]byte, 4096), int(inputlimits.SSEEventBytes))
 	var data []string
+	buffered := 0
 	hasText, finished := false, false
 	dispatch := func() (bool, error) {
 		payload := strings.Join(data, "\n")
 		data = nil
+		buffered = 0
 		if payload == "" {
 			return false, nil
 		}
@@ -63,6 +66,9 @@ func (provider *Client) Stream(ctx context.Context, request Request, emit func(s
 		return false, nil
 	}
 	for scanner.Scan() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		line := scanner.Text()
 		if line == "" {
 			done, err := dispatch()
@@ -75,7 +81,12 @@ func (provider *Client) Stream(ctx context.Context, request Request, emit func(s
 			continue
 		}
 		if strings.HasPrefix(line, "data:") {
-			data = append(data, strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " "))
+			item := strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " ")
+			buffered += len(item) + 1
+			if int64(buffered) > inputlimits.SSEBufferedBytes {
+				return fmt.Errorf("stream event exceeds the %d byte buffered limit", inputlimits.SSEBufferedBytes)
+			}
+			data = append(data, item)
 		}
 	}
 	if err := scanner.Err(); err != nil {
