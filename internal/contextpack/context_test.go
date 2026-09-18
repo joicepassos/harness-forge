@@ -91,6 +91,23 @@ func TestBuildSkipsSecretsSymlinksAndUnsafePaths(t *testing.T) {
 	}
 }
 
+func TestBuildSkipsIgnoredAndSensitiveContent(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, ".gitignore", "private/\n")
+	writeFile(t, root, "private/notes.txt", "webhook authentication")
+	writeFile(t, root, "README.md", "api_key=fictional-credential-value webhook authentication")
+	writeFile(t, root, "safe.txt", "webhook authentication")
+	plan, err := Build(context.Background(), root, "webhook authentication", "", Options{BudgetTokens: 300})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, excerpt := range append(plan.Included, plan.Excluded...) {
+		if excerpt.Path == "private/notes.txt" || (excerpt.Path == "README.md" && excerpt.Text != "") {
+			t.Fatalf("unsafe content considered: %+v", excerpt)
+		}
+	}
+}
+
 func TestBuildHonorsCanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

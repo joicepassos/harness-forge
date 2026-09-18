@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"harnessforge/internal/indexing/domain"
+	"harnessforge/internal/securityboundary"
 	"math"
 	"os"
 	"path/filepath"
@@ -23,6 +24,10 @@ func (Documents) Documents(ctx context.Context, root string) ([]domain.Document,
 		return nil, err
 	}
 	root, err = filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, err
+	}
+	ignored, err := securityboundary.LoadGitIgnore(root)
 	if err != nil {
 		return nil, err
 	}
@@ -46,6 +51,14 @@ func (Documents) Documents(ctx context.Context, root string) ([]domain.Document,
 			return fmt.Errorf("document scan exceeds 10000 files")
 		}
 		name := strings.ToLower(entry.Name())
+		rel, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			return relErr
+		}
+		rel = filepath.ToSlash(rel)
+		if ignored.Match(rel) {
+			return nil
+		}
 		if !entry.Type().IsRegular() || !(strings.HasSuffix(name, ".md") || name == "readme") {
 			return nil
 		}
@@ -60,8 +73,10 @@ func (Documents) Documents(ctx context.Context, root string) ([]domain.Document,
 		if err != nil {
 			return err
 		}
-		rel, _ := filepath.Rel(root, path)
-		result = append(result, domain.Document{Path: filepath.ToSlash(rel), Text: string(data), Hash: hash(data)})
+		if securityboundary.ContainsSensitiveContent(data) {
+			return nil
+		}
+		result = append(result, domain.Document{Path: rel, Text: string(data), Hash: hash(data)})
 		return nil
 	})
 	sort.Slice(result, func(i, j int) bool { return result[i].Path < result[j].Path })
@@ -141,8 +156,8 @@ func (JSONStore) Load(root string) (domain.Index, error) {
 	return index, nil
 }
 func (JSONStore) Save(root string, index domain.Index) error {
-	dir := filepath.Join(root, ".harness")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	dir, err := securityboundary.PrepareDirectory(root, ".harness")
+	if err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(index, "", "  ")

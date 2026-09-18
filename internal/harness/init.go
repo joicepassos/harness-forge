@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"harnessforge/internal/securityboundary"
 	"os"
 	"path/filepath"
 )
@@ -12,12 +13,11 @@ project:
 `
 
 func Init(repositoryPath string) (string, error) {
-	harnessDir := filepath.Join(repositoryPath, ".harness")
-	harnessFile := filepath.Join(harnessDir, "harness.yaml")
-
-	if err := os.MkdirAll(harnessDir, 0755); err != nil {
+	harnessDir, err := securityboundary.PrepareDirectory(repositoryPath, ".harness")
+	if err != nil {
 		return "", err
 	}
+	harnessFile := filepath.Join(harnessDir, "harness.yaml")
 
 	file, err := os.OpenFile(harnessFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {

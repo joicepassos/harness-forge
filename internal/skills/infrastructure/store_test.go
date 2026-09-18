@@ -4,6 +4,7 @@ import (
 	"harnessforge/internal/skills/domain"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -50,5 +51,19 @@ func TestStoreGeneratesOnceAndPreservesManualSkills(t *testing.T) {
 	}
 	if err := (Store{}).Generate(manualRoot, proposal); err == nil {
 		t.Fatal("manual skills section was overwritten")
+	}
+}
+
+func TestStoreRejectsRedirectedHarnessDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires developer mode or elevated privileges")
+	}
+	root, outside := t.TempDir(), t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, ".harness")); err != nil {
+		t.Fatal(err)
+	}
+	proposal := domain.Proposal{ID: "skill", Description: "desc"}
+	if err := (Store{}).Generate(root, proposal); err == nil {
+		t.Fatal("redirected .harness directory accepted")
 	}
 }

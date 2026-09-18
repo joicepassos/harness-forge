@@ -39,7 +39,7 @@ func (provider *Client) Stream(ctx context.Context, request Request, emit func(s
 			return false, err
 		}
 		if event.Error.Message != "" {
-			return false, fmt.Errorf("stream error: %s", event.Error.Message)
+			return false, fmt.Errorf("%s stream request failed", provider.providerName())
 		}
 		for _, choice := range event.Choices {
 			if err := validFinish(choice.FinishReason); err != nil {

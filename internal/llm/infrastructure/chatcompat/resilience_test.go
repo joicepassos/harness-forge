@@ -104,3 +104,14 @@ func TestMissingFinishAndOutputFailure(t *testing.T) {
 		t.Fatalf("output error: %v", err)
 	}
 }
+
+func TestStreamErrorsDoNotEchoCredentials(t *testing.T) {
+	key := "sk-fictional-stream-secret"
+	p := &Client{apiKey: key, client: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`data: {"error":{"message":"invalid ` + key + `"}}\n\n`))}, nil
+	})}}
+	err := p.Stream(context.Background(), Request{}, func(string) error { return nil })
+	if err == nil || strings.Contains(err.Error(), key) {
+		t.Fatalf("credential leaked in stream error: %v", err)
+	}
+}
