@@ -2,6 +2,8 @@ package analyzer
 
 import (
 	"context"
+	"fmt"
+	"harnessforge/internal/inputlimits"
 	"os"
 	"path/filepath"
 	"sync"
@@ -150,6 +152,9 @@ func collectFilesContext(ctx context.Context, repositoryPath string) ([]string, 
 				return filepath.SkipDir
 			}
 			return nil
+		}
+		if len(files) >= inputlimits.RepositoryFiles {
+			return fmt.Errorf("repository scan exceeds %d files", inputlimits.RepositoryFiles)
 		}
 
 		relativePath, err := filepath.Rel(repositoryPath, path)

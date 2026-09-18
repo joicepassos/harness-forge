@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"harnessforge/internal/indexing/domain"
+	"harnessforge/internal/inputlimits"
 	"harnessforge/internal/securityboundary"
 	"math"
 	"os"
@@ -47,8 +48,8 @@ func (Documents) Documents(ctx context.Context, root string) ([]domain.Document,
 			return nil
 		}
 		count++
-		if count > 10000 {
-			return fmt.Errorf("document scan exceeds 10000 files")
+		if count > inputlimits.RepositoryFiles {
+			return fmt.Errorf("document scan exceeds %d files", inputlimits.RepositoryFiles)
 		}
 		name := strings.ToLower(entry.Name())
 		rel, relErr := filepath.Rel(root, path)
@@ -66,10 +67,10 @@ func (Documents) Documents(ctx context.Context, root string) ([]domain.Document,
 		if err != nil {
 			return err
 		}
-		if info.Size() > 1<<20 {
+		if info.Size() > inputlimits.SourceFileBytes {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := inputlimits.ReadFile(path, inputlimits.SourceFileBytes, "source file")
 		if err != nil {
 			return err
 		}
@@ -142,7 +143,7 @@ type JSONStore struct{}
 
 func (JSONStore) Load(root string) (domain.Index, error) {
 	path := filepath.Join(root, ".harness", "index.json")
-	data, err := os.ReadFile(path)
+	data, err := inputlimits.ReadFile(path, inputlimits.PersistedIndexBytes, "persisted index")
 	if os.IsNotExist(err) {
 		return domain.Index{}, nil
 	}
@@ -151,7 +152,10 @@ func (JSONStore) Load(root string) (domain.Index, error) {
 	}
 	var index domain.Index
 	if err := json.Unmarshal(data, &index); err != nil {
-		return index, err
+		return index, fmt.Errorf("decode persisted index: %w", err)
+	}
+	if err := validateIndex(index); err != nil {
+		return domain.Index{}, fmt.Errorf("invalid persisted index: %w", err)
 	}
 	return index, nil
 }

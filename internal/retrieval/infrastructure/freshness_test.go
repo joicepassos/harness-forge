@@ -17,3 +17,11 @@ func TestFreshnessDetectsChangedAndDeletedSources(t *testing.T) {
 		t.Fatal(stale, err)
 	}
 }
+
+func TestFreshnessRejectsEscapingSource(t *testing.T) {
+	dir := t.TempDir()
+	index := indexdomain.Index{Chunks: []indexdomain.Chunk{{Source: "../outside.md", SourceHash: hash([]byte("x"))}}}
+	if _, err := (Files{}).Stale(dir, index); err == nil {
+		t.Fatal("escaping index source accepted")
+	}
+}

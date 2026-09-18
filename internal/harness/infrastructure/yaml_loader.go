@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"go.yaml.in/yaml/v3"
 	"harnessforge/internal/harness/domain"
+	"harnessforge/internal/inputlimits"
 	"harnessforge/schemas"
 	"io"
-	"os"
 )
 
 // YAMLLoader only reads: manual formatting and comments remain byte-for-byte intact.
@@ -16,12 +16,11 @@ type YAMLLoader struct{}
 
 func (YAMLLoader) Load(path string) (domain.Harness, error) {
 	var h domain.Harness
-	file, err := os.Open(path)
+	data, err := inputlimits.ReadFile(path, inputlimits.HarnessYAMLBytes, "Harness YAML")
 	if err != nil {
-		return h, err
+		return h, fmt.Errorf("%s: %w", path, err)
 	}
-	defer file.Close()
-	decoder := yaml.NewDecoder(file)
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	var value any
 	if err := decoder.Decode(&value); err != nil {
 		return h, fmt.Errorf("%s: %w", path, err)
@@ -33,7 +32,7 @@ func (YAMLLoader) Load(path string) (domain.Harness, error) {
 		return h, err
 	}
 	// JSON conversion enforces string types rather than YAML's scalar-to-string coercion.
-	data, err := json.Marshal(value)
+	data, err = json.Marshal(value)
 	if err != nil {
 		return h, fmt.Errorf("%s: YAML must use string keys: %w", path, err)
 	}
