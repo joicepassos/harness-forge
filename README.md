@@ -18,15 +18,11 @@ HarnessForge is a CLI that understands your repository, turns reviewed rules int
 
 ## Install
 
-Download a pinned release, inspect the script, then install it. HarnessForge verifies the downloaded archive against its SHA-256 checksum before extraction.
+Download a pinned release and install it. HarnessForge verifies the downloaded archive against its SHA-256 checksum before extraction.
 
 ```sh
-VERSION=1.0.2
-curl --fail --location --proto '=https' --tlsv1.2 \
-  "https://github.com/joicepassos/harness-forge/releases/download/v${VERSION}/install.sh" \
-  --output install-harnessforge.sh
-less install-harnessforge.sh
-sh install-harnessforge.sh --version "$VERSION" --install-dir "$HOME/.local/bin"
+curl -fsSLO https://github.com/joicepassos/harness-forge/releases/download/v1.0.2/install.sh
+sh install.sh --version 1.0.2 --install-dir "$HOME/.local/bin"
 ```
 
 For Windows, use the inspected PowerShell installer:
