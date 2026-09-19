@@ -1,308 +1,83 @@
-# HarnessForge
+<p align="center">
+  <img src="assets/branding/harnessforge-logo-v1.png" width="180" alt="HarnessForge logo">
+</p>
 
-HarnessForge is a Go command-line tool for understanding a repository, maintaining reviewed agent instructions, and using AI with bounded, inspectable repository evidence.
+<h1 align="center">HarnessForge</h1>
 
-It is designed to keep the important decisions in your repository: the Harness IR is a normal YAML file that people can review and edit, while generated `AGENTS.md` and `CLAUDE.md` files are reproducible from approved rules.
+<p align="center">
+  Build trustworthy AI workflows for your codebase.
+</p>
 
-## Start here
+<p align="center">
+  <a href="https://github.com/joicepassos/harness-forge/actions/workflows/ci.yml"><img src="https://github.com/joicepassos/harness-forge/actions/workflows/ci.yml/badge.svg" alt="Checks"></a>
+  <a href="https://github.com/joicepassos/harness-forge/releases"><img src="https://img.shields.io/github/v/release/joicepassos/harness-forge?display_name=tag" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+</p>
 
-There is no separate documentation site. This README is the entry point, and the hands-on [Usage guide](docs/USAGE.md) explains the common workflows step by step.
-
-| If you want to… | Start with… |
-| --- | --- |
-| Understand an unfamiliar codebase | [Analyze a repository](docs/USAGE.md#1-understand-a-repository) |
-| Create instructions for Codex or Claude | [Create and generate a harness](docs/USAGE.md#2-create-and-generate-a-harness) |
-| Ask questions grounded in project documents | [Search and grounded answers](docs/USAGE.md#3-search-project-documentation-and-ask-grounded-questions) |
-| Use a model to propose a rule, but keep approval human | [Propose and approve a rule](docs/USAGE.md#4-propose-and-approve-a-rule) |
-| Check whether instructions still match the code | [Validate, diagnose, and detect drift](docs/USAGE.md#5-validate-diagnose-and-check-for-drift) |
-| Find every available command | [Command map](docs/USAGE.md#command-map) |
+HarnessForge is a CLI that understands your repository, turns reviewed rules into agent instructions, and keeps AI answers grounded in evidence you can inspect.
 
 ## Install
 
-Use a release binary when one is available for your platform, or run from source with Go 1.23 or later. The examples below use `go run` so they work from a clone without a global installation.
-
-```powershell
-git clone <repository-url>
-Set-Location harness-forge
-go run ./cmd/harnessforge version
-```
-
-To avoid repeating `go run`, build a local executable:
-
-```powershell
-go build -o harnessforge.exe ./cmd/harnessforge
-.\harnessforge.exe --help
-```
-
-## Five-minute first run
-
-Run these commands from the repository you want to understand. Replace the command prefix with `harnessforge` after installing or building the executable.
-
-```powershell
-# 1. Inspect the repository without changing it.
-go run ./cmd/harnessforge analyze --git --format json C:\path\to\your-project
-
-# 2. Create the editable project harness in the current directory.
-Set-Location C:\path\to\your-project
-go run C:\path\to\harness-forge\cmd\harnessforge init
-
-# 3. Check the generated YAML, then validate it.
-go run C:\path\to\harness-forge\cmd\harnessforge validate
-```
-
-`init` creates `.harness/harness.yaml` and never overwrites an existing file. `analyze` is deterministic and local; adding `--git` includes local repository metadata without fetching or changing Git state. Continue with the [Usage guide](docs/USAGE.md) to turn approved harness rules into agent instructions.
-
-## Releases, updates, and uninstalling
-
-Official release archives are produced for macOS (`arm64`, `amd64`), Linux (`arm64`, `amd64`), and Windows (`amd64`). Every installer downloads the matching archive and `harnessforge_<version>_checksums.txt`, verifies SHA-256 before extraction, and installs only the expected executable.
-
-For macOS or Linux, download the installer first, inspect it, then run it with the release version and an explicit destination:
+Download a pinned release, inspect the script, then install it. HarnessForge verifies the downloaded archive against its SHA-256 checksum before extraction.
 
 ```sh
+VERSION=1.0.2
 curl --fail --location --proto '=https' --tlsv1.2 \
-  https://github.com/joicepassos/harness-forge/releases/download/v1.0.0/install.sh \
+  "https://github.com/joicepassos/harness-forge/releases/download/v${VERSION}/install.sh" \
   --output install-harnessforge.sh
 less install-harnessforge.sh
-sh install-harnessforge.sh --version 1.0.0 --install-dir "$HOME/.local/bin"
+sh install-harnessforge.sh --version "$VERSION" --install-dir "$HOME/.local/bin"
 ```
 
-The shorter `curl ... | sh` pattern is intentionally not recommended: it executes content before you can inspect or retain the exact script. If you use it in a disposable environment, pin the release URL and understand that HTTPS and checksum verification do not make an unreviewed script safe to execute.
-
-For Windows PowerShell, download and inspect the script before running it. PowerShell may require an execution-policy exception for the current process only:
+For Windows, use the inspected PowerShell installer:
 
 ```powershell
-Invoke-WebRequest https://github.com/joicepassos/harness-forge/releases/download/v1.0.0/install.ps1 -OutFile .\install-harnessforge.ps1
+$Version = '1.0.2'
+Invoke-WebRequest "https://github.com/joicepassos/harness-forge/releases/download/v$Version/install.ps1" -OutFile .\install-harnessforge.ps1
 Get-Content .\install-harnessforge.ps1
-Set-ExecutionPolicy -Scope Process Bypass
-.\install-harnessforge.ps1 -Version 1.0.0 -InstallDir "$env:USERPROFILE\bin"
+.\install-harnessforge.ps1 -Version $Version -InstallDir "$env:USERPROFILE\bin"
 ```
 
-The default destinations are `$HOME/.local/bin` on macOS/Linux and `%USERPROFILE%\bin` on Windows. Add the chosen directory to `PATH` if necessary; the installers do not silently change shell or system configuration. The Windows release is amd64 only.
+Release binaries support macOS and Linux (`amd64`, `arm64`) and Windows (`amd64`). See [Installation](docs/INSTALLATION.md) for manual downloads, updates, and troubleshooting.
 
-To update, run the installer again with a new version and the same destination, after reviewing the new release checksums. To uninstall, remove the exact executable installed by the command (`$HOME/.local/bin/harnessforge` or `%USERPROFILE%\bin\harnessforge.exe`) and remove its directory from `PATH` if it is no longer used. Never bypass a checksum failure or replace an archive under an existing version.
+## Get started
 
-If installation fails, an unsupported-platform message means the current OS/CPU pair is outside the published targets. A checksum failure means the downloaded artifact must be discarded and re-downloaded from the release page. Confirm the installed metadata with `harnessforge version`.
+```sh
+# Understand a repository without changing it.
+harnessforge analyze --git --format json /path/to/project
 
-`harnessforge version` prints the version, commit, and build date. Development builds deliberately report `dev`, `none`, and `unknown`; tagged release builds receive their values through linker flags.
+# Create a reviewable project harness.
+cd /path/to/project
+harnessforge init
+harnessforge validate
 
-For the installer details and security notes, see [Installation](docs/INSTALLATION.md). For the publisher-facing release and rollback process, provenance, reproducibility boundaries, and the planned signing and attestation work, see [Release operations](docs/RELEASES.md).
-
-## What HarnessForge changes
-
-Most commands are read-only. Commands that can write are deliberately explicit:
-
-| Command | What it writes | Guardrail |
-| --- | --- | --- |
-| `init` | `.harness/harness.yaml` | Refuses to overwrite a file |
-| `discover apply --approve` | An approved rule in the Harness IR | Requires an explicit approval flag |
-| `skill generate --approve` | `.harness/skills/<id>/SKILL.md` | Preserves existing manual files |
-| `generate codex` / `generate claude` | Owned `AGENTS.md` / `CLAUDE.md` | Rejects manual or unsafe targets |
-| `index` | `.harness/index.json` | Atomically updates the local index |
-
-HarnessForge reads provider credentials at runtime and does not intentionally persist them in its preferences or Harness IR. Environment variables are not a secret vault, and provider errors, shell history, logs, generated artifacts, and plugins can still expose sensitive data. See the [Security policy](SECURITY.md#credentials-and-byok) before using AI-backed commands.
-
-## Documentation map
-
-- [Usage guide](docs/USAGE.md) — copyable end-to-end workflows and a command map.
-- [Security policy](SECURITY.md) — reporting, credential handling, data flows, and plugin trust boundaries.
-- This README — installation, safety model, AI setup, and detailed behavior guarantees.
-- [Contributing guide](CONTRIBUTING.md) — project conventions and local checks.
-
-## Help and language
-
-Use built-in help for flags and subcommands:
-
-```powershell
-go run ./cmd/harnessforge --help
-go run ./cmd/harnessforge rag --help
-go run ./cmd/harnessforge --language pt-BR --help
+# Generate agent instructions after review.
+harnessforge generate codex
 ```
 
-## CLI Language
+HarnessForge stores approved rules in `.harness/harness.yaml` and produces reproducible `AGENTS.md` or `CLAUDE.md` files.
 
-Spanish is available with `--language es`, for example `harnessforge --language es validate`. All languages share the same commands and output formats; English remains the default and the fallback for missing translations.
+## Why HarnessForge?
 
-English (`en`) is the default. Use the global `--language pt-BR` option for Brazilian Portuguese help and common command messages. Unsupported language values fail clearly; no language preference is written to project files or the Harness IR.
+| | |
+| --- | --- |
+| **Understand before changing** | Analyze languages, conventions, Git metadata, files, and symbols without modifying the project. |
+| **Review the rules** | Keep agent guidance in ordinary YAML that your team can approve in code review. |
+| **Use AI with evidence** | Select bounded context, retrieve sources, and reject answers with unsupported citations. |
 
-Language selection is explicit and independent of the operating system locale. Missing translations fall back to English. Help headings, command descriptions, option descriptions, and common validation messages are localized; machine-readable JSON fields, evidence, provider output, and underlying operating-system diagnostics retain their original wording. Invalid language options fail even with `--help` before any command executes.
+## Safe by design
 
-```powershell
-go run ./cmd/harnessforge --language pt-BR --help
-go run ./cmd/harnessforge --language pt-BR analyze --format json C:\path\to\your-project
-```
+- Provider keys are read at runtime and are never written to HarnessForge preferences or harness files.
+- Sensitive paths, symlinks, binary files, and secret-like content are excluded from repository context.
+- Plugins require explicit `--authorize` permission and do not receive provider credentials by default.
 
-## AI And BYOK
+Read the [Security policy](SECURITY.md) before connecting a provider or executing a plugin.
 
-AI-backed commands send their request content to the selected provider. Use them only with material your organization has approved for that provider, and review its retention and logging terms. Indexes, prompts, selected context, reports, logs, and caches may be confidential. Read [Security policy](SECURITY.md) for the full data-flow and credential guidance.
+## Learn more
 
-### Standalone Embeddings
+- [Usage guide](docs/USAGE.md) — workflows, examples, and command map.
+- [Installation](docs/INSTALLATION.md) — verified installers and checksums.
+- [Security policy](SECURITY.md) — BYOK, data flow, and plugin boundaries.
+- [Contributing](CONTRIBUTING.md) — develop and contribute.
 
-`embedding create "short text"` calls the OpenAI embeddings endpoint using `OPENAI_API_KEY` from the process environment and emits the model, dimensionality, token count, and vector as JSON. `embedding similarity FIRST_JSON SECOND_JSON` calculates cosine similarity offline and rejects zero vectors, non-finite values, dimension differences, and model mismatches. Embedding generation is separate from text generation and does not persist credentials or vectors. Inputs are limited to 32 KiB and responses to 4 MiB. The default model is `text-embedding-3-small`; use `--model` to record another compatible model. Live validation is optional and requires an authorized API key.
-
-### Structural Symbols
-
-`symbols FILE --source-language go|java` emits neutral symbols with kind, name, file and line boundaries. Go declarations use the standard `go/ast` parser; Java declarations use a bounded lexer that removes comments and literals before identifying classes, interfaces, records, enums and declared implementations. Syntax failures and unsupported languages are explicit. Convention summaries contain observed matching/total counts and never probability or rule claims. The Java parser avoids CGO and native dependencies; it does not provide Tree-sitter's full grammar coverage, so nested and newer Java constructs can require a future pure-Go parser or separately distributed native extension.
-
-### Document Indexing
-
-`index REPOSITORY` scans Markdown and README documents, chunks them at headings or an 80-line boundary, and atomically writes `.harness/index.json`. Chunks retain source paths, line ranges and hashes. Reindexing reuses unchanged vectors, updates changed chunks and removes deleted entries. Reports show added, updated, removed, reused, embedded and token counts. The deterministic `lexical-hash-v1` vector allows offline indexing without text generation; it is not semantic embedding quality. `.git`, `.harness`, `vendor` and `node_modules` are excluded, scans stop at 10,000 files and documents above 1 MiB are skipped. The JSON store suits one process and small repositories; PostgreSQL with pgvector is preferred for concurrent or large deployments because it offers transactions and vector indexes.
-
-### Retrieval
-
-`search REPOSITORY QUERY --k 5` embeds only the query with the index model, ranks chunks by cosine score and emits the source, line range, excerpt and stable chunk ID. `--path` filters source prefixes. `--relevant id1,id2` reports deterministic Recall@K and Precision@K for an authorized relevance fixture. Empty indexes, changed or deleted source files, model mismatches, dimension mismatches and invalid K values fail explicitly. Search reads the index and does not call a text-generation model. The built-in score reflects lexical overlap rather than semantic meaning.
-
-### Grounded Answers
-
-`rag REPOSITORY QUERY --k 5` runs query embedding, retrieval, bounded source selection and provider generation. Provider JSON is withheld unless every citation names a retrieved chunk; a grounded claim without citations and any fabricated citation are rejected. Zero-overlap retrieval returns `insufficient_evidence` without calling the provider. Reports retain retrieved excerpts, source lines, input/output tokens and end-to-end latency. `--direct` explicitly skips retrieval and rejects repository citation claims. Retrieved text is framed as untrusted data. Citation validation establishes provenance, not answer truth; human or deterministic evaluation remains necessary.
-
-### Plugins
-
-Plugins use the versioned `harnessforge.plugin/v1` JSON contract over standard input and output. `plugin discover DIRECTORY` validates and lists manifests but never installs or executes them. `plugin run DIRECTORY NAME INPUT-JSON --capability analyzer --authorize` is the only execution path; `--authorize` is required for every invocation and execution is bounded by a configurable timeout and 1 MiB messages. HarnessForge forwards only a minimal process environment, excluding provider tokens and repository credentials by default. Plugin output, errors, undeclared capabilities and incompatible versions are surfaced explicitly.
-
-The example in `examples/plugins/word-count` runs cross-platform when Go is installed: `go run ./cmd/harnessforge plugin run ./examples/plugins/word-count word-count '{"text":"two words"}' --authorize`. Executables can be distributed instead of `go run`, but publishers must provide and verify builds for every target platform. Subprocess JSON gives language independence and Windows support; it does not provide OS isolation. `--authorize` is not a sandbox: authorized plugins run as local programs with the launching account's permissions and may access files, networks, or child processes unless independently restricted. Review plugin artifacts and generated instructions, use a dedicated low-privilege account or OS/container isolation with explicit filesystem and network policy, and verify process-tree termination. Declarative rules and skills remain preferred when execution is unnecessary.
-
-```powershell
-go run ./cmd/harnessforge config set provider deepseek
-go run ./cmd/harnessforge config get provider
-go run ./cmd/harnessforge ask "Hello"
-go run ./cmd/harnessforge ask --stream "Explain Strategy in one sentence"
-go run ./cmd/harnessforge ask --format json --repository C:\path\to\your-project "List patterns supported by the selected context"
-go run ./cmd/harnessforge context explain C:\path\to\your-project "How are webhooks authenticated?"
-```
-
-| Provider | Environment variable | Default model |
-| --- | --- | --- |
-| openai | OPENAI_API_KEY | gpt-4o-mini |
-| deepseek | DEEPSEEK_API_KEY | deepseek-v4-flash |
-| gemini | GEMINI_API_KEY | Provide `--model` |
-| groq | GROQ_API_KEY | Provide `--model` |
-| ollama | None for a local server | Provide `--model` |
-
-Set API keys in the process environment or an approved secret manager; `.env` files are not loaded. Do not put them in command arguments, shell history, committed `.env` files, Harness YAML, logs, generated files, or plugin manifests. Environment variables can still be inherited or exposed by other processes, so rotate and revoke a key after suspected exposure. Ollama must be running at `localhost:11434` with the selected model installed. The global provider preference is saved as `harnessforge/preferences.json` under `os.UserConfigDir` (Windows: `%APPDATA%`). Only the provider name is persisted. `--provider` overrides the saved preference for one run; without a preference, HarnessForge uses OpenAI.
-
-Text mode sends only the prompt. `--repository`, available with `--format json`, builds a bounded repository context and sends only selected excerpts plus the prompt to the chosen provider. No query modifies the repository.
-
-### Context Selection And Explain
-
-Repository context is selected before a structured model call. HarnessForge ranks deterministic analyzer findings and bounded file excerpts by prompt relevance, breaks ties deterministically, deduplicates identical excerpt text while retaining all origins, compresses oversized excerpts, and enforces a budget against the serialized source payload sent to the provider. The estimator is `payload-byte-upper-bound-v1`: one UTF-8 byte is counted as one budget unit after JSON serialization, plus a 140-unit payload framing reserve. This is intentionally an upper bound for source payload bytes, not a tokenizer-specific model token count. The budget excludes the system prompt, embedded JSON schema and expected model output; actual API usage is still reported by the provider separately where available.
-
-Use `context explain` to inspect the retrieval boundary without contacting an AI provider:
-
-```powershell
-go run ./cmd/harnessforge context explain C:\path\to\your-project "How are webhooks authenticated?" --budget 1800
-go run ./cmd/harnessforge ask --format json --repository C:\path\to\your-project --context-explain "How are webhooks authenticated?"
-```
-
-The explain output includes included and excluded excerpts with source IDs, paths when safe, relevance scores, estimated budget units, rank, exclusion reasons, duplicate links, compression provenance and retained origins. Secret-like files, symlinks, binary or non-UTF-8 files, unreadable files and files beyond the scan limit are represented as excluded metadata without file contents. The comparison block reports the actual previous analyzer JSON source payload cost, the broader unfiltered candidate corpus cost, selected cost, estimated reductions and deterministic relevant-source recall for the previous analyzer-only source set and the selected source set. Recall is a proxy over prompt-matched candidates, not a measurement of answer quality.
-
-The current retrieval layer is local and heuristic. It does not embed code, execute semantic search or prove that the highest-ranked excerpt is architecturally correct. Human review and evidence validation remain required.
-
-### Skill Discovery
-
-Discover recurring backend development procedures without changing the repository:
-
-```powershell
-go run ./cmd/harnessforge skill discover C:\path\to\your-project
-```
-
-The command returns candidate procedures with file and symbol examples plus limitations. It currently recognizes a Java backend chain containing controller, service, persistence, database migration and integration-test evidence. It is a heuristic, not proof that the procedure is required or correct.
-
-After human review, pass the selected proposal JSON to `skill generate` with `--approve`. Generation creates `.harness/skills/<id>/SKILL.md` and adds an approved, evidence-backed reference to the Harness IR. Existing generated IDs are left unchanged. A pre-existing manual `skills` section or skill directory is never overwritten and must be updated manually.
-
-### Evaluation
-
-Run a deterministic evaluation with a versioned YAML dataset and a versioned results file:
-
-```powershell
-go run ./cmd/harnessforge eval run examples/evals/dataset.yaml examples/evals/results.yaml
-go run ./cmd/harnessforge eval compare baseline-report.json candidate-report.json
-```
-
-Each report records dataset, index, model, prompt and rubric versions. It reports per-case and aggregate Recall@K, Precision@K, deterministic correctness, citation-grounding faithfulness, tokens, latency and visible failures. Retrieval uses exact source IDs; correctness matches required terms; faithfulness only verifies cited retrieved sources against the expected source set. These measures cannot establish answer truth, and no LLM judge is used. Human review remains necessary.
-
-### Structured AI Output
-
-`ask --format json` requests JSON from the provider and validates it locally with `schemas/architecture-analysis.schema.json`. Output contains `architecture` and `patterns`; each pattern requires a name, confidence from 0 to 1 and literal citations from the prompt or selected repository context. Extra fields, duplicate keys, truncated output, citations absent from selected context and invalid JSON are rejected before anything is written to stdout.
-
-Architecture styles v1 are `ddd`, `hexagonal`, `layered`, `clean-architecture`, `event-driven`, `microservices`, `monolith` and `mvc`. Each architecture style needs a pattern with the same name and evidence. Technologies belong in `patterns`. If evidence is insufficient, the model should return empty arrays.
-
-Confidence is an uncalibrated model estimate, not observed frequency. A literal citation proves only that the quoted text was in the selected context; it does not prove the architectural interpretation is correct.
-
-The adapter uses JSON mode and local validation without relying on native JSON Schema support from every provider. Compatibility depends on the selected model. `--stream` applies only to text; JSON output is withheld until it passes validation.
-
-### Failures And Cancellation
-
-HTTP 429, 500, 502, 503 and 504 responses are retried up to three times with progressive waits and `Retry-After` support. If the requested wait is longer than 10 seconds, the error is returned. Each call has a 60-second timeout. Authentication and balance errors, ambiguous connection failures, invalid content and streams that already started are not retried. Ctrl+C cancels the operation. Streaming requires a terminator and normal completion; failures after displayed chunks are reported.
-
-## Harness IR: Manual Editing And Review
-
-### Evidence-backed discovery
-
-`discover propose REPOSITORY PROMPT` builds bounded repository context and returns AI rule proposals with literal file evidence without modifying files. Confidence remains an uncalibrated estimate. `discover apply PROPOSAL_JSON --approve --repository REPOSITORY --file HARNESS` requires explicit human approval, validates every referenced file and literal symbol, and appends an approved AI rule atomically. Existing bytes, comments and decisions are preserved; an existing rule ID makes application idempotent. Rejected or unapplied proposals never change the Harness IR. Reload and review the proposal whenever the harness changes concurrently.
-
-### Agent Instruction Adapters
-
-`generate codex --file HARNESS --repository REPOSITORY` renders `AGENTS.md`; `generate claude` renders `CLAUDE.md`. Both adapters deterministically include only approved rules, their declared scopes, and quality-gate commands. Generated files carry an ownership marker and can be regenerated atomically. A manual file, symlink, unknown output path, or output above 1 MiB is rejected before replacement. Candidate and rejected rules remain in the Harness IR and are not rendered. Review the Harness IR before generation; the command does not decide whether an approved rule is correct.
-
-```powershell
-go run ./cmd/harnessforge validate
-go run ./cmd/harnessforge validate examples/sample.harness.yaml
-go run ./cmd/harnessforge validate path\harness.yaml --repository C:\path\to\your-project
-go run ./cmd/harnessforge review my-rule approved --file path\harness.yaml
-go run ./cmd/harnessforge review my-rule candidate --file path\harness.yaml
-```
-
-`validate` reads `.harness/harness.yaml` by default. It validates the embedded `schemas/harness-v1.schema.json` schema and domain invariants. Only `version: 1` and `project.name` are required in a minimal document. Optional sections are `project.languages`, `architecture.styles`, `rules`, `skills` with `id` and `description`, and `quality_gates` with `id` and `command`.
-
-Rules require `id`, `description`, `origin` (`human` or `ai`) and `status` (`candidate`, `approved` or `rejected`). IDs are unique per collection. AI rules require evidence with `file`; `symbol` and `revision` are optional. Human rules do not require confidence or evidence of existing patterns. `scope.paths` is metadata and does not execute filters in this phase.
-
-`validate --repository` checks that referenced files exist and that symbols appear literally. With `revision`, it checks the content at that Git revision. Paths must be relative to the repository root; directory escapes are rejected. This is not an AST analysis and does not prove a rule is true. Quality gates are declarations only and are never executed by `validate` or `review`.
-
-`review` supports candidate to approved/rejected and approved/rejected back to candidate. A decision must be reopened before it is inverted. The edit changes only the status scalar, preserving comments, order, quotes and line breaks; it uses a temporary file, an operation lock and concurrent change detection. Status values with aliases, anchors or multiline syntax must be edited manually. There is no general YAML reserialization in this version.
-
-Manual editing can declare any valid status. There is no approver authentication. Git history provides traceability. The included example is illustrative and contains a candidate rule, not an adopted project decision.
-
-### Harness Health Diagnostics
-
-Diagnostics report invalid repository roots and incomplete scans explicitly. Repository scanning checks at most 20,000 entries and skips `.git`, `vendor`, and `node_modules`; test detection currently recognizes only regular Go test files. The diagnostic input limit is 4 MiB. Every rule and skill evidence entry is checked independently, and skill references resolving outside the repository are rejected.
-
-```powershell
-go run ./cmd/harnessforge doctor .harness/harness.yaml --repository C:\path\to\your-project
-go run ./cmd/harnessforge doctor --fix
-```
-
-`doctor` is read-only. It emits JSON diagnostics with severity, evidence and a suggested action for invalid Harness IR, potentially duplicate instructions, unsafe declared paths, invalid local evidence and oversized Harness IR. `--fix` does not edit files: it labels the output as proposals for a human to review and apply manually. The context warning threshold is 65,536 Harness IR bytes; it is a byte-size boundary, not a token count or health score. Diagnostics do not establish that instructions are correct, and text similarity can identify intentional repetition. Evidence verification requires `--repository` and checks only local paths, revisions and literal symbols.
-
-### GitHub Knowledge Extraction
-
-The reader includes issue comments, PR conversation comments, reviews, and inline review comments, retaining parent URLs and available file/line/revision context. API redirects are rejected; active credentials echoed in a response are withheld. Each complete read has a two-minute deadline and accepts at most 100 parent issues/PRs. Exhausted pagination and rate limits return explicit errors. Discussion text and file names remain untrusted evidence and are never executed or used as local write paths.
-
-```powershell
-$env:GITHUB_TOKEN = "your-token"
-go run ./cmd/harnessforge github learn owner/repository
-```
-
-`github learn` only sends bounded GET requests to GitHub and never posts, edits or approves content. The repository is supplied as `owner/repository`; the token is read from `GITHUB_TOKEN` (or `--token-env`) only at runtime and is never written to the Harness IR, configuration, or output. The report preserves source URLs, pull revisions and comment context, and marks every extracted candidate as requiring human review. Only text explicitly prefixed with `Decision:` is classified as a decision; recurring discussion or model interpretation is not proof of a rule. Requests are cancellable, time out after 20 seconds, fetch at most 10 pages per endpoint, and reject individual API responses above 1 MiB. Limit exhaustion, rate-limit and API errors are returned explicitly.
-
-### Drift Detection
-
-Each evidence entry is evaluated separately. Declared Git revisions are resolved and checked as historical baselines before comparing the working copy; invalid baselines and reader failures are marked `not_evaluated`. Reports include the declared revision and baseline status. Historical and current content reads are bounded to 4 MiB, and cancellation propagates to Git. A missing current file or symbol is a difference requiring review, with both legitimate-change and violation explanations.
-
-```powershell
-go run ./cmd/harnessforge drift .harness/harness.yaml --repository C:\path\to\your-project
-```
-
-`drift` is read-only. Its first structural strategy evaluates approved rules with literal evidence symbols, reporting an aligned location when the symbol remains present. Rules without a literal symbol are explicitly not evaluated. A missing symbol is reported as a difference, never automatically as a defect: the output presents violation, intentional architectural change, and stale-rule explanations together with separate review-only code-fix and Harness-update proposals. It does not edit code, evidence, statuses, or manual Harness IR content. It rejects unsafe evidence paths and symlinks outside the repository. The initial check is literal text matching, not AST analysis or proof of architectural compliance.
-
-## Architecture And Validation
-
-Domain packages define contracts, messages, Harness IR and context data. Application packages coordinate use cases and selection strategies. Infrastructure packages implement HTTP, filesystem, Git, YAML and persistence. Provider selection uses Strategy; providers with the same protocol share the Chat Completions adapter.
-
-```powershell
-go test ./...
-go vet ./...
-```
-
-Tests cover schemas, citations, HTTP failures, retry, truncated streams, Git with and without commits, review preservation, context budgets, duplicates, oversized context, irrelevant documents and security boundaries for path traversal, secret-like files, symlinks, binary files and cancellation. DeepSeek was validated live for JSON and streaming in an earlier phase. OpenAI, Gemini, Groq and Ollama have simulated tests; real execution requires each environment's credentials, balance or local server. Anthropic remains an optional integration that is not implemented.
-
-References: [Components of a Coding Agent](https://magazine.sebastianraschka.com/p/components-of-a-coding-agent), [Go context patterns](https://go.dev/blog/context), [Go fuzzing and security testing](https://go.dev/doc/security/fuzz/), [OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [DeepSeek chat completion](https://api-docs.deepseek.com/api/create-chat-completion/), [Gemini OpenAI compatibility](https://ai.google.dev/gemini-api/docs/openai), [Groq OpenAI compatibility](https://console.groq.com/docs/openai), [Ollama OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility).
+HarnessForge is open source under the [MIT License](LICENSE).
