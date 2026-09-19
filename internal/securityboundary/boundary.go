@@ -3,7 +3,9 @@ package securityboundary
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	"harnessforge/internal/inputlimits"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -83,14 +85,37 @@ type ignoreRule struct {
 	negate, directory bool
 }
 
+// LoadGitIgnore loads repository ignore rules with the standard repository scan limit.
 func LoadGitIgnore(root string) (Ignored, error) {
+	return LoadGitIgnoreContext(context.Background(), root, inputlimits.RepositoryFiles)
+}
+
+// LoadGitIgnoreContext loads ignore rules without traversing excluded directories
+// and stops when the caller cancels or the entry limit is exceeded.
+func LoadGitIgnoreContext(ctx context.Context, root string, limit int) (Ignored, error) {
+	if err := ctx.Err(); err != nil {
+		return Ignored{}, err
+	}
+	if limit < 1 {
+		return Ignored{}, fmt.Errorf("repository entry limit must be positive")
+	}
 	var out Ignored
+	entries := 0
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}
+		if path != root {
+			entries++
+			if entries > limit {
+				return fmt.Errorf("repository scan exceeds %d entries", limit)
+			}
+		}
 		if entry.IsDir() {
-			if path != root && entry.Name() == ".git" {
+			if path != root && SkipRepositoryDirectory(entry.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -134,6 +159,16 @@ func LoadGitIgnore(root string) (Ignored, error) {
 		return Ignored{}, err
 	}
 	return out, nil
+}
+
+// SkipRepositoryDirectory reports directories that local repository readers do
+// not traverse because they contain metadata, dependencies, or build output.
+func SkipRepositoryDirectory(name string) bool {
+	switch name {
+	case ".git", ".harness", ".next", "build", "dist", "node_modules", "target", "vendor":
+		return true
+	}
+	return false
 }
 
 func (i Ignored) Match(rel string) bool {
