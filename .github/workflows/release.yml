@@ -116,6 +116,18 @@ jobs:
           Copy-Item candidate/harnessforge_${version}_windows_amd64.tar.gz $releaseRoot
           $server = Start-Process python -ArgumentList '-m', 'http.server', '8080', '--directory', (Join-Path $env:RUNNER_TEMP 'release') -PassThru -WindowStyle Hidden
           try {
+            $ready = $false
+            for ($attempt = 0; $attempt -lt 20; $attempt++) {
+              try {
+                Invoke-WebRequest -Uri 'http://127.0.0.1:8080/' -Method Head -ErrorAction Stop | Out-Null
+                $ready = $true
+                break
+              }
+              catch {
+                Start-Sleep -Milliseconds 100
+              }
+            }
+            if (-not $ready) { throw 'The local release server did not become ready.' }
             $env:HARNESSFORGE_RELEASE_BASE_URL = 'http://127.0.0.1:8080'
             $installDir = Join-Path $env:RUNNER_TEMP 'install'
             ./install.ps1 -Version $version -InstallDir $installDir
