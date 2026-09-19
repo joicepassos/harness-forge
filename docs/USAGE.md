@@ -124,7 +124,7 @@ harnessforge config set provider openai
 harnessforge ask "Summarize this design in one sentence."
 ```
 
-Available providers and their environment variables are listed in the [README](../README.md#ai-and-byok). Use `ask --format json --repository .` for a locally validated architecture response with bounded source context, or `context explain` to inspect that context without contacting a provider.
+Available providers and their environment variables are listed in the [Security policy](../SECURITY.md#credentials-and-byok). Use `ask --format json --repository .` for a locally validated architecture response with bounded source context, or `context explain` to inspect that context without contacting a provider.
 
 ## Command map
 

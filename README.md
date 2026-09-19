@@ -72,6 +72,7 @@ Read the [Security policy](SECURITY.md) before connecting a provider or executin
 ## Learn more
 
 - [Usage guide](docs/USAGE.md) — workflows, examples, and command map.
+- [Tutorial completo em português](docs/TUTORIAL-PT-BR.md) — teste a instalação, o harness, a busca, a IA e plugins passo a passo.
 - [Installation](docs/INSTALLATION.md) — verified installers and checksums.
 - [Security policy](SECURITY.md) — BYOK, data flow, and plugin boundaries.
 - [Contributing](CONTRIBUTING.md) — develop and contribute.
