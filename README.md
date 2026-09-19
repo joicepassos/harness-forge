@@ -51,6 +51,15 @@ Release binaries support macOS and Linux (`amd64`, `arm64`) and Windows (`amd64`
 
 ## Get started
 
+Prefer a guided setup? Open the terminal interface in the repository you want to configure:
+
+```sh
+cd /path/to/project
+harnessforge install
+```
+
+It can create and validate a harness and generate reviewed instructions. Every file-changing action asks for confirmation. `harnessforge tui` remains available as an alias. The regular commands below remain available for scripts and automation.
+
 ```sh
 # Understand a repository without changing it.
 harnessforge analyze --git --format json /path/to/project

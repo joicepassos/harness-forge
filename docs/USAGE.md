@@ -4,6 +4,8 @@ This guide is the practical documentation for HarnessForge. All commands are sho
 
 Run project-facing commands from the target repository unless a repository path is provided explicitly.
 
+For a guided terminal workflow, run `harnessforge install [repository]`. It works with ordinary terminal input (including SSH and accessibility tools) and asks before creating a harness or generating an instruction file. `harnessforge tui` is an alias.
+
 ## Before you begin
 
 You need Go 1.23 or later to run from source. Start by checking that the CLI is available:
