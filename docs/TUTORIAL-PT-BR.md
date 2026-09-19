@@ -21,8 +21,19 @@ Invoke-WebRequest https://github.com/joicepassos/harness-forge/releases/download
 Adicione o diretório escolhido ao `PATH` ou abra um novo terminal. Confirme:
 
 ```powershell
+$env:Path = "$env:USERPROFILE\bin;$env:Path"
 harnessforge version
 harnessforge --language pt-BR --help
+```
+
+Para adicionar o diretório ao `PATH` do seu usuário permanentemente, execute o bloco abaixo uma vez e abra um novo PowerShell:
+
+```powershell
+$InstallDir = "$env:USERPROFILE\bin"
+$UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+if (($UserPath -split ';' | Where-Object { $_ }) -notcontains $InstallDir) {
+  [Environment]::SetEnvironmentVariable('Path', "$UserPath;$InstallDir", 'User')
+}
 ```
 
 > Para conferir o script e as verificações de checksum antes de executá-lo, veja [Instalação](INSTALLATION.md).

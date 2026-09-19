@@ -32,6 +32,8 @@ $Version = '1.0.2'
 Invoke-WebRequest "https://github.com/joicepassos/harness-forge/releases/download/v$Version/install.ps1" -OutFile .\install-harnessforge.ps1
 Get-Content .\install-harnessforge.ps1
 .\install-harnessforge.ps1 -Version $Version -InstallDir "$env:USERPROFILE\bin"
+$env:Path = "$env:USERPROFILE\bin;$env:Path"
+harnessforge version
 ```
 
 Release binaries support macOS and Linux (`amd64`, `arm64`) and Windows (`amd64`). See [Installation](docs/INSTALLATION.md) for manual downloads, updates, and troubleshooting.
