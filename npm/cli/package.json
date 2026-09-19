@@ -1,0 +1,32 @@
+{
+  "name": "harnessforge",
+  "version": "0.0.0-development",
+  "description": "Install the HarnessForge CLI from verified GitHub Releases.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joicepassos/harness-forge.git",
+    "directory": "npm/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/joicepassos/harness-forge/issues"
+  },
+  "homepage": "https://github.com/joicepassos/harness-forge#readme",
+  "bin": {
+    "harnessforge": "cli.js"
+  },
+  "files": [
+    "cli.js",
+    "lib/",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/install.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
