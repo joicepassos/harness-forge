@@ -6,7 +6,7 @@ Keep domain rules independent of CLI, filesystem, HTTP, and provider implementat
 
 Use synthetic fixtures or an authorized local repository for validation. Do not commit credentials, private paths, external test-project names, or conversation links. Keep credentials in GitHub Environments, OIDC/trusted-publisher settings, or the process environment. Avoid source comments except necessary public API documentation.
 
-Before committing an issue, run `go test ./...`, `go vet ./...`, and `git diff --check`. Exercise meaningful behavior and failure boundaries, including read-only smoke tests for repository readers. Record the relevant validation when closing the issue.
+Develop with a supported Go release (currently Go 1.26 or later). Before committing an issue, run `gofmt -w` on modified Go files, `go mod tidy -diff`, `go test ./...`, `go vet ./...`, and `git diff --check`. Exercise meaningful behavior and failure boundaries, including read-only smoke tests for repository readers. Record the relevant validation when closing the issue.
 
 ## Releases
 

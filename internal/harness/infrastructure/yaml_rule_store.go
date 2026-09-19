@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go.yaml.in/yaml/v3"
+	"harnessforge/internal/safefile"
 	"os"
 	"path/filepath"
 	"strings"
@@ -127,7 +128,7 @@ func (s YAMLRuleStore) SaveStatus(path, id, previous, status string) error {
 	if !bytes.Equal(current, original) {
 		return fmt.Errorf("harness changed during review; reload and retry")
 	}
-	return os.Rename(tmp.Name(), path)
+	return safefile.Replace(tmp.Name(), path)
 }
 func mappingValue(node *yaml.Node, key string) *yaml.Node {
 	if node.Kind != yaml.MappingNode {

@@ -3,6 +3,7 @@ package analyzer
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -64,6 +65,28 @@ func TestAnalyzeDetectsNestedProjectSignals(t *testing.T) {
 	assertFinding(t, analysis.Frameworks, "Next.js")
 	assertFinding(t, analysis.Database, "PostgreSQL")
 	assertFinding(t, analysis.Tests, "Java tests")
+}
+
+func TestAnalyzeSkipsSymlinksAndSpecialFiles(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires developer mode or elevated privileges")
+	}
+	dir, outside := t.TempDir(), t.TempDir()
+	writeFile(t, outside, "pom.xml", "spring-boot postgresql")
+	if err := os.Symlink(filepath.Join(outside, "pom.xml"), filepath.Join(dir, "pom.xml")); err != nil {
+		t.Fatal(err)
+	}
+	analysis, err := Analyze(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, findings := range [][]Finding{analysis.Build, analysis.Frameworks, analysis.Database} {
+		for _, finding := range findings {
+			if finding.Value == "Maven" || finding.Value == "Spring Boot" || finding.Value == "PostgreSQL" {
+				t.Fatalf("symlink influenced analysis: %#v", analysis)
+			}
+		}
+	}
 }
 
 func writeFile(t *testing.T, dir string, name string, content string) {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"harnessforge/internal/generation/domain"
+	"harnessforge/internal/safefile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -89,5 +90,5 @@ func (FileWriter) Write(ctx context.Context, root string, document domain.Docume
 	if err != nil {
 		return err
 	}
-	return os.Rename(name, path)
+	return safefile.Replace(name, path)
 }
