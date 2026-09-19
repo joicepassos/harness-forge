@@ -93,6 +93,13 @@ jobs:
           python3 -m http.server 8080 --directory "$RUNNER_TEMP/release" >/dev/null 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:8080/; then
+              break
+            fi
+            sleep 0.1
+          done
+          curl --fail --silent --output /dev/null http://127.0.0.1:8080/
           install_dir="$RUNNER_TEMP/install"
           HARNESSFORGE_RELEASE_BASE_URL=http://127.0.0.1:8080 sh ./install.sh --version "$version" --install-dir "$install_dir"
           "$install_dir/harnessforge" version
