@@ -18,7 +18,18 @@ HarnessForge is a CLI that understands your repository, turns reviewed rules int
 
 ## Install
 
-Download a pinned release and install it. HarnessForge verifies the downloaded archive against its SHA-256 checksum before extraction.
+### npm
+
+```sh
+npm install -g harnessforge
+harnessforge version
+```
+
+The npm installer downloads the matching signed release archive and verifies its SHA-256 checksum before extraction.
+
+### Direct download
+
+Download a pinned release and install it.
 
 ```sh
 curl -fsSLO https://github.com/joicepassos/harness-forge/releases/download/v1.0.2/install.sh

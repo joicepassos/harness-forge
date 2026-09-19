@@ -1,6 +1,6 @@
 {
   "name": "harnessforge",
-  "version": "0.0.0-development",
+  "version": "1.0.2",
   "description": "Install the HarnessForge CLI from verified GitHub Releases.",
   "license": "MIT",
   "repository": {
