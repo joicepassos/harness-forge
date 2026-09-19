@@ -1,6 +1,8 @@
 package securityboundary
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,6 +20,24 @@ func TestSensitiveContentRecognizesQuotedAndStructuredValues(t *testing.T) {
 	}
 	if !SensitivePath("docs/credentials.md") {
 		t.Fatal("credential-bearing path was accepted")
+	}
+}
+
+func TestGitIgnoreTraversalHonorsCancellationAndLimit(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("private/\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "one"), []byte("one"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadGitIgnoreContext(context.Background(), root, 1); err == nil {
+		t.Fatal("entry limit accepted")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := LoadGitIgnoreContext(ctx, root, 10); !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context.Canceled", err)
 	}
 }
 

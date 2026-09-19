@@ -14,8 +14,24 @@ env:
   GOVULNCHECK_VERSION: v1.8.0
 
 jobs:
+  quality:
+    name: Formatting and module consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+      - name: Check Go formatting
+        shell: bash
+        run: test -z "$(gofmt -l $(git ls-files '*.go'))"
+      - name: Check module files
+        run: go mod tidy -diff
+
   native-test:
     name: Native test and vet (${{ matrix.os }})
+    needs: quality
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

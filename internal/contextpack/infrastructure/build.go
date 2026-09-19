@@ -7,6 +7,7 @@ import (
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/contextpack/application"
 	"harnessforge/internal/contextpack/domain"
+	"harnessforge/internal/inputlimits"
 	"harnessforge/internal/securityboundary"
 	"io"
 	"os"
@@ -187,7 +188,7 @@ func candidatesFromFiles(ctx context.Context, root string, files []string, promp
 }
 
 func collectFiles(ctx context.Context, root string, limit int) ([]string, []domain.Excerpt, error) {
-	ignored, err := securityboundary.LoadGitIgnore(root)
+	ignored, err := securityboundary.LoadGitIgnoreContext(ctx, root, inputlimits.RepositoryFiles)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -202,7 +203,7 @@ func collectFiles(ctx context.Context, root string, limit int) ([]string, []doma
 		}
 		name := entry.Name()
 		if entry.IsDir() {
-			if name == ".git" || name == ".harness" || name == ".next" || name == "build" || name == "dist" || name == "node_modules" || name == "target" || name == "vendor" || strings.HasPrefix(name, ".") {
+			if securityboundary.SkipRepositoryDirectory(name) || strings.HasPrefix(name, ".") {
 				return filepath.SkipDir
 			}
 			return nil

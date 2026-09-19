@@ -85,8 +85,13 @@ func TestJSONStoreRoundTrip(t *testing.T) {
 	if err := store.Save(dir, index); err != nil {
 		t.Fatal(err)
 	}
+	index.Model = "updated"
+	index.Chunks[0].Model = "updated"
+	if err := store.Save(dir, index); err != nil {
+		t.Fatal(err)
+	}
 	loaded, err := store.Load(dir)
-	if err != nil || loaded.Version != "index-v1" || len(loaded.Chunks) != 1 {
+	if err != nil || loaded.Version != "index-v1" || loaded.Model != "updated" || len(loaded.Chunks) != 1 {
 		t.Fatal(loaded, err)
 	}
 }

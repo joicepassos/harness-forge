@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"harnessforge/internal/inputlimits"
+	"harnessforge/internal/securityboundary"
 	"os"
 	"path/filepath"
 	"sync"
@@ -45,6 +46,13 @@ func AnalyzeWithOptions(ctx context.Context, repositoryPath string, options Opti
 	absolutePath, err := filepath.Abs(repositoryPath)
 	if err != nil {
 		return nil, err
+	}
+	info, err := os.Lstat(absolutePath)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("repository must be a non-symlink directory")
 	}
 
 	analysis := &Analysis{
@@ -147,10 +155,12 @@ func collectFilesContext(ctx context.Context, repositoryPath string) ([]string, 
 		}
 
 		if entry.IsDir() {
-			switch entry.Name() {
-			case ".git", ".harness", ".next", "build", "dist", "node_modules", "target":
+			if securityboundary.SkipRepositoryDirectory(entry.Name()) {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if entry.Type()&os.ModeSymlink != 0 || !entry.Type().IsRegular() {
 			return nil
 		}
 		if len(files) >= inputlimits.RepositoryFiles {

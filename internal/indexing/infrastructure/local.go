@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"harnessforge/internal/indexing/domain"
 	"harnessforge/internal/inputlimits"
+	"harnessforge/internal/safefile"
 	"harnessforge/internal/securityboundary"
 	"math"
 	"os"
@@ -28,7 +29,7 @@ func (Documents) Documents(ctx context.Context, root string) ([]domain.Document,
 	if err != nil {
 		return nil, err
 	}
-	ignored, err := securityboundary.LoadGitIgnore(root)
+	ignored, err := securityboundary.LoadGitIgnoreContext(ctx, root, inputlimits.RepositoryFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ func (Documents) Documents(ctx context.Context, root string) ([]domain.Document,
 			return ctx.Err()
 		}
 		if entry.IsDir() {
-			if path != root && (entry.Name() == ".git" || entry.Name() == ".harness" || entry.Name() == "node_modules" || entry.Name() == "vendor") {
+			if path != root && securityboundary.SkipRepositoryDirectory(entry.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -183,6 +184,6 @@ func (JSONStore) Save(root string, index domain.Index) error {
 	if err != nil {
 		return err
 	}
-	return os.Rename(name, filepath.Join(dir, "index.json"))
+	return safefile.Replace(name, filepath.Join(dir, "index.json"))
 }
 func hash(data []byte) string { sum := sha256.Sum256(data); return hex.EncodeToString(sum[:]) }

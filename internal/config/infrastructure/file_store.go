@@ -1,10 +1,13 @@
 package infrastructure
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"harnessforge/internal/config/domain"
+	"harnessforge/internal/inputlimits"
+	"harnessforge/internal/safefile"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,16 +16,22 @@ import (
 type FileStore struct{ Path string }
 
 func (s FileStore) Load() (domain.Preferences, error) {
-	file, err := os.Open(s.Path)
+	info, err := os.Lstat(s.Path)
 	if errors.Is(err, os.ErrNotExist) {
 		return domain.DefaultPreferences(), nil
 	}
 	if err != nil {
 		return domain.Preferences{}, err
 	}
-	defer file.Close()
+	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return domain.Preferences{}, fmt.Errorf("preferences must be a regular file")
+	}
+	data, err := inputlimits.ReadFile(s.Path, inputlimits.PreferencesBytes, "preferences")
+	if err != nil {
+		return domain.Preferences{}, err
+	}
 	var saved domain.Preferences
-	decoder := json.NewDecoder(file)
+	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&saved); err != nil {
 		return saved, fmt.Errorf("read preferences: %w", err)
@@ -40,11 +49,20 @@ func (s FileStore) Save(saved domain.Preferences) error {
 	if err := os.MkdirAll(filepath.Dir(s.Path), 0700); err != nil {
 		return err
 	}
+	if info, err := os.Lstat(s.Path); err == nil && (info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular()) {
+		return fmt.Errorf("preferences must be a regular file")
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
 	file, err := os.CreateTemp(filepath.Dir(s.Path), "preferences-*.tmp")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(file.Name())
+	if err := file.Chmod(0600); err != nil {
+		file.Close()
+		return err
+	}
 	if _, err := file.Write(append(data, '\n')); err != nil {
 		file.Close()
 		return err
@@ -52,5 +70,5 @@ func (s FileStore) Save(saved domain.Preferences) error {
 	if err := file.Close(); err != nil {
 		return err
 	}
-	return os.Rename(file.Name(), s.Path)
+	return safefile.Replace(file.Name(), s.Path)
 }
