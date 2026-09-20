@@ -8,7 +8,6 @@ import (
 
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/config"
-	"harnessforge/internal/harness"
 
 	"github.com/spf13/cobra"
 )
@@ -40,28 +39,7 @@ func newRootCommand() *cobra.Command {
 		},
 	})
 
-	rootCmd.AddCommand(&cobra.Command{
-		Use:   "init",
-		Short: "Create the initial harness configuration",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			l, err := newLocalizer(string(language))
-			if err != nil {
-				return err
-			}
-			path, err := harness.Init(".")
-			if err != nil {
-				if os.IsExist(err) {
-					return l.printf(cmd, "output.exists", ".harness/harness.yaml")
-				}
-				return err
-			}
-
-			if err := l.printf(cmd, "output.created", path); err != nil {
-				return err
-			}
-			return l.printf(cmd, "output.next_steps")
-		},
-	})
+	rootCmd.AddCommand(newInitCommand())
 
 	analyzeCmd := &cobra.Command{
 		Use:   "analyze [path]",

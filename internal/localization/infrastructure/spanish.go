@@ -3,7 +3,7 @@ package infrastructure
 var spanish = map[string]string{
 	"root.short":                 "HarnessForge crea y mantiene configuraciones para agentes de programación",
 	"version.short":              "Mostrar la versión de HarnessForge",
-	"init.short":                 "Crear la configuración inicial del harness",
+	"init.short":                 "Analizar y configurar el proyecto con una guía interactiva",
 	"analyze.short":              "Analizar un repositorio",
 	"ask.short":                  "Consultar un proveedor de IA",
 	"config.short":               "Gestionar preferencias del usuario (las credenciales quedan en variables de entorno)",

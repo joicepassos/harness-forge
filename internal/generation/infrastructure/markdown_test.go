@@ -66,3 +66,25 @@ func TestWriterRejectsSymlink(t *testing.T) {
 		t.Fatal("symlink accepted")
 	}
 }
+
+func TestWriterRegeneratesAppendedSectionWithoutChangingManualInstructions(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "AGENTS.md")
+	manual := []byte("# Team instructions\n\nKeep reviews small.")
+	old := append(append(append([]byte(nil), manual...), []byte("\n\n")...), []byte(marker+"\nold")...)
+	if err := os.WriteFile(path, old, 0644); err != nil {
+		t.Fatal(err)
+	}
+	document := domain.Document{Path: "AGENTS.md", Content: []byte(marker + "\nnew")}
+	if err := (FileWriter{}).Write(context.Background(), root, document); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := append(append(append([]byte(nil), manual...), []byte("\n\n")...), document.Content...)
+	if !bytes.Equal(after, want) {
+		t.Fatalf("manual instructions changed: %q", after)
+	}
+}

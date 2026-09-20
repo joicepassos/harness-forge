@@ -6,46 +6,57 @@ import (
 )
 
 type Harness struct {
-	Version      int           `json:"version"`
-	Project      Project       `json:"project"`
-	Architecture Architecture  `json:"architecture,omitempty"`
-	Rules        []Rule        `json:"rules,omitempty"`
-	Skills       []Skill       `json:"skills,omitempty"`
-	QualityGates []QualityGate `json:"quality_gates,omitempty"`
+	Version      int           `json:"version" yaml:"version"`
+	Project      Project       `json:"project" yaml:"project"`
+	Architecture Architecture  `json:"architecture,omitempty" yaml:"architecture,omitempty"`
+	Context      Context       `json:"context,omitempty" yaml:"context,omitempty"`
+	AI           AI            `json:"ai,omitempty" yaml:"ai,omitempty"`
+	Rules        []Rule        `json:"rules,omitempty" yaml:"rules,omitempty"`
+	Skills       []Skill       `json:"skills,omitempty" yaml:"skills,omitempty"`
+	QualityGates []QualityGate `json:"quality_gates,omitempty" yaml:"quality_gates,omitempty"`
 }
 type Project struct {
-	Name      string   `json:"name"`
-	Languages []string `json:"languages,omitempty"`
+	Name      string   `json:"name" yaml:"name"`
+	Languages []string `json:"languages,omitempty" yaml:"languages,omitempty"`
 }
 type Architecture struct {
-	Styles []string `json:"styles,omitempty"`
+	Styles []string `json:"styles,omitempty" yaml:"styles,omitempty"`
+}
+type Context struct {
+	Summary   string   `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Documents []string `json:"documents,omitempty" yaml:"documents,omitempty"`
+	Notes     string   `json:"notes,omitempty" yaml:"notes,omitempty"`
+}
+type AI struct {
+	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
+	Model    string `json:"model,omitempty" yaml:"model,omitempty"`
 }
 type Scope struct {
-	Paths []string `json:"paths,omitempty"`
+	Paths []string `json:"paths,omitempty" yaml:"paths,omitempty"`
 }
 type Evidence struct {
-	File     string `json:"file"`
-	Symbol   string `json:"symbol,omitempty"`
-	Revision string `json:"revision,omitempty"`
+	File     string `json:"file" yaml:"file"`
+	Symbol   string `json:"symbol,omitempty" yaml:"symbol,omitempty"`
+	Revision string `json:"revision,omitempty" yaml:"revision"`
 }
 type Rule struct {
-	ID          string     `json:"id"`
-	Description string     `json:"description"`
-	Scope       Scope      `json:"scope,omitempty"`
-	Origin      string     `json:"origin"`
-	Status      string     `json:"status"`
-	Evidence    []Evidence `json:"evidence,omitempty"`
+	ID          string     `json:"id" yaml:"id"`
+	Description string     `json:"description" yaml:"description"`
+	Scope       Scope      `json:"scope,omitempty" yaml:"scope,omitempty"`
+	Origin      string     `json:"origin" yaml:"origin"`
+	Status      string     `json:"status" yaml:"status"`
+	Evidence    []Evidence `json:"evidence,omitempty" yaml:"evidence,omitempty"`
 }
 type Skill struct {
-	ID          string     `json:"id"`
-	Description string     `json:"description"`
-	Path        string     `json:"path,omitempty"`
-	Status      string     `json:"status,omitempty"`
-	Evidence    []Evidence `json:"evidence,omitempty"`
+	ID          string     `json:"id" yaml:"id"`
+	Description string     `json:"description" yaml:"description"`
+	Path        string     `json:"path,omitempty" yaml:"path,omitempty"`
+	Status      string     `json:"status,omitempty" yaml:"status,omitempty"`
+	Evidence    []Evidence `json:"evidence,omitempty" yaml:"evidence,omitempty"`
 }
 type QualityGate struct {
-	ID      string `json:"id"`
-	Command string `json:"command"`
+	ID      string `json:"id" yaml:"id"`
+	Command string `json:"command" yaml:"command"`
 }
 
 func (h Harness) Validate() error {
@@ -60,6 +71,12 @@ func (h Harness) Validate() error {
 	}
 	if err := nonemptyList("architecture.styles", h.Architecture.Styles); err != nil {
 		return err
+	}
+	if err := nonemptyList("context.documents", h.Context.Documents); err != nil {
+		return err
+	}
+	if h.AI.Provider == "" && h.AI.Model != "" || h.AI.Provider != "" && h.AI.Model == "" {
+		return fmt.Errorf("ai.provider and ai.model must be set together")
 	}
 	ids := map[string]bool{}
 	for i, r := range h.Rules {

@@ -29,7 +29,11 @@ func newAskCommand() *cobra.Command {
 		if contextExplain && stream {
 			return fmt.Errorf("--context-explain cannot be used with --stream")
 		}
-		provider, err := selectedProvider(cmd)
+		provider, err := selectedProviderFor(cmd, repositoryOrCurrent(repository))
+		if err != nil {
+			return err
+		}
+		model, err = selectedModelFor(repositoryOrCurrent(repository), model)
 		if err != nil {
 			return err
 		}
