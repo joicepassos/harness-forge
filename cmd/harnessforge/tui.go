@@ -70,6 +70,14 @@ func runTUI(input io.Reader, output io.Writer, repository string) error {
 			fmt.Fprintln(output, "Goodbye.")
 			return nil
 		case "1":
+			harnessPath := filepath.Join(root, ".harness", "harness.yaml")
+			if _, err := os.Lstat(harnessPath); err == nil {
+				fmt.Fprintln(output, ".harness/harness.yaml already exists; left it unchanged. Choose 2 to validate it.")
+				continue
+			} else if !os.IsNotExist(err) {
+				fmt.Fprintf(output, "Could not inspect harness: %v\n", err)
+				continue
+			}
 			confirmed, err := confirmTUIAction(reader, output, "Create .harness/harness.yaml")
 			if err != nil {
 				return err
@@ -79,6 +87,10 @@ func runTUI(input io.Reader, output io.Writer, repository string) error {
 			}
 			path, err := harness.Init(root)
 			if err != nil {
+				if os.IsExist(err) {
+					fmt.Fprintln(output, ".harness/harness.yaml already exists; left it unchanged. Choose 2 to validate it.")
+					continue
+				}
 				fmt.Fprintf(output, "Could not create harness: %v\n", err)
 				continue
 			}

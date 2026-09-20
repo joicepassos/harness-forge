@@ -1,5 +1,11 @@
 # Installation and update security
 
+## Quick installation
+
+With Node.js 18 or newer, run `npm install -g harnessforge`, then `harnessforge version`. In the next release, the first invocation downloads the matching release binary and checks its SHA-256 digest without an npm lifecycle install script. Published v1.0.2 downloads during `npm install` and may show an `allow-scripts` warning. In the target project, run `harnessforge init`. If v1.0.2 reports that `.harness/harness.yaml` exists, keep the file and continue with `harnessforge validate --repository .`; the next release treats that case as a normal status message.
+
+The direct installers below are useful when npm is unavailable.
+
 HarnessForge distributes only through GitHub Releases. The release workflow publishes versioned archives and a checksum manifest for:
 
 | Platform | Architectures | Installer |

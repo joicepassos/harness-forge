@@ -25,7 +25,7 @@ npm install -g harnessforge
 harnessforge version
 ```
 
-The npm installer downloads the matching signed release archive and verifies its SHA-256 checksum before extraction.
+In the next release, the npm launcher downloads and verifies the release archive on first use, without an npm install script. Published v1.0.2 still downloads it during `npm install` and may show an `allow-scripts` warning; a successful `harnessforge version` confirms installation.
 
 ### Direct download
 
@@ -51,27 +51,21 @@ Release binaries support macOS and Linux (`amd64`, `arm64`) and Windows (`amd64`
 
 ## Get started
 
-Prefer a guided setup? Open the terminal interface in the repository you want to configure:
+Open a terminal in the repository you want to configure:
 
 ```sh
-cd /path/to/project
-harnessforge install
-```
-
-It can create and validate a harness and generate reviewed instructions. Every file-changing action asks for confirmation. `harnessforge tui` remains available as an alias. The regular commands below remain available for scripts and automation.
-
-```sh
-# Understand a repository without changing it.
-harnessforge analyze --git --format json /path/to/project
-
-# Create a reviewable project harness.
 cd /path/to/project
 harnessforge init
-harnessforge validate
+harnessforge validate --repository .
+```
 
-# Generate agent instructions after review.
+`init` creates `.harness/harness.yaml` once. If it already exists, leave it in place and continue with `validate`; the next release will show this as a normal status message. Edit that file to add reviewed rules, then generate agent instructions:
+
+```sh
 harnessforge generate codex
 ```
+
+The guided `harnessforge install` command is present in source after v1.0.2 and will be available in a later release. Check `harnessforge --help` before using it. The commands above work with v1.0.2.
 
 HarnessForge stores approved rules in `.harness/harness.yaml` and produces reproducible `AGENTS.md` or `CLAUDE.md` files.
 
