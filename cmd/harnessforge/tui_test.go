@@ -47,6 +47,29 @@ func TestTUICancelsCreateWithoutChangingRepository(t *testing.T) {
 	}
 }
 
+func TestTUIKeepsExistingHarness(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := harness.Init(dir); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, ".harness", "harness.yaml")
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := runTUI(strings.NewReader("1\n5\n"), &output, dir); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(original, after) {
+		t.Fatalf("existing harness changed: %v", err)
+	}
+	if !strings.Contains(output.String(), "already exists; left it unchanged") {
+		t.Fatalf("missing guidance: %s", output.String())
+	}
+}
+
 func TestTUIGeneratesOnlyAfterConfirmation(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := harness.Init(dir); err != nil {

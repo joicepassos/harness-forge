@@ -28,6 +28,8 @@ var spanish = map[string]string{
 	"embedding.similarity.short": "Calcular similitud coseno",
 	"symbols.short":              "Extraer símbolos estructurales del código",
 	"output.created":             "Creado %s\n",
+	"output.exists":              "%s ya existe; el archivo no se modificó. Ejecute `harnessforge validate --repository .` para comprobarlo.\n",
+	"output.next_steps":          "Edite .harness/harness.yaml y ejecute `harnessforge validate --repository .` y `harnessforge generate codex --repository .`.\n",
 	"output.valid":               "Harness IR válido: %s\n",
 	"output.rule":                "Regla %s: %s\n",
 	"output.skill":               "Habilidad generada %s\n",

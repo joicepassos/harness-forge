@@ -4,7 +4,7 @@ This guide is the practical documentation for HarnessForge. All commands are sho
 
 Run project-facing commands from the target repository unless a repository path is provided explicitly.
 
-For a guided terminal workflow, run `harnessforge install [repository]`. It works with ordinary terminal input (including SSH and accessibility tools) and asks before creating a harness or generating an instruction file. `harnessforge tui` is an alias.
+Start in the target repository with `harnessforge init`. Published v1.0.2 reports an error if the configuration already exists; keep the file and continue with `harnessforge validate --repository .`. Later releases report this as a normal status message without changing the file. A guided terminal workflow (`harnessforge install [repository]`, with `tui` as an alias) was added after v1.0.2; check `harnessforge --help` to see whether your installed version includes it.
 
 ## Before you begin
 
@@ -15,7 +15,7 @@ go run ./cmd/harnessforge version
 go run ./cmd/harnessforge --help
 ```
 
-For a repository outside the HarnessForge clone, use the full path to this project's `cmd/harnessforge` directory, or build the executable once and call it from anywhere.
+For a repository outside the HarnessForge clone, build or install the executable and call it from that repository.
 
 ## 1. Understand a repository
 

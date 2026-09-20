@@ -18,12 +18,10 @@
   "files": [
     "cli.js",
     "lib/",
-    "scripts/",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "postinstall": "node scripts/install.js",
     "test": "node --test"
   },
   "engines": {

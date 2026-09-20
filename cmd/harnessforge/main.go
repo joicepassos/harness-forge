@@ -50,10 +50,16 @@ func newRootCommand() *cobra.Command {
 			}
 			path, err := harness.Init(".")
 			if err != nil {
+				if os.IsExist(err) {
+					return l.printf(cmd, "output.exists", ".harness/harness.yaml")
+				}
 				return err
 			}
 
-			return l.printf(cmd, "output.created", path)
+			if err := l.printf(cmd, "output.created", path); err != nil {
+				return err
+			}
+			return l.printf(cmd, "output.next_steps")
 		},
 	})
 

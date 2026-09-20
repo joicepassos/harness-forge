@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 )
 
@@ -24,11 +25,7 @@ func TestInitCreatesHarnessFile(t *testing.T) {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
 
-	want := `version: 1
-
-project:
-  name: my-project
-`
+	want := "version: 1\n\nproject:\n  name: " + strconv.Quote(filepath.Base(dir)) + "\n"
 	if string(content) != want {
 		t.Fatalf("harness.yaml = %q, want %q", string(content), want)
 	}

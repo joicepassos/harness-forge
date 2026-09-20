@@ -122,6 +122,7 @@ jobs:
           install_dir="$RUNNER_TEMP/install"
           HARNESSFORGE_RELEASE_BASE_URL=http://127.0.0.1:8080 sh ./install.sh --version "$version" --install-dir "$install_dir"
           "$install_dir/harnessforge" version
+          "$install_dir/harnessforge" --help | grep -Eq '^[[:space:]]+install[[:space:]]'
       - name: Smoke-test the Windows installer
         if: matrix.script == 'windows'
         shell: pwsh
@@ -151,6 +152,8 @@ jobs:
             $installDir = Join-Path $env:RUNNER_TEMP 'install'
             ./install.ps1 -Version $version -InstallDir $installDir
             & (Join-Path $installDir 'harnessforge.exe') version
+            $helpText = & (Join-Path $installDir 'harnessforge.exe') --help
+            if (-not ($helpText -match '^\s+install\s')) { throw 'The guided install command is missing from this release.' }
           }
           finally {
             Stop-Process -Id $server.Id -Force
@@ -222,8 +225,15 @@ jobs:
         run: |
           npm test
           npm pack --dry-run --ignore-scripts
-      - name: Publish the matching npm version
+      - name: Smoke-test the npm launcher against the published release
         working-directory: npm/cli
         run: |
           npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version
+          npm pack --ignore-scripts
+          npm install --prefix "$RUNNER_TEMP/npm-smoke" ./harnessforge-*.tgz --ignore-scripts
+          node "$RUNNER_TEMP/npm-smoke/node_modules/harnessforge/cli.js" version
+          node "$RUNNER_TEMP/npm-smoke/node_modules/harnessforge/cli.js" --help | grep -Eq '^[[:space:]]+install[[:space:]]'
+      - name: Publish the matching npm version
+        working-directory: npm/cli
+        run: |
           npm publish --access public

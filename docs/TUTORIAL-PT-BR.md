@@ -4,39 +4,14 @@ Este guia testa o fluxo principal em um repositório descartável. Comece pelas 
 
 ## 1. Instale e confirme a versão
 
-No macOS ou Linux, instale a release publicada:
+Com Node.js 18 ou superior, use o mesmo comando no Windows, macOS ou Linux:
 
 ```sh
-curl -fsSLO https://github.com/joicepassos/harness-forge/releases/download/v1.0.2/install.sh
-sh install.sh --version 1.0.2 --install-dir "$HOME/.local/bin"
-```
-
-No Windows PowerShell:
-
-```powershell
-Invoke-WebRequest https://github.com/joicepassos/harness-forge/releases/download/v1.0.2/install.ps1 -OutFile .\install.ps1
-.\install.ps1 -Version 1.0.2 -InstallDir "$env:USERPROFILE\bin"
-```
-
-Adicione o diretório escolhido ao `PATH` ou abra um novo terminal. Confirme:
-
-```powershell
-$env:Path = "$env:USERPROFILE\bin;$env:Path"
+npm install -g harnessforge
 harnessforge version
-harnessforge --language pt-BR --help
 ```
 
-Para adicionar o diretório ao `PATH` do seu usuário permanentemente, execute o bloco abaixo uma vez e abra um novo PowerShell:
-
-```powershell
-$InstallDir = "$env:USERPROFILE\bin"
-$UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if (($UserPath -split ';' | Where-Object { $_ }) -notcontains $InstallDir) {
-  [Environment]::SetEnvironmentVariable('Path', "$UserPath;$InstallDir", 'User')
-}
-```
-
-> Para conferir o script e as verificações de checksum antes de executá-lo, veja [Instalação](INSTALLATION.md).
+Na versão publicada 1.0.2, o npm baixa e verifica o executável durante a instalação e pode mostrar um aviso `allow-scripts`. Se `harnessforge version` funcionar, a instalação terminou. Na próxima versão, o download ocorrerá no primeiro uso, sem script de instalação do npm. `harnessforge --language pt-BR --help` mostra os comandos disponíveis; o comando guiado `harnessforge install` ainda não existe na 1.0.2. Use `harnessforge init` nas etapas abaixo. Para instalar sem npm, consulte [Instalação](INSTALLATION.md).
 
 ## 2. Crie um projeto de teste
 
