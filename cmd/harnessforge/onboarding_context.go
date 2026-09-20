@@ -150,8 +150,20 @@ func readSetupPath(ctx context.Context, root, requested string) ([]setupDocument
 		return nil, fmt.Errorf("links are not accepted")
 	}
 	resolved, err := filepath.EvalSymlinks(path)
-	if err != nil || !strings.EqualFold(filepath.Clean(resolved), filepath.Clean(path)) {
-		return nil, fmt.Errorf("links in the path are not accepted")
+	if err != nil {
+		return nil, err
+	}
+	if securityboundary.SensitivePath(resolved) {
+		return nil, fmt.Errorf("sensitive path is not accepted")
+	}
+	if setupInside(root, path) {
+		canonicalRoot, err := filepath.EvalSymlinks(root)
+		if err != nil {
+			return nil, err
+		}
+		if !setupInside(canonicalRoot, resolved) {
+			return nil, fmt.Errorf("path leaves the project through a link")
+		}
 	}
 	if !info.IsDir() {
 		return readSetupFile(root, path)
@@ -234,14 +246,19 @@ func readSetupFile(root, path string) ([]setupDocument, error) {
 	if text == "" {
 		return nil, fmt.Errorf("document is empty")
 	}
-	rel, err := filepath.Rel(root, path)
-	inside := err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
+	inside := setupInside(root, path)
 	digest := sha256.Sum256([]byte(path))
 	source := fmt.Sprintf("user-file:%s-%x", filepath.Base(path), digest[:4])
 	if inside {
+		rel, _ := filepath.Rel(root, path)
 		source = "repository-file:" + filepath.ToSlash(rel)
 	}
 	return []setupDocument{{Source: source, Path: path, Text: text, Truncated: truncated, Relative: inside}}, nil
+}
+
+func setupInside(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
 }
 
 func setupTextExtension(path string) bool {

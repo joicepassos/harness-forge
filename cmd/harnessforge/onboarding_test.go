@@ -222,6 +222,36 @@ func TestSelectedContextAcceptsDirectoriesAndExternalFiles(t *testing.T) {
 	}
 }
 
+func TestContextAllowsLinkedParentButRejectsProjectEscape(t *testing.T) {
+	parent := t.TempDir()
+	project := filepath.Join(parent, "project")
+	if err := os.Mkdir(project, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(project, "README.md"), []byte("Project overview"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(parent, alias); err != nil {
+		t.Skipf("directory links unavailable: %v", err)
+	}
+	linkedProject := filepath.Join(alias, "project")
+	items, err := readSetupPath(context.Background(), linkedProject, "README.md")
+	if err != nil || len(items) != 1 || items[0].Source != "repository-file:README.md" {
+		t.Fatalf("linked parent was rejected: %v %#v", err, items)
+	}
+	external := t.TempDir()
+	if err := os.WriteFile(filepath.Join(external, "overview.md"), []byte("Outside document"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(external, filepath.Join(project, "linked-docs")); err != nil {
+		t.Skipf("directory links unavailable: %v", err)
+	}
+	if _, err := readSetupPath(context.Background(), project, filepath.Join("linked-docs", "overview.md")); err == nil {
+		t.Fatal("linked directory escaped the project")
+	}
+}
+
 func TestWriteSetupPlanRefusesChangesAfterPreview(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "AGENTS.md")
