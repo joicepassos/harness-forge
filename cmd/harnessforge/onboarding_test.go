@@ -9,6 +9,7 @@ import (
 	harnessinfra "harnessforge/internal/harness/infrastructure"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -26,7 +27,7 @@ func TestGuidedInitLocalPlanRequiresConfirmation(t *testing.T) {
 		t.Fatal("unexpected AI call")
 		return setupAIProposal{}, nil
 	}
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n\nn\n\nn\n"), &output, root, noAI); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\nn\n"), &output, root, noAI); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "Proposed setup") || !strings.Contains(output.String(), "Go modules") {
@@ -36,7 +37,7 @@ func TestGuidedInitLocalPlanRequiresConfirmation(t *testing.T) {
 		t.Fatalf("files changed before confirmation: %v", err)
 	}
 	output.Reset()
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n\nn\n\ny\n"), &output, root, noAI); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\ny\n"), &output, root, noAI); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
@@ -68,7 +69,7 @@ func TestGuidedInitUsesDocumentsNotesAndAIProposal(t *testing.T) {
 		return setupAIProposal{Summary: "A layered service.", Architecture: []string{"layered"}, Rules: []setupRule{{ID: "keep-layers", Description: "Keep controller and repository responsibilities separate.", Evidence: []setupCitation{citation}}}, Skills: []setupSkill{{ID: "add-feature", Description: "Add a feature across the service layers.", Steps: []string{"Update the controller.", "Update the repository."}, Evidence: []setupCitation{citation}}}}, nil
 	}
 	var output bytes.Buffer
-	input := "\nTeam uses ports and adapters\n\n\n\n\ny\n3\ny\n"
+	input := "\n\ny\nopenai\n\n\nTeam uses ports and adapters\n\ny\n3\ny\n"
 	if err := runGuidedInit(context.Background(), strings.NewReader(input), &output, root, propose); err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +115,7 @@ func TestGuidedInitPreservesManualAgentFile(t *testing.T) {
 	}
 	before, _ := os.ReadFile(filepath.Join(root, ".harness", "harness.yaml"))
 	var output bytes.Buffer
-	err := runGuidedInit(context.Background(), strings.NewReader("\n\nn\n\nn\n"), &output, root, nil)
+	err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\nn\n"), &output, root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +131,7 @@ func TestGuidedInitPreservesManualAgentFile(t *testing.T) {
 		t.Fatalf("manual instructions changed before confirmation: %q", manual)
 	}
 	output.Reset()
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n\nn\n\ny\n"), &output, root, nil); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
 		t.Fatal(err)
 	}
 	manual, _ = os.ReadFile(path)
@@ -145,7 +146,7 @@ func TestGuidedInitReplacesOnlyStarterHarness(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n\nn\n\ny\n"), &output, root, nil); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "replace starter/generated file") {
@@ -157,7 +158,7 @@ func TestGuidedInitReplacesOnlyStarterHarness(t *testing.T) {
 	}
 	before, _ := os.ReadFile(filepath.Join(root, ".harness", "harness.yaml"))
 	output.Reset()
-	err := runGuidedInit(context.Background(), strings.NewReader("\n\nn\n\ny\n"), &output, root, nil)
+	err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\ny\n"), &output, root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +183,7 @@ func TestGuidedInitDoesNotAskForKeyWhenAIContextIsDeclined(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("OPENAI_API_KEY", "")
 	var output bytes.Buffer
-	input := "\n\n\n\n\nn\n\nn\n"
+	input := "\n\nn\n\n\n\nn\n"
 	err := runGuidedInit(context.Background(), strings.NewReader(input), &output, root, func(context.Context, setupProvider, *analyzer.Analysis, []setupDocument, string) (setupAIProposal, error) {
 		t.Fatal("AI called after context sharing was declined")
 		return setupAIProposal{}, nil
@@ -219,6 +220,20 @@ func TestSelectedContextAcceptsDirectoriesAndExternalFiles(t *testing.T) {
 	}
 	if len(selected) != 2 || selected[0].Source != "repository-file:team-docs/architecture.md" || selected[1].Relative || !strings.Contains(selected[1].Text, "reviews every API") {
 		t.Fatalf("unexpected selected context: %#v", selected)
+	}
+}
+
+func TestChooseLanguagesSupportsMultipleSelectionsAndDefaults(t *testing.T) {
+	var output bytes.Buffer
+	session := setupSession{reader: bufio.NewReader(strings.NewReader("1,3,1\n")), output: &output}
+	selected, err := session.chooseLanguages()
+	if err != nil || !reflect.DeepEqual(selected, []string{"Go", "Python"}) {
+		t.Fatalf("selected = %#v, err = %v", selected, err)
+	}
+	defaultSession := setupSession{reader: bufio.NewReader(strings.NewReader("\n")), output: &output}
+	selected, err = defaultSession.chooseLanguages()
+	if err != nil || !reflect.DeepEqual(selected, []string{"all detected"}) {
+		t.Fatalf("default selected = %#v, err = %v", selected, err)
 	}
 }
 

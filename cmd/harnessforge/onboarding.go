@@ -61,7 +61,21 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	fmt.Fprintf(output, "%s\n%s\nProject: %s\n\n%s\n\n", style.brand(), style.heading("HarnessForge setup"), root, style.heading("Analyzing project..."))
+	session := setupSession{reader: bufio.NewReader(input), output: output}
+	languages, err := session.chooseLanguages()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(output, "%s\n%s\nProject: %s\n\nSelected languages: %s\n\n%s\n\n", style.brand(), style.heading("HarnessForge setup"), root, strings.Join(languages, ", "), style.heading("Ready to analyze"))
+	allowed, err := session.confirmDefaultYes("Analyze this project now?")
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		fmt.Fprintln(output, style.status("warning", "Analysis cancelled; no project files changed."))
+		return nil
+	}
+	fmt.Fprintln(output, style.heading("Analyzing project..."))
 	analysis, err := analyzer.AnalyzeWithOptions(ctx, root, analyzer.Options{})
 	if err != nil {
 		return err
@@ -73,9 +87,20 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	} else {
 		analyzer.Print(output, analysis)
 	}
+	fmt.Fprintln(output, style.heading("What HarnessForge understood"))
+	fmt.Fprintf(output, "Languages selected: %s\n", strings.Join(languages, ", "))
 	printSetupDirectories(output, root)
 	fmt.Fprintln(output, style.status("info", "No project files have been changed."))
-	session := setupSession{reader: bufio.NewReader(input), output: output}
+	config, useAI, err := askSetupProvider(session, input)
+	if err != nil {
+		return err
+	}
+	if useAI {
+		if err := ensureSetupKey(session, input, &config); err != nil {
+			return err
+		}
+		fmt.Fprintln(output, style.status("success", "AI token received for this run; it will not be written to project files."))
+	}
 	documents := defaultSetupDocuments(ctx, root)
 	if len(documents) > 0 {
 		fmt.Fprintln(output, "\n"+style.heading("Context detected automatically:"))
@@ -104,10 +129,6 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	if err := setupContextBytes(documents, notes); err != nil {
 		return err
 	}
-	config, useAI, err := askSetupProvider(session, input)
-	if err != nil {
-		return err
-	}
 	suggestion := setupAIProposal{}
 	if useAI {
 		fmt.Fprintf(output, "\nThe selected project analysis, %d document(s), and your observations will be sent to %s (%s). API keys are never written to project files.\n", len(documents), config.Name, config.Model)
@@ -122,9 +143,6 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 		}
 	}
 	if useAI {
-		if err := ensureSetupKey(session, input, &config); err != nil {
-			return err
-		}
 		fmt.Fprintln(output, "Preparing the proposal with the selected context...")
 		suggestion, err = propose(ctx, config, analysis, documents, notes)
 		if err != nil {
@@ -180,11 +198,11 @@ func printSetupDirectories(output io.Writer, root string) {
 }
 
 func askSetupProvider(session setupSession, _ io.Reader) (setupProvider, bool, error) {
-	answer, err := session.ask("Use AI for a tailored setup proposal? [Y/n]: ")
+	answer, err := session.ask("Use AI for a tailored setup proposal? [y/N]: ")
 	if err != nil {
 		return setupProvider{}, false, err
 	}
-	if strings.EqualFold(answer, "n") || strings.EqualFold(answer, "no") {
+	if answer == "" || strings.EqualFold(answer, "n") || strings.EqualFold(answer, "no") {
 		return setupProvider{}, false, nil
 	}
 	name, err := session.ask("Provider [openai/deepseek/gemini/groq/ollama] (default openai): ")

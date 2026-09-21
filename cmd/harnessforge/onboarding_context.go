@@ -34,6 +34,35 @@ type setupSession struct {
 	output io.Writer
 }
 
+func (s setupSession) chooseLanguages() ([]string, error) {
+	options := []string{"Go", "JavaScript/TypeScript", "Python", "Java", "Rust", "C/C++", "Other"}
+	fmt.Fprintln(s.output, presentationFor(s.output).heading("Which languages should guide the harness?"))
+	for i, option := range options {
+		fmt.Fprintf(s.output, "  %d) %s\n", i+1, option)
+	}
+	answer, err := s.ask("Languages [all detected]: ")
+	if err != nil {
+		return nil, err
+	}
+	if answer == "" {
+		return []string{"all detected"}, nil
+	}
+	seen := map[string]bool{}
+	var selected []string
+	for _, value := range strings.Split(answer, ",") {
+		value = strings.TrimSpace(value)
+		index := 0
+		if _, scanErr := fmt.Sscanf(value, "%d", &index); scanErr != nil || index < 1 || index > len(options) {
+			return nil, fmt.Errorf("choose language numbers from 1 to %d, separated by commas", len(options))
+		}
+		if !seen[options[index-1]] {
+			selected = append(selected, options[index-1])
+			seen[options[index-1]] = true
+		}
+	}
+	return selected, nil
+}
+
 func (s setupSession) ask(question string) (string, error) {
 	if _, err := fmt.Fprint(s.output, presentationFor(s.output).accent(question)); err != nil {
 		return "", err
@@ -57,6 +86,14 @@ func (s setupSession) confirm(question string) (bool, error) {
 		return false, err
 	}
 	return strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes"), nil
+}
+
+func (s setupSession) confirmDefaultYes(question string) (bool, error) {
+	answer, err := s.ask(question + " [Y/n]: ")
+	if err != nil {
+		return false, err
+	}
+	return !strings.EqualFold(answer, "n") && !strings.EqualFold(answer, "no"), nil
 }
 
 func (s setupSession) notes() (string, error) {
