@@ -31,6 +31,8 @@ The core release job targets the GitHub Environment named `release`. Configure i
 
 ## Rollback and correction
 
+The `v1.1.0` release attempt stopped during clean installer smoke tests, before GitHub Release artifacts or the npm package were published. The CLI help text went to stderr, while the smoke tests expected stdout. The tag is retained as a record of that failed attempt; `v1.1.1` fixes the output stream and is the replacement release.
+
 Never replace an archive, checksum, tag, or installer script in place. A changed artifact under the same name breaks verifiability and any client that has already checked it. For a release defect, mark the GitHub release as a known-bad release with a clear notice, stop any pending announcement, and issue a new patch version with a new tag and checksum manifest. Tell users to discard failed downloads and install the corrected version; do not republish different bytes under the same version.
 
 Keep the original release record and document the impact, replacement version, and recovery instructions. A security incident requires the project's normal incident process and may require revoking signing material once signing is enabled.

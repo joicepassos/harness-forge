@@ -34,8 +34,8 @@ func newRootCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cmd.Printf("harnessforge version %s\ncommit %s\nbuild date %s\n", config.Version, config.Commit, config.BuildDate)
-			return nil
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "harnessforge version %s\ncommit %s\nbuild date %s\n", config.Version, config.Commit, config.BuildDate)
+			return err
 		},
 	})
 
@@ -102,7 +102,7 @@ func newRootCommand() *cobra.Command {
 		if err == nil {
 			applyLanguage(rootCmd, l)
 		}
-		cmd.Printf("%s\n\n%s", cmd.Short, cmd.UsageString())
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n\n%s", cmd.Short, cmd.UsageString())
 	})
 	return rootCmd
 }

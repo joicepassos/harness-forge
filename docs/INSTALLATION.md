@@ -2,7 +2,7 @@
 
 ## Quick installation
 
-With Node.js 18 or newer, run `npm install -g harnessforge`, then `harnessforge version`. Starting with v1.1.0, the first invocation downloads the matching release binary and checks its SHA-256 digest without an npm lifecycle install script. In the target project, run `harnessforge init` to follow the guided setup. If the project is already configured, the command reports its status without changing files.
+With Node.js 18 or newer, run `npm install -g harnessforge`, then `harnessforge version`. Starting with v1.1.1, the first invocation downloads the matching release binary and checks its SHA-256 digest without an npm lifecycle install script. In the target project, run `harnessforge init` to follow the guided setup. If the project is already configured, the command reports its status without changing files.
 
 The direct installers below are useful when npm is unavailable.
 
@@ -21,7 +21,7 @@ Both installers select the platform and architecture, download the matching arch
 Download the script to a file, inspect it, and then execute it:
 
 ```sh
-VERSION=1.1.0
+VERSION=1.1.1
 curl --fail --location --proto '=https' --tlsv1.2 \
   "https://github.com/joicepassos/harness-forge/releases/download/v${VERSION}/install.sh" \
   --output install-harnessforge.sh
@@ -36,7 +36,7 @@ The script accepts `--install-dir` and does not modify `PATH`. Add `$HOME/.local
 Download and inspect the PowerShell script before executing it:
 
 ```powershell
-$Version = '1.1.0'
+$Version = '1.1.1'
 Invoke-WebRequest "https://github.com/joicepassos/harness-forge/releases/download/v$Version/install.ps1" -OutFile .\install-harnessforge.ps1
 Get-Content .\install-harnessforge.ps1
 Set-ExecutionPolicy -Scope Process Bypass
