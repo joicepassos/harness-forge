@@ -4,7 +4,7 @@ This guide is the practical documentation for HarnessForge. All commands are sho
 
 Run project-facing commands from the target repository unless a repository path is provided explicitly.
 
-Start in the target repository with `harnessforge init`. Published v1.0.2 reports an error if the configuration already exists; keep the file and continue with `harnessforge validate --repository .`. Later releases report this as a normal status message without changing the file. A guided terminal workflow (`harnessforge install [repository]`, with `tui` as an alias) was added after v1.0.2; check `harnessforge --help` to see whether your installed version includes it.
+Start in the target repository with `harnessforge init`. The command now runs a guided setup: it analyzes the repository, accepts additional text documents and observations, asks for an AI provider only if you choose an AI proposal, previews all generated files, and writes only after confirmation. `harnessforge install [repository]` and `harnessforge tui [repository]` are compatibility aliases. The npm package also exposes `harness-forge init`. Published v1.0.2 still uses the earlier manual `init` behavior; check `harnessforge version` before following this workflow.
 
 ## Before you begin
 
@@ -28,17 +28,18 @@ go run ./cmd/harnessforge analyze --git --format json C:\work\my-project
 
 Choose `text` (the default) for a quick read, or `json` when you want to save, filter, or pass the result to another tool. `--git` includes local and remote branch names, pending files, authors, commit counts, and information from the latest 20 commits. It never fetches.
 
-## 2. Create and generate a harness
+## 2. Configure the project
 
-A harness is the repository's editable source of truth for agent instructions. Initialize it once in the target repository:
+Run the guided setup once in the target repository:
 
 ```powershell
 Set-Location C:\work\my-project
 harnessforge init
-harnessforge validate
 ```
 
-Open `.harness/harness.yaml` and add or review rules. A small manual rule looks like this:
+The CLI shows detected languages, build tools, frameworks, test signals, and top-level directories. Add UTF-8 text files or directories when prompted; PDF and Word documents must first be exported as text. The CLI skips secret-like paths and content, bounds the context size, and shows which documents will be sent to the selected AI provider. You can add free-form team observations, choose Codex, Claude, or both, and review the exact files before confirming. If you do not use AI, it still creates a local project configuration and agent instructions.
+
+The resulting `.harness/harness.yaml` is the editable source of truth for agent instructions. A small manual rule looks like this:
 
 ```yaml
 version: 1

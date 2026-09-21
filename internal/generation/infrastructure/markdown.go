@@ -26,6 +26,22 @@ func (m Markdown) Render(input domain.Input) (domain.Document, error) {
 	sort.Slice(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
 	var out bytes.Buffer
 	fmt.Fprintf(&out, "%s\n# %s agent instructions\n\n", marker, input.Project)
+	if input.Summary != "" || input.Notes != "" || len(input.Documents) > 0 {
+		out.WriteString("## Project context\n\n")
+		if input.Summary != "" {
+			fmt.Fprintf(&out, "%s\n\n", input.Summary)
+		}
+		if input.Notes != "" {
+			fmt.Fprintf(&out, "Team observations:\n\n%s\n\n", input.Notes)
+		}
+		if len(input.Documents) > 0 {
+			out.WriteString("Additional documents considered during setup:\n\n")
+			for _, document := range input.Documents {
+				fmt.Fprintf(&out, "- `%s`\n", document)
+			}
+			out.WriteByte('\n')
+		}
+	}
 	if len(rules) > 0 {
 		out.WriteString("## Approved rules\n\n")
 		for _, r := range rules {
@@ -40,6 +56,12 @@ func (m Markdown) Render(input domain.Input) (domain.Document, error) {
 		out.WriteString("\n## Quality commands\n\n")
 		for _, command := range input.Commands {
 			fmt.Fprintf(&out, "- `%s`\n", command)
+		}
+	}
+	if len(input.Skills) > 0 {
+		out.WriteString("\n## Skills\n\n")
+		for _, skill := range input.Skills {
+			fmt.Fprintf(&out, "- [%s] %s — `%s`\n", skill.ID, skill.Description, skill.Path)
 		}
 	}
 	return domain.Document{Path: path, Content: out.Bytes()}, nil
@@ -73,10 +95,17 @@ func (FileWriter) Write(ctx context.Context, root string, document domain.Docume
 	if target, err := os.Lstat(path); err == nil && target.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("refusing to replace symlink %s", document.Path)
 	}
-	if existing, err := os.ReadFile(path); err == nil && !bytes.HasPrefix(existing, []byte(marker)) {
-		return fmt.Errorf("refusing to overwrite manually owned %s", document.Path)
-	} else if err != nil && !os.IsNotExist(err) {
-		return err
+	if existing, readErr := os.ReadFile(path); readErr == nil {
+		if !bytes.HasPrefix(existing, []byte(marker)) {
+			boundary := bytes.Index(existing, []byte("\n\n"+marker))
+			if boundary < 0 {
+				return fmt.Errorf("refusing to overwrite manually owned %s", document.Path)
+			}
+			prefix := append([]byte(nil), existing[:boundary+2]...)
+			document.Content = append(prefix, document.Content...)
+		}
+	} else if !os.IsNotExist(readErr) {
+		return readErr
 	}
 	temporary, err := os.CreateTemp(root, "harnessforge-generated-*")
 	if err != nil {

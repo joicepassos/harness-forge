@@ -56,16 +56,13 @@ Open a terminal in the repository you want to configure:
 ```sh
 cd /path/to/project
 harnessforge init
-harnessforge validate --repository .
 ```
 
-`init` creates `.harness/harness.yaml` once. If it already exists, leave it in place and continue with `validate`; the next release will show this as a normal status message. Edit that file to add reviewed rules, then generate agent instructions:
+The guided `init` analyzes the project, shows its findings, asks for additional documents and observations, and offers an AI-assisted proposal. The provider key is requested only if AI is selected and no key is already in the environment. It previews every file and requires confirmation before writing `.harness/harness.yaml`, agent instructions, or proposed skills. A local proposal remains available without an AI provider.
 
-```sh
-harnessforge generate codex
-```
+If `AGENTS.md` or `CLAUDE.md` already contains your team's instructions, the preview preserves them and shows the generated section that will be appended.
 
-The guided `harnessforge install` command is present in source after v1.0.2 and will be available in a later release. Check `harnessforge --help` before using it. The commands above work with v1.0.2.
+The npm package also exposes `harness-forge init`. Existing `harnessforge install` and `harnessforge tui` commands lead to the same setup. Published v1.0.2 predates this workflow; check `harnessforge version` to see which release you have.
 
 HarnessForge stores approved rules in `.harness/harness.yaml` and produces reproducible `AGENTS.md` or `CLAUDE.md` files.
 

@@ -12,7 +12,11 @@ func newRAGCommand() *cobra.Command {
 	var model string
 	var direct bool
 	command := &cobra.Command{Use: "rag [repository] [query]", Short: "Answer with validated repository citations", Args: cobra.ExactArgs(2), RunE: func(cmd *cobra.Command, args []string) error {
-		provider, err := selectedProvider(cmd)
+		provider, err := selectedProviderFor(cmd, args[0])
+		if err != nil {
+			return err
+		}
+		model, err = selectedModelFor(args[0], model)
 		if err != nil {
 			return err
 		}

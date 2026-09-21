@@ -5,11 +5,18 @@ type Document struct {
 	Content []byte
 }
 type Input struct {
-	Project  string
-	Rules    []Rule
-	Commands []string
+	Project   string
+	Summary   string
+	Notes     string
+	Documents []string
+	Rules     []Rule
+	Skills    []Skill
+	Commands  []string
 }
 type Rule struct {
 	ID, Description string
 	Paths           []string
+}
+type Skill struct {
+	ID, Description, Path string
 }

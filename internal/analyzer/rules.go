@@ -44,6 +44,21 @@ type contentRule struct {
 	text  string
 }
 
+type extensionContentRule struct {
+	value     string
+	extension string
+	text      string
+}
+
+func (rule extensionContentRule) Apply(repository Repository) (Finding, bool) {
+	for _, file := range repository.FilesWithExtension(rule.extension) {
+		if repository.FileContains(file, rule.text) {
+			return finding(rule.value, file+" contains "+rule.text), true
+		}
+	}
+	return Finding{}, false
+}
+
 func (rule contentRule) Apply(repository Repository) (Finding, bool) {
 	if !repository.FileContains(rule.path, rule.text) {
 		return Finding{}, false
