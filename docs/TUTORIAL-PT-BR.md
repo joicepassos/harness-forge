@@ -11,7 +11,7 @@ npm install -g harnessforge
 harnessforge version
 ```
 
-Na versão publicada 1.0.2, o npm baixa e verifica o executável durante a instalação e pode mostrar um aviso `allow-scripts`. Se `harnessforge version` funcionar, a instalação terminou. Na próxima versão, o download ocorrerá no primeiro uso, sem script de instalação do npm. `harnessforge --language pt-BR --help` mostra os comandos disponíveis; o comando guiado `harnessforge install` ainda não existe na 1.0.2. Use `harnessforge init` nas etapas abaixo. Para instalar sem npm, consulte [Instalação](INSTALLATION.md).
+Na versão 1.1.0, o npm instala um iniciador sem script de instalação. No primeiro uso, ele baixa e verifica o executável; esse comando pode levar alguns segundos. `harnessforge version` confirma a versão instalada. `harnessforge --language pt-BR --help` mostra os comandos disponíveis. Para instalar sem npm, consulte [Instalação](INSTALLATION.md).
 
 ## 2. Crie um projeto de teste
 
@@ -42,7 +42,7 @@ Abra `analysis.json` e confirme se a descrição corresponde ao pequeno projeto 
 
 ## 4. Crie e revise o harness
 
-Inicialize o arquivo que guarda decisões revisáveis para agentes:
+Execute a configuração guiada. O CLI analisará o projeto, pedirá documentos e observações adicionais, oferecerá uma proposta com IA ou local e mostrará os arquivos antes de pedir sua confirmação:
 
 ```powershell
 harnessforge init

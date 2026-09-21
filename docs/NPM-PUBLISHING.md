@@ -25,11 +25,11 @@ Run these from a reviewed checkout after authenticating with `npm login`:
 cd npm/cli
 npm test
 npm pack --dry-run --ignore-scripts
-npm version 1.0.2 --no-git-tag-version
+npm version 1.1.0 --no-git-tag-version
 npm publish --access public
 ```
 
-Do not publish a package version unless the GitHub Release with the same version already exists. The release workflow sets the npm package version from the protected Git tag in its temporary workspace.
+Do not publish a package version unless the GitHub Release with the same version already exists. The release workflow sets the npm package version from the protected Git tag in its temporary workspace. Starting with v1.1.0, the guided `init` flow is included in the release binary.
 
 ## Testing without publishing
 

@@ -4,7 +4,7 @@ This guide is the practical documentation for HarnessForge. All commands are sho
 
 Run project-facing commands from the target repository unless a repository path is provided explicitly.
 
-Start in the target repository with `harnessforge init`. The command now runs a guided setup: it analyzes the repository, accepts additional text documents and observations, asks for an AI provider only if you choose an AI proposal, previews all generated files, and writes only after confirmation. `harnessforge install [repository]` and `harnessforge tui [repository]` are compatibility aliases. The npm package also exposes `harness-forge init`. Published v1.0.2 still uses the earlier manual `init` behavior; check `harnessforge version` before following this workflow.
+Start in the target repository with `harnessforge init`. In v1.1.0 and newer, the command runs a guided setup: it analyzes the repository, accepts additional text documents and observations, asks for an AI provider only if you choose an AI proposal, previews all generated files, and writes only after confirmation. `harnessforge install [repository]` and `harnessforge tui [repository]` are compatibility aliases. The npm package also exposes `harness-forge init`.
 
 ## Before you begin
 
