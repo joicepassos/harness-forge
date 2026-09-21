@@ -22,7 +22,7 @@ func newConfigCommand() *cobra.Command {
 		if err := preferences.SetProvider(args[1]); err != nil {
 			return err
 		}
-		_, err = fmt.Fprintln(cmd.OutOrStdout(), "Provider preference saved")
+		_, err = fmt.Fprintln(cmd.OutOrStdout(), presentationFor(cmd.OutOrStdout()).status("success", "Provider preference saved"))
 		return err
 	}}
 	get := &cobra.Command{Use: "get provider", Short: "Show the default AI provider", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {

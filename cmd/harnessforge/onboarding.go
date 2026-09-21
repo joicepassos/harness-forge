@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -33,9 +34,10 @@ func newInitCommand() *cobra.Command {
 }
 
 func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repository string, propose setupProposer) (err error) {
+	style := presentationFor(output)
 	defer func() {
 		if errors.Is(err, io.EOF) {
-			fmt.Fprintln(output, "Setup cancelled; no project files changed.")
+			fmt.Fprintln(output, style.status("warning", "Setup cancelled; no project files changed."))
 			err = nil
 		}
 	}()
@@ -51,7 +53,7 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 		return fmt.Errorf("project must be a non-symlink directory")
 	}
 	if existing, readErr := os.ReadFile(filepath.Join(root, ".harness", "harness.yaml")); readErr == nil && !starterHarness(existing) {
-		fmt.Fprintln(output, "This project already has a configured harness. Nothing was changed. Use `harnessforge doctor` to inspect it or `harnessforge generate codex` after reviewing rules.")
+		fmt.Fprintln(output, style.status("warning", "This project already has a configured harness. Nothing was changed. Use `harnessforge doctor` to inspect it or `harnessforge generate codex` after reviewing rules."))
 		return nil
 	} else if readErr != nil && !os.IsNotExist(readErr) {
 		return readErr
@@ -59,18 +61,24 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	fmt.Fprintf(output, "HarnessForge setup\nProject: %s\n\nAnalyzing project...\n\n", root)
+	fmt.Fprintf(output, "%s\n%s\nProject: %s\n\n%s\n\n", style.brand(), style.heading("HarnessForge setup"), root, style.heading("Analyzing project..."))
 	analysis, err := analyzer.AnalyzeWithOptions(ctx, root, analyzer.Options{})
 	if err != nil {
 		return err
 	}
-	analyzer.Print(output, analysis)
+	if style.colorful {
+		var report bytes.Buffer
+		analyzer.Print(&report, analysis)
+		fmt.Fprint(output, style.analysis(report.String()))
+	} else {
+		analyzer.Print(output, analysis)
+	}
 	printSetupDirectories(output, root)
-	fmt.Fprintln(output, "No project files have been changed.")
+	fmt.Fprintln(output, style.status("info", "No project files have been changed."))
 	session := setupSession{reader: bufio.NewReader(input), output: output}
 	documents := defaultSetupDocuments(ctx, root)
 	if len(documents) > 0 {
-		fmt.Fprintln(output, "\nContext detected automatically:")
+		fmt.Fprintln(output, "\n"+style.heading("Context detected automatically:"))
 		for _, document := range documents {
 			fmt.Fprintf(output, "- %s\n", document.Source)
 		}
@@ -80,7 +88,7 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 		return err
 	}
 	if len(documents) > 0 {
-		fmt.Fprintln(output, "Selected context:")
+		fmt.Fprintln(output, style.heading("Selected context:"))
 		for _, document := range documents {
 			label := document.Source
 			if document.Truncated {
@@ -108,7 +116,7 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 			return err
 		}
 		if !allowed {
-			fmt.Fprintln(output, "AI call cancelled; continuing with a local proposal.")
+			fmt.Fprintln(output, style.status("warning", "AI call cancelled; continuing with a local proposal."))
 			useAI = false
 			config = setupProvider{}
 		}
@@ -120,7 +128,7 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 		fmt.Fprintln(output, "Preparing the proposal with the selected context...")
 		suggestion, err = propose(ctx, config, analysis, documents, notes)
 		if err != nil {
-			fmt.Fprintf(output, "AI proposal could not be validated: %v\n", err)
+			fmt.Fprintln(output, style.status("error", fmt.Sprintf("AI proposal could not be validated: %v", err)))
 			continueLocal, askErr := session.confirm("Continue with a local proposal?")
 			if askErr != nil {
 				return askErr
@@ -145,13 +153,13 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 		return err
 	}
 	if !approved {
-		fmt.Fprintln(output, "Setup cancelled; no project files changed.")
+		fmt.Fprintln(output, style.status("warning", "Setup cancelled; no project files changed."))
 		return nil
 	}
 	if err := writeSetupPlan(ctx, root, plan.Files); err != nil {
 		return err
 	}
-	fmt.Fprintln(output, "Setup complete. Review the generated files before committing them.")
+	fmt.Fprintln(output, style.status("success", "Setup complete. Review the generated files before committing them."))
 	return nil
 }
 
@@ -265,7 +273,7 @@ func askSetupAgents(session setupSession) ([]string, error) {
 }
 
 func showSetupPlan(output io.Writer, plan setupPlan) {
-	fmt.Fprintln(output, "\nProposed setup (nothing has been written):")
+	fmt.Fprintln(output, "\n"+presentationFor(output).heading("Proposed setup (nothing has been written):"))
 	if plan.Summary != "" {
 		fmt.Fprintf(output, "AI summary: %s\n", plan.Summary)
 	}

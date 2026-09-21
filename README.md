@@ -49,6 +49,20 @@ harnessforge version
 
 Release binaries support macOS and Linux (`amd64`, `arm64`) and Windows (`amd64`). See [Installation](docs/INSTALLATION.md) for manual downloads, updates, and troubleshooting.
 
+## Terminal appearance
+
+HarnessForge uses the blue and orange of its anvil logo in interactive terminal output. The help screen starts with `⚒ HarnessForge`; `init` and its `install` alias highlight each guided setup step. For example:
+
+```text
+[HF] HarnessForge
+HarnessForge setup
+Project: /path/to/project
+
+Analyzing project...
+```
+
+The example shows the plain-text form. Piped output, `NO_COLOR=1`, and `CLICOLOR=0` omit terminal colors. Set `HARNESSFORGE_ASCII=1` to use ASCII status symbols in a colored terminal. JSON output remains undecorated.
+
 ## Get started
 
 Open a terminal in the repository you want to configure:
