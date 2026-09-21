@@ -23,6 +23,18 @@ func TestTUICreatesHarnessAfterConfirmation(t *testing.T) {
 	}
 }
 
+func TestTUIMenuIsReadableWithoutColor(t *testing.T) {
+	var output bytes.Buffer
+	if err := runTUI(strings.NewReader("2\n5\n"), &output, t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Actions\n  1)  Create harness", "  5)  Exit", "Choice [5]: Validate harness", "Harness is not valid:"} {
+		if !strings.Contains(output.String(), want) {
+			t.Fatalf("missing %q in %q", want, output.String())
+		}
+	}
+}
+
 func TestInstallCommandExposesTUIAsAlias(t *testing.T) {
 	command := newTUICommand()
 	if command.Use != "install [repository]" {

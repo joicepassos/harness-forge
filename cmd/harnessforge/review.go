@@ -13,7 +13,8 @@ func newReviewCommand() *cobra.Command {
 		if err := application.NewReview(infrastructure.YAMLRuleStore{}).Execute(path, args[0], args[1]); err != nil {
 			return err
 		}
-		_, err := fmt.Fprintf(cmd.OutOrStdout(), "Rule %s: %s\n", args[0], args[1])
+		message := fmt.Sprintf("Rule %s: %s", args[0], args[1])
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), presentationFor(cmd.OutOrStdout()).status("success", message))
 		return err
 	}}
 	cmd.Flags().StringVar(&path, "file", ".harness/harness.yaml", "Harness YAML file")

@@ -47,7 +47,13 @@ func (v *languageValue) Set(value string) error {
 }
 
 func (l *localizer) printf(cmd *cobra.Command, key string, values ...any) error {
-	_, err := fmt.Fprintf(cmd.OutOrStdout(), l.text(key), values...)
+	message := fmt.Sprintf(l.text(key), values...)
+	if key == "output.created" || key == "output.valid" || key == "output.skill" {
+		message = presentationFor(cmd.OutOrStdout()).status("success", message)
+	} else if key == "output.exists" {
+		message = presentationFor(cmd.OutOrStdout()).status("warning", message)
+	}
+	_, err := fmt.Fprint(cmd.OutOrStdout(), message)
 	return err
 }
 

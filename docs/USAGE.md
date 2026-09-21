@@ -2,6 +2,8 @@
 
 This guide is the practical documentation for HarnessForge. All commands are shown with `go run ./cmd/harnessforge`; replace that prefix with `harnessforge` if you installed or built the executable.
 
+The CLI colors headings and status messages when connected to a terminal. Redirected output and `NO_COLOR=1` use plain text; `HARNESSFORGE_ASCII=1` selects ASCII symbols while retaining color. Commands that return JSON do not add branding or status lines to standard output.
+
 Run project-facing commands from the target repository unless a repository path is provided explicitly.
 
 Start in the target repository with `harnessforge init`. Published v1.0.2 reports an error if the configuration already exists; keep the file and continue with `harnessforge validate --repository .`. Later releases report this as a normal status message without changing the file. A guided terminal workflow (`harnessforge install [repository]`, with `tui` as an alias) was added after v1.0.2; check `harnessforge --help` to see whether your installed version includes it.

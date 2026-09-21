@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -102,8 +103,15 @@ func newRootCommand() *cobra.Command {
 				return analyzer.PrintJSON(cmd.OutOrStdout(), analysis)
 			}
 
-			analyzer.Print(cmd.OutOrStdout(), analysis)
-			return nil
+			style := presentationFor(cmd.OutOrStdout())
+			if !style.colorful {
+				analyzer.Print(cmd.OutOrStdout(), analysis)
+				return nil
+			}
+			var output bytes.Buffer
+			analyzer.Print(&output, analysis)
+			_, err = fmt.Fprint(cmd.OutOrStdout(), style.analysis(output.String()))
+			return err
 		},
 	}
 	analyzeCmd.Flags().Bool("git", false, "Include Git repository metadata")
@@ -124,7 +132,7 @@ func newRootCommand() *cobra.Command {
 		if err == nil {
 			applyLanguage(rootCmd, l)
 		}
-		cmd.Printf("%s\n\n%s", cmd.Short, cmd.UsageString())
+		cmd.Print(presentationFor(cmd.OutOrStdout()).help(cmd.Short, cmd.UsageString()))
 	})
 	return rootCmd
 }

@@ -21,7 +21,10 @@ func newDoctorCommand() *cobra.Command {
 			return err
 		}
 		if fix {
-			fmt.Fprintln(cmd.OutOrStdout(), "Proposals only: review and apply any changes manually.")
+			out := cmd.ErrOrStderr()
+			if _, err := fmt.Fprintln(out, presentationFor(out).status("warning", "Proposals only: review and apply any changes manually.")); err != nil {
+				return err
+			}
 		}
 		encoder := json.NewEncoder(cmd.OutOrStdout())
 		encoder.SetIndent("", "  ")
