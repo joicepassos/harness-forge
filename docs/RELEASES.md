@@ -21,7 +21,7 @@ Every archive has a corresponding line in `harnessforge_<version>_checksums.txt`
 ## Release procedure
 
 1. Start from a reviewed commit with a clean working tree and run the required Go checks from the contributing guide using Go 1.27.1.
-2. Choose an unused semantic version and review the generated release notes and archive names.
+2. Choose an unused semantic version with exactly three numeric components (`MAJOR.MINOR.PATCH`), for example `1.1.2`, and review the generated release notes and archive names. A fourth numeric component such as `1.1.1.2` is invalid; use a new patch version or a prerelease suffix such as `1.1.2-rc.1`. The workflow validates the tag before building.
 3. Create and push an annotated `v1.*` tag. The release workflow runs only for that tag pattern. It runs tests, vetting, and source vulnerability checks natively on Linux, macOS, and Windows; creates a candidate archive set; and performs clean installer smoke tests on each operating system before publication.
 4. Confirm the release's version, commit, build date, checksum manifest, archive contents, release-binary vulnerability scan, installer scripts, and build attestations before announcing it.
 
@@ -30,6 +30,8 @@ The core workflow creates the authoritative GitHub Release. For the controlled-p
 The core release job targets the GitHub Environment named `release`. Configure it with required reviewers before enabling releases, and protect `v1.*` tags so only release maintainers can create them. These are organization settings and are intentionally not emulated by repository files.
 
 ## Rollback and correction
+
+The `v1.1.1.2` release attempt failed on all three installer smoke platforms because its candidate version, `1.1.1.2-SNAPSHOT-7d7e4dd`, is not a semantic version. Neither the GitHub Release nor the npm publication ran. Retain the failed tag and create a new unused three-component patch tag on the reviewed commit (for example `v1.1.2`, if still unused). Re-running the old workflow cannot fix its tag. Keep installer version validation enabled; accepting four-component versions would also break npm publication.
 
 The `v1.1.0` release attempt stopped during clean installer smoke tests, before GitHub Release artifacts or the npm package were published. The CLI help text went to stderr, while the smoke tests expected stdout. The tag is retained as a record of that failed attempt; `v1.1.1` fixes the output stream and is the replacement release.
 
