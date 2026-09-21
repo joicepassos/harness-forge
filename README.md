@@ -25,21 +25,21 @@ npm install -g harnessforge
 harnessforge version
 ```
 
-Starting with v1.1.0, the npm launcher downloads and verifies the release archive on first use, without an npm install script. The first `harnessforge` command may take a few seconds.
+Starting with v1.1.1, the npm launcher downloads and verifies the release archive on first use, without an npm install script. The first `harnessforge` command may take a few seconds.
 
 ### Direct download
 
 Download a pinned release and install it.
 
 ```sh
-curl -fsSLO https://github.com/joicepassos/harness-forge/releases/download/v1.1.0/install.sh
-sh install.sh --version 1.1.0 --install-dir "$HOME/.local/bin"
+curl -fsSLO https://github.com/joicepassos/harness-forge/releases/download/v1.1.1/install.sh
+sh install.sh --version 1.1.1 --install-dir "$HOME/.local/bin"
 ```
 
 For Windows, use the inspected PowerShell installer:
 
 ```powershell
-$Version = '1.1.0'
+$Version = '1.1.1'
 Invoke-WebRequest "https://github.com/joicepassos/harness-forge/releases/download/v$Version/install.ps1" -OutFile .\install-harnessforge.ps1
 Get-Content .\install-harnessforge.ps1
 .\install-harnessforge.ps1 -Version $Version -InstallDir "$env:USERPROFILE\bin"
@@ -62,7 +62,7 @@ The guided `init` analyzes the project, shows its findings, asks for additional 
 
 If `AGENTS.md` or `CLAUDE.md` already contains your team's instructions, the preview preserves them and shows the generated section that will be appended.
 
-The npm package also exposes `harness-forge init`. Existing `harnessforge install` and `harnessforge tui` commands lead to the same setup. Use v1.1.0 or newer for this guided workflow.
+The npm package also exposes `harness-forge init`. Existing `harnessforge install` and `harnessforge tui` commands lead to the same setup. Use v1.1.1 or newer for this guided workflow.
 
 HarnessForge stores approved rules in `.harness/harness.yaml` and produces reproducible `AGENTS.md` or `CLAUDE.md` files.
 

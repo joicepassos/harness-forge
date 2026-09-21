@@ -11,7 +11,7 @@ npm install -g harnessforge
 harnessforge version
 ```
 
-Na versão 1.1.0, o npm instala um iniciador sem script de instalação. No primeiro uso, ele baixa e verifica o executável; esse comando pode levar alguns segundos. `harnessforge version` confirma a versão instalada. `harnessforge --language pt-BR --help` mostra os comandos disponíveis. Para instalar sem npm, consulte [Instalação](INSTALLATION.md).
+Na versão 1.1.1, o npm instala um iniciador sem script de instalação. No primeiro uso, ele baixa e verifica o executável; esse comando pode levar alguns segundos. `harnessforge version` confirma a versão instalada. `harnessforge --language pt-BR --help` mostra os comandos disponíveis. Para instalar sem npm, consulte [Instalação](INSTALLATION.md).
 
 ## 2. Crie um projeto de teste
 
