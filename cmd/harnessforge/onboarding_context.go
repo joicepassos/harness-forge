@@ -35,7 +35,7 @@ type setupSession struct {
 }
 
 func (s setupSession) ask(question string) (string, error) {
-	if _, err := fmt.Fprint(s.output, question); err != nil {
+	if _, err := fmt.Fprint(s.output, presentationFor(s.output).accent(question)); err != nil {
 		return "", err
 	}
 	line, err := s.reader.ReadString('\n')

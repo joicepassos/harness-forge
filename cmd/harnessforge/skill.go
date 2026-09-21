@@ -27,7 +27,7 @@ func newSkillCommand() *cobra.Command {
 		if err := application.NewGenerate(infrastructure.Store{}).Execute(args[0], proposal, approve); err != nil {
 			return err
 		}
-		_, err := fmt.Fprintf(cmd.OutOrStdout(), "Generated skill %s\n", proposal.ID)
+		_, err := fmt.Fprintln(cmd.OutOrStdout(), presentationFor(cmd.OutOrStdout()).status("success", "Generated skill "+proposal.ID))
 		return err
 	}}
 	generate.Flags().BoolVar(&approve, "approve", false, "Confirm human review of this proposal")
