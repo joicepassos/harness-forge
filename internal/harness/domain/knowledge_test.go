@@ -17,6 +17,8 @@ func candidateKnowledge() KnowledgeItem {
 
 func TestKnowledgeItemValidatesOfflineAndSeparatesReviewFromHealth(t *testing.T) {
 	item := candidateKnowledge()
+	item.LegacyReviewStatus = "approved"
+	item.LegacyReview = &ReviewRecord{ContentSHA256: HashKnowledgeContent(item.Content), EvidenceSHA256: strings.Repeat("a", 64)}
 	item.Review = KnowledgeApproved
 	item.Health = KnowledgeStale
 	item.Reviewer = "alice"

@@ -39,16 +39,18 @@ const (
 
 // KnowledgeItem is a stable, reviewable unit of project knowledge.
 type KnowledgeItem struct {
-	ID            string               `json:"id" yaml:"id"`
-	Kind          KnowledgeKind        `json:"kind" yaml:"kind"`
-	Scope         Scope                `json:"scope,omitempty" yaml:"scope,omitempty"`
-	Content       string               `json:"content" yaml:"content"`
-	Origin        string               `json:"origin" yaml:"origin"`
-	Review        KnowledgeReviewState `json:"review" yaml:"review"`
-	Health        KnowledgeHealth      `json:"health" yaml:"health"`
-	Evidence      []KnowledgeEvidence  `json:"evidence,omitempty" yaml:"evidence,omitempty"`
-	Reviewer      string               `json:"reviewer,omitempty" yaml:"reviewer,omitempty"`
-	ContentSHA256 string               `json:"content_sha256,omitempty" yaml:"content_sha256,omitempty"`
+	ID                 string               `json:"id" yaml:"id"`
+	Kind               KnowledgeKind        `json:"kind" yaml:"kind"`
+	Scope              Scope                `json:"scope,omitempty" yaml:"scope,omitempty"`
+	Content            string               `json:"content" yaml:"content"`
+	Origin             string               `json:"origin" yaml:"origin"`
+	Review             KnowledgeReviewState `json:"review" yaml:"review"`
+	Health             KnowledgeHealth      `json:"health" yaml:"health"`
+	Evidence           []KnowledgeEvidence  `json:"evidence,omitempty" yaml:"evidence,omitempty"`
+	Reviewer           string               `json:"reviewer,omitempty" yaml:"reviewer,omitempty"`
+	ContentSHA256      string               `json:"content_sha256,omitempty" yaml:"content_sha256,omitempty"`
+	LegacyReviewStatus string               `json:"legacy_review_status,omitempty" yaml:"legacy_review_status,omitempty"`
+	LegacyReview       *ReviewRecord        `json:"legacy_review,omitempty" yaml:"legacy_review,omitempty"`
 }
 
 // KnowledgeEvidence records a source location and the exact observed material.
@@ -96,6 +98,9 @@ func (k KnowledgeItem) Validate() error {
 	}
 	if k.ContentSHA256 != "" && !validSHA256(k.ContentSHA256) {
 		return fmt.Errorf("content_sha256: expected 64 hexadecimal characters")
+	}
+	if k.LegacyReviewStatus != "" && k.LegacyReviewStatus != "candidate" && k.LegacyReviewStatus != "approved" && k.LegacyReviewStatus != "rejected" {
+		return fmt.Errorf("legacy_review_status: unsupported value %q", k.LegacyReviewStatus)
 	}
 	if k.Review != KnowledgeCandidate {
 		if strings.TrimSpace(k.Reviewer) == "" {
