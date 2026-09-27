@@ -29,9 +29,9 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   repository-relative paths.
 - T2.2–T2.6: `.forge/forge.yaml` has a versioned contract independent from
   Harness IR v1/v2; offline loading and reference validation are covered.
-  Full canonical field parity is incomplete: legacy `generate` can receive a
-  partial Harness when loading Forge, and v1/v2 round-trip claims need broader
-  field-level coverage.
+  Forge-to-legacy generation now fails closed with directions to native sync,
+  rather than emitting a partial Harness. Versioned migration round-trip
+  fixtures pass; broader field-level parity beyond mapped fields remains open.
 - T3.1–T3.4: migration preview reports unmapped choices, apply preserves the
   legacy source, rollback protects modified/unowned output, and v1 migration
   remains compatible. Skill evidence now survives conversion through the
@@ -51,21 +51,23 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   configuration, or execution errors 2. The cross-platform workflow runs both
   no-Forge clone gates and verifies generated drift. It does not launch an
   external agent against the clone, so runtime discovery remains unverified.
-- T5.2–T5.4: explicit candidate import, reviewer-bound approval with evidence
-  revalidation, and Forge knowledge/evidence drift are covered. `drift` reports
+- T5.2–T5.4: explicit candidate import, reviewer-bound approval bound to rule,
+  evidence, and reviewable metadata hashes, and Forge knowledge/evidence drift
+  are covered. Legacy approvals without the metadata digest require re-review.
+  `drift` reports
   missing or changed evidence separately and always leaves semantic conformance
   `not_evaluated`; evidence presence is not treated as proof of conformance.
 - T5.5: `harnessforge onboard` provides text/JSON guidance, explicit handling of
   missing/invalid/ambiguous layouts, candidate import, review-before-export
   steps, and safe sync guidance. It is command-driven rather than an interactive
   wizard; model-backed proposals remain optional.
-- T6.1: approved knowledge is selected with content/evidence hash validation,
-  freshness checks, provenance, and scope metadata. T6.2 is partial: scope and
-  content use lexical matching; explicit keywords, path/glob evaluation against
-  a task path, and backend/frontend build-level selection coverage are missing.
-  T6.3 reports budget overflow for selected knowledge, but early prompt-envelope
-  overflow lacks complete exclusion details. T6.4 exposes comparison proxies;
-  task-level quality and an independent baseline remain unmeasured.
+- T6.1–T6.2: approved knowledge is selected with content/evidence and review
+  metadata hash validation, freshness checks, provenance, scope, explicit
+  keywords, and task-path glob matching. The CLI exposes task paths. Backend /
+  frontend `Build` integration coverage verifies both selection and explicit
+  out-of-scope exclusions. T6.3 reports selected-item and early prompt-envelope
+  overflow with the configured estimator and an explicit excluded-prompt reason.
+  T6.4 exposes comparison proxies; task-level quality remains unmeasured.
 - T7.1–T7.5: local observation capture, review, candidate publication,
   audit provenance, deduplication, and checkout isolation are implemented and
   covered. T7.4 supports preview/apply, age and quota retention, pending-item
@@ -85,13 +87,17 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   skills without duplicating their bodies. Updates and stale-file cleanup use
   generated-manifest hashes, and symlinks/special files are rejected.
 - T8.5: the opt-in gate runner supports workspace, timeout, cancellation and
-  bounded output. Policies marked `enforced` fail closed because no policy
+  bounded output. Cancellation terminates the shell process tree on supported
+  operating systems. Policies marked `enforced` fail closed because no policy
   enforcement executor is implemented. T8.6 adds a dedicated CI workflow that
   verifies Forge sync and runs the repository's `go test ./...` gate; both
   commands passed locally. The workflow has not yet run on GitHub.
 - T9.1: the versioned inventory records Mili, PromptForge, and Toca as candidate
-  commits, and a 12-task draft is available for review. User task approval,
-  agent/model configuration, and the run/evaluation protocol are not frozen.
+  commits, and a 12-task draft is available. The user approved MLI-01–05,
+  Codex CLI's local default configuration, and three repetitions. Pilot
+  conditions and the Forge source/export still need a clean, reproducible freeze;
+  the Mili checkout's current context/index files are untracked and derive from
+  a modified tree. See [the partial task approval](pilot/mili-task-approval-v1.json).
   T0.4 and T9.2–T9.5 remain pending; T9.6 is deferred until comparative
   evidence exists.
 
@@ -112,9 +118,9 @@ has not yet been run. No paid provider calls were made.
 - External Cursor/OpenCode/Codex/Claude runtime validation, end-to-end clone
   agent runs, pilot measurements, and the runtime decision require pinned agent
   builds and representative repositories; none are fabricated here.
-- T0.4 and T9.2–T9.5 need a frozen validation corpus, executable tasks, pinned
-  agent/model configurations, and human review. Mili's clean HEAD is available
-  as one candidate; its modified working tree is excluded. The available Go
+- T0.4 and T9.2–T9.5 need the remaining condition/export freeze and independent
+  evaluator rubric. Mili's clean HEAD and the five approved task texts are
+  pinned; its modified code working tree is excluded. The available Go
   fixture is only development data and is not treated as pilot evidence.
 - T6.2 now supports explicit knowledge keywords and task paths through the
   context API and `context explain --task-path`; glob matching is segment-aware
