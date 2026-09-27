@@ -127,3 +127,18 @@ func TestServeRejectsInvalidJSON(t *testing.T) {
 		t.Fatalf("expected parse error: %s", fmt.Sprint(out.String()))
 	}
 }
+
+func TestServeRespondsToInvalidRequestWithoutID(t *testing.T) {
+	var out strings.Builder
+	err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(`{"method":"resources/list"}`), &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var response rpcResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Error == nil || response.Error.Code != -32600 || response.ID != nil {
+		t.Fatalf("invalid request response = %#v", response)
+	}
+}

@@ -79,10 +79,8 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 			continue
 		}
 		if req.JSONRPC != "2.0" || req.Method == "" {
-			if len(req.ID) != 0 {
-				if e := writeResponse(w, rpcResponse{JSONRPC: "2.0", ID: decodeID(req.ID), Error: &rpcError{Code: -32600, Message: "invalid request"}}); e != nil {
-					return e
-				}
+			if e := writeResponse(w, rpcResponse{JSONRPC: "2.0", ID: decodeID(req.ID), Error: &rpcError{Code: -32600, Message: "invalid request"}}); e != nil {
+				return e
 			}
 			continue
 		}
