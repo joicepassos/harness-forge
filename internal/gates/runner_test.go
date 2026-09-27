@@ -2,6 +2,7 @@ package gates
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -23,6 +24,88 @@ func TestRunExecutesOnlyRequestedGateInWorkspaceAndReportsExit(t *testing.T) {
 		t.Fatalf("results=%#v", results)
 	}
 }
+
+func TestRunCancellationAndTimeoutStopGateDescendants(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a helper process")
+	}
+	for _, mode := range []string{"cancel", "timeout"} {
+		t.Run(mode, func(t *testing.T) {
+			root := t.TempDir()
+			marker := filepath.Join(root, "survived")
+			started := filepath.Join(root, "started")
+			command := descendantCommand(t, root, started, marker)
+			ctx, cancel := context.WithCancel(context.Background())
+			timeout := 10 * time.Second
+			if mode == "timeout" {
+				timeout = 500 * time.Millisecond
+				if runtime.GOOS == "windows" {
+					timeout = 3 * time.Second
+				}
+			}
+			type outcome struct {
+				results []Result
+				err     error
+			}
+			done := make(chan outcome, 1)
+			go func() {
+				results, runErr := Run(ctx, root, []Gate{{ID: "tree", Command: command}}, timeout)
+				done <- outcome{results: results, err: runErr}
+			}()
+			if mode == "cancel" {
+				// Ensure the descendant has started before canceling its shell.
+				waitForFile(t, started, 8*time.Second)
+				cancel()
+			} else {
+				waitForFile(t, started, 8*time.Second)
+			}
+			select {
+			case result := <-done:
+				if mode == "cancel" && !errors.Is(result.err, context.Canceled) {
+					t.Fatalf("cancellation error = %v, want context.Canceled", result.err)
+				}
+				if mode == "timeout" && (result.err != nil || len(result.results) != 1 || !result.results[0].TimedOut) {
+					t.Fatalf("timeout result = %#v, err=%v", result.results, result.err)
+				}
+			case <-time.After(12 * time.Second):
+				t.Fatal("gate did not stop after cancellation/timeout")
+			}
+			// The child waits several seconds before writing this marker.
+			time.Sleep(1200 * time.Millisecond)
+			if _, err := os.Stat(marker); !os.IsNotExist(err) {
+				t.Fatalf("descendant survived process-tree termination (marker stat error: %v)", err)
+			}
+		})
+	}
+}
+
+func waitForFile(t *testing.T, path string, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(path); err == nil {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %s", path)
+}
+
+func descendantCommand(t *testing.T, root, started, marker string) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		// A batch file avoids cmd.exe /C's nested-quote parsing differences.
+		batch := "@echo off\r\necho started>" + started + "\r\nping -n 12 127.0.0.1 >NUL\r\necho alive>" + marker + "\r\nping -n 30 127.0.0.1 >NUL\r\n"
+		path := filepath.Join(root, "gate-tree.cmd")
+		if err := os.WriteFile(path, []byte(batch), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return "call " + path
+	}
+	return "(echo started > " + shellQuote(started) + "; sleep 4; echo alive > " + shellQuote(marker) + ") & wait"
+}
+
+func shellQuote(value string) string { return "'" + value + "'" }
 
 func TestRunBoundsTimeoutAndRejectsUnsafeWorkspace(t *testing.T) {
 	root := t.TempDir()

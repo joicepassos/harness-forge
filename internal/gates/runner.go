@@ -77,6 +77,7 @@ func Run(ctx context.Context, root string, items []Gate, timeout time.Duration) 
 			} else {
 				command = exec.CommandContext(runCtx, "/bin/sh", "-c", gate.Command)
 			}
+			configureProcessTree(command)
 			command.Dir = cwd
 			capture := &limitedOutput{}
 			command.Stdout = capture
