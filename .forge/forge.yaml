@@ -1,0 +1,12 @@
+layout_version: 1
+ir_version: 2
+project:
+  name: harness-forge
+  languages: [Go]
+targets: [codex]
+references: {}
+quality_gates:
+  - id: go-tests
+    command: go test ./...
+    workspace: .
+    workspaces: [.]
