@@ -2,8 +2,11 @@
 
 Status: documentation-based contract proposal. No OpenCode binary was run as
 part of this research. Official documentation was consulted on 2026-09-27; the
-links below are the source of truth for the documented behavior, while installed
-version behavior still needs executable tests.
+V1 Rules page reported last updated 2026-09-26, while the V2 pages identify a
+documentation surface but do not specify an OpenCode release/build number for
+these semantics. “V1” and “V2” below label documentation contracts, not pinned
+binary versions. The linked official pages are the source of documented
+behavior; installed-version behavior still needs executable tests.
 
 ## Verified behavior from official documentation
 
@@ -88,4 +91,9 @@ does not prove that OpenCode loaded a file.
 
 This artifact is a research/validation proposal for T8.2, not evidence that the
 OpenCode adapter is implemented or that any executable compatibility test has
-passed.
+passed. The local inventory found no `opencode` executable on PATH, so
+discovery, precedence, workspace-boundary, environment-override, and
+effective-context claims have not been runtime-validated. Documentation-based
+behavior must not be presented as a tested version matrix until the exact
+release, install channel, OS, fixture revision, and observed outcome are
+recorded.
