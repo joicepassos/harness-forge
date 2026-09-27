@@ -7,6 +7,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T0.1: this status record captures the branch, current verification, and open
   work. The checkout also contained pre-existing repository-context changes;
   those are still uncommitted and are not claimed as part of this plan's tasks.
+- T0.2: the six priority findings are mapped to regression tests in
+  [the acceptance map](acceptance/t0.2-regressions.md).
+- T0.3: reusable single-module and Go-workspace monorepo fixtures cover
+  repository paths and workspace roots. Windows path semantics are covered by
+  host-independent resolver tests, not by a Windows filesystem fixture.
 - T0.5: [ADR 0001](adr/0001-layout-cli-contracts.md) defines layout coexistence,
   relative references, JSON diagnostics version, and CLI exit codes.
 - T1.1–T1.5: generation preserves skills and structured workspaces; generated
@@ -43,7 +48,8 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T7.1–T7.5: explicit local capture, review, candidate publication, retention,
   quota, integrity, and checkout isolation are implemented.
 - T8.1/T8.2: official-doc behavior matrices exist; no Cursor/OpenCode binary
-  runtime tests were performed, so release acceptance remains open.
+  runtime tests were performed, so release acceptance remains open. The
+  snapshots separate documented behavior from exact-build runtime evidence.
 - T8.3: transport-neutral read-only context resolver is implemented. JSON-RPC,
   session, authentication, and client tests remain out of scope.
 - T8.4: sync validates and publishes portable Agent Skills bundles under
