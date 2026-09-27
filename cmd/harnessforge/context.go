@@ -14,6 +14,7 @@ func newContextCommand() *cobra.Command {
 	var bm25 bool
 	var mmr bool
 	var includeKnowledge bool
+	var taskPaths []string
 	command := &cobra.Command{Use: "context", Short: "Inspect model context"}
 	explain := &cobra.Command{Use: "explain [repository] [prompt]", Short: "Explain repository context selection", Args: cobra.ExactArgs(2), RunE: func(cmd *cobra.Command, args []string) error {
 		if budget < 0 {
@@ -27,7 +28,7 @@ func newContextCommand() *cobra.Command {
 		if includeKnowledge {
 			selection = "forge"
 		}
-		plan, err := contextpack.Build(cmd.Context(), args[0], args[1], contextModel, contextpack.Options{BudgetTokens: budget, UseBM25: bm25, UseMMR: mmr, Layout: selection})
+		plan, err := contextpack.Build(cmd.Context(), args[0], args[1], contextModel, contextpack.Options{BudgetTokens: budget, UseBM25: bm25, UseMMR: mmr, Layout: selection, TaskPaths: taskPaths})
 		if err != nil {
 			return err
 		}
@@ -46,6 +47,7 @@ func newContextCommand() *cobra.Command {
 	explain.Flags().BoolVar(&bm25, "bm25", false, "Use the experimental BM25 lexical ranking baseline")
 	explain.Flags().BoolVar(&mmr, "mmr", false, "Use experimental diversity-aware MMR-like ranking")
 	explain.Flags().BoolVar(&includeKnowledge, "knowledge", false, "Include approved Forge knowledge as task context")
+	explain.Flags().StringArrayVar(&taskPaths, "task-path", nil, "Repository-relative file path affected by the task (repeatable; used with --knowledge)")
 	command.AddCommand(explain)
 	return command
 }
