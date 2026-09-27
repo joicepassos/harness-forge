@@ -31,7 +31,8 @@
         }
       }
     },
-    "quality_gates": { "type": "array", "items": { "$ref": "#/$defs/qualityGate" } }
+    "quality_gates": { "type": "array", "items": { "$ref": "#/$defs/qualityGate" } },
+    "policies": { "type": "array", "items": { "$ref": "#/$defs/policy" } }
   },
   "$defs": {
     "text": { "type": "string", "pattern": "\\S" },
@@ -48,6 +49,16 @@
         "id": { "$ref": "#/$defs/text" }, "command": { "$ref": "#/$defs/text" },
         "workspace": { "$ref": "#/$defs/relativePath" },
         "workspaces": { "type": "array", "items": { "$ref": "#/$defs/relativePath" } }
+      }
+    },
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "description", "capability", "executor"],
+      "properties": {
+        "id": { "$ref": "#/$defs/text" },
+        "description": { "$ref": "#/$defs/text" },
+        "capability": { "enum": ["advisory", "checkable", "enforced", "unsupported"] },
+        "executor": { "$ref": "#/$defs/text" }
       }
     }
   }

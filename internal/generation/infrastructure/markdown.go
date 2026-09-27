@@ -65,6 +65,14 @@ func (m Markdown) Render(input domain.Input) (domain.Document, error) {
 			out.WriteByte('\n')
 		}
 	}
+	if len(input.Policies) > 0 {
+		policies := append([]domain.Policy(nil), input.Policies...)
+		sort.Slice(policies, func(i, j int) bool { return policies[i].ID < policies[j].ID })
+		out.WriteString("\n## Policy capability notes\n\n")
+		for _, policy := range policies {
+			fmt.Fprintf(&out, "- [%s] %s — capability: **%s**; executor: %s. This instruction text does not enforce system permissions.\n", policy.ID, policy.Description, policy.Capability, policy.Executor)
+		}
+	}
 	return domain.Document{Path: path, Content: out.Bytes()}, nil
 }
 

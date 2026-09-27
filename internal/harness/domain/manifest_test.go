@@ -44,6 +44,22 @@ func TestManifestRejectsInvalidRelativePaths(t *testing.T) {
 	}
 }
 
+func TestManifestPolicyCapabilitiesAreExplicit(t *testing.T) {
+	m := validManifest()
+	m.Policies = []Policy{{ID: "network", Description: "No external network", Capability: "advisory", Executor: "text"}}
+	if err := m.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	m.Policies[0].Capability = "enforced"
+	if err := m.Validate(); err == nil || !strings.Contains(err.Error(), "text instructions cannot be enforced") {
+		t.Fatalf("text-only policy was reported enforceable: %v", err)
+	}
+	m.Policies[0].Executor = "os-sandbox"
+	if err := m.Validate(); err != nil {
+		t.Fatalf("explicit enforcement executor rejected: %v", err)
+	}
+}
+
 func TestManifestReportsClearFieldErrors(t *testing.T) {
 	tests := []struct {
 		name   string

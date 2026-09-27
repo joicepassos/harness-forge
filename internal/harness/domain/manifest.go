@@ -16,6 +16,14 @@ type Manifest struct {
 	Targets       []string           `json:"targets" yaml:"targets"`
 	References    ManifestReferences `json:"references" yaml:"references"`
 	QualityGates  []QualityGate      `json:"quality_gates,omitempty" yaml:"quality_gates,omitempty"`
+	Policies      []Policy           `json:"policies,omitempty" yaml:"policies,omitempty"`
+}
+
+type Policy struct {
+	ID          string `json:"id" yaml:"id"`
+	Description string `json:"description" yaml:"description"`
+	Capability  string `json:"capability" yaml:"capability"`
+	Executor    string `json:"executor" yaml:"executor"`
 }
 
 type ManifestReferences struct {
@@ -117,6 +125,27 @@ func (m Manifest) Validate() error {
 		}
 		if gate.Workspace != "" && (len(gate.Workspaces) == 0 || gate.Workspaces[0] != gate.Workspace) {
 			return fmt.Errorf("%s: workspace must be represented in workspaces", field)
+		}
+	}
+	ids = map[string]bool{}
+	for i, policy := range m.Policies {
+		field := fmt.Sprintf("policies[%d]", i)
+		if err := uniqueID(field, policy.ID, ids); err != nil {
+			return err
+		}
+		if strings.TrimSpace(policy.Description) == "" {
+			return fmt.Errorf("%s.description: must not be empty", field)
+		}
+		switch policy.Capability {
+		case "advisory", "checkable", "enforced", "unsupported":
+		default:
+			return fmt.Errorf("%s.capability: expected advisory, checkable, enforced, or unsupported", field)
+		}
+		if strings.TrimSpace(policy.Executor) == "" {
+			return fmt.Errorf("%s.executor: must identify the capability executor", field)
+		}
+		if policy.Capability == "enforced" && (policy.Executor == "text" || policy.Executor == "") {
+			return fmt.Errorf("%s: text instructions cannot be enforced", field)
 		}
 	}
 	return nil
