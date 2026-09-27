@@ -100,16 +100,71 @@ func TestForgeKnowledgeCandidatesSelectByTaskPathGlobAndKeyword(t *testing.T) {
 				t.Fatal(err)
 			}
 			if test.want == "" {
-				if len(items) != 0 {
-					t.Fatalf("expected no scoped knowledge without keyword match, got %#v", items)
+				for _, item := range items {
+					if item.Status != "excluded" {
+						t.Fatalf("expected no eligible scoped knowledge without keyword match, got %#v", items)
+					}
 				}
 				return
 			}
-			if len(items) != 1 || items[0].KnowledgeID != test.want {
+			var selected []string
+			for _, item := range items {
+				if item.Status != "excluded" {
+					selected = append(selected, item.KnowledgeID)
+				}
+			}
+			if len(selected) != 1 || selected[0] != test.want {
 				t.Fatalf("task path %q selected %#v; want only %q", test.taskPath, items, test.want)
 			}
 		})
 	}
+}
+
+func TestBuildSelectsKnowledgeByTaskPathAndReportsOutOfScopeExclusion(t *testing.T) {
+	root := t.TempDir()
+	writeScopedKnowledgeFixture(t, root, "backend-webhooks", "services/backend/**", "webhook", "Backend webhook delivery retries through the durable queue.")
+	writeScopedKnowledgeFixture(t, root, "frontend-webhooks", "apps/web/**", "webhook", "Frontend webhook status appears in the dashboard.")
+	writeForgeManifest(t, root, `
+  - id: backend-webhooks
+    path: .forge/knowledge/backend-webhooks.md
+  - id: frontend-webhooks
+    path: .forge/knowledge/frontend-webhooks.md`)
+
+	for _, test := range []struct {
+		name, taskPath, wantID, excludedID string
+	}{
+		{name: "backend", taskPath: "services/backend/api/handler.go", wantID: "backend-webhooks", excludedID: "frontend-webhooks"},
+		{name: "frontend", taskPath: "apps/web/src/WebhookPanel.tsx", wantID: "frontend-webhooks", excludedID: "backend-webhooks"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			plan, err := Build(context.Background(), root, "Update webhook delivery status", "", contextdomain.Options{
+				Layout: "forge", TaskPaths: []string{test.taskPath}, BudgetTokens: 12000,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !hasKnowledgeExcerpt(plan.Included, test.wantID) {
+				t.Fatalf("Build did not include task-scoped knowledge %q: included=%#v excluded=%#v", test.wantID, plan.Included, plan.Excluded)
+			}
+			if !hasKnowledgeExcerpt(plan.Excluded, test.excludedID) {
+				t.Fatalf("Build did not report out-of-scope knowledge %q as excluded: included=%#v excluded=%#v", test.excludedID, plan.Included, plan.Excluded)
+			}
+			for _, excerpt := range plan.Excluded {
+				if excerpt.KnowledgeID == test.excludedID && excerpt.Reason != "knowledge scope does not match the task paths" {
+					t.Fatalf("out-of-scope knowledge has unexpected exclusion reason: %#v", excerpt)
+				}
+			}
+		})
+	}
+}
+
+func hasKnowledgeExcerpt(excerpts []contextdomain.Excerpt, id string) bool {
+	for _, excerpt := range excerpts {
+		if excerpt.KnowledgeID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func TestKnowledgePathMatchSupportsRecursiveAndSegmentGlobs(t *testing.T) {

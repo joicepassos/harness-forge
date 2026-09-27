@@ -88,7 +88,18 @@ func forgeKnowledgeCandidates(root, selection, prompt string, taskPaths []string
 		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing {
 			continue
 		}
-		if !knowledgeApplies(item.Scope.Paths, item.Keywords, taskPaths, prompt) {
+		if !knowledgePathApplies(item.Scope.Paths, taskPaths) {
+			origins := []string{"forge-knowledge:" + item.ID, "forge-document:" + reference.Path}
+			candidates = append(candidates, domain.Excerpt{
+				ID: application.StableID("forge-knowledge", item.ID), Source: "forge-knowledge:" + item.ID,
+				Path: reference.Path, Text: item.Content, Relevance: application.Relevance(prompt, strings.Join(item.Scope.Paths, " "), item.Content),
+				EstimatedTokens: application.EstimateTokens(item.Content), Status: "excluded",
+				Reason: "knowledge scope does not match the task paths", Origins: origins,
+				KnowledgeID: item.ID, KnowledgeScope: append([]string(nil), item.Scope.Paths...),
+			})
+			continue
+		}
+		if !knowledgeApplies(nil, item.Keywords, taskPaths, prompt) {
 			continue
 		}
 		evidenceHash, err := harnessinfra.KnowledgeFingerprint(root, reference.Path, reference.ID, item.Evidence)
@@ -124,22 +135,8 @@ func forgeKnowledgeCandidates(root, selection, prompt string, taskPaths []string
 // knowledge requires at least one matching task path. When keywords are
 // present, at least one must occur in the task prompt (case-insensitively).
 func knowledgeApplies(scopes, keywords, taskPaths []string, prompt string) bool {
-	if len(scopes) > 0 {
-		matched := false
-		for _, taskPath := range taskPaths {
-			for _, scope := range scopes {
-				if knowledgePathMatch(scope, taskPath) {
-					matched = true
-					break
-				}
-			}
-			if matched {
-				break
-			}
-		}
-		if !matched {
-			return false
-		}
+	if !knowledgePathApplies(scopes, taskPaths) {
+		return false
 	}
 	if len(keywords) == 0 {
 		return true
@@ -148,6 +145,20 @@ func knowledgeApplies(scopes, keywords, taskPaths []string, prompt string) bool 
 	for _, keyword := range keywords {
 		if strings.Contains(lowerPrompt, strings.ToLower(strings.TrimSpace(keyword))) {
 			return true
+		}
+	}
+	return false
+}
+
+func knowledgePathApplies(scopes, taskPaths []string) bool {
+	if len(scopes) == 0 {
+		return true
+	}
+	for _, taskPath := range taskPaths {
+		for _, scope := range scopes {
+			if knowledgePathMatch(scope, taskPath) {
+				return true
+			}
 		}
 	}
 	return false
