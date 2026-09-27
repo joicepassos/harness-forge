@@ -23,6 +23,7 @@ func TestKnowledgeItemValidatesOfflineAndSeparatesReviewFromHealth(t *testing.T)
 	item.Health = KnowledgeStale
 	item.Reviewer = "alice"
 	item.ContentSHA256 = HashKnowledgeContent(item.Content)
+	item.EvidenceSHA256 = HashKnowledgeEvidence([]string{"services/api/README.md:" + strings.Repeat("b", 64)})
 	if err := item.Validate(); err != nil {
 		t.Fatalf("approved stale knowledge should validate: %v", err)
 	}
@@ -43,6 +44,7 @@ func TestKnowledgeSupportsAllKindsReviewStatesAndHealthStates(t *testing.T) {
 				if review != KnowledgeCandidate {
 					item.Reviewer = "reviewer"
 					item.ContentSHA256 = HashKnowledgeContent(item.Content)
+					item.EvidenceSHA256 = HashKnowledgeEvidence([]string{"services/api/README.md:" + strings.Repeat("a", 64)})
 				}
 				if err := item.Validate(); err != nil {
 					t.Errorf("kind=%s review=%s health=%s: %v", kind, review, health, err)
@@ -74,6 +76,10 @@ func TestKnowledgeValidationRejectsInvalidContracts(t *testing.T) {
 		{"unknown health", func(k *KnowledgeItem) { k.Health = "healthy" }, "health"},
 		{"review without reviewer", func(k *KnowledgeItem) { k.Review = KnowledgeApproved }, "reviewer"},
 		{"review without content hash", func(k *KnowledgeItem) { k.Review, k.Reviewer = KnowledgeRejected, "alice" }, "content_sha256"},
+		{"review without evidence hash", func(k *KnowledgeItem) {
+			k.Review, k.Reviewer = KnowledgeRejected, "alice"
+			k.ContentSHA256 = HashKnowledgeContent(k.Content)
+		}, "evidence_sha256"},
 		{"malformed hash", func(k *KnowledgeItem) { k.ContentSHA256 = "xyz" }, "content_sha256"},
 		{"invalid evidence range", func(k *KnowledgeItem) { k.Evidence[0].StartLine, k.Evidence[0].EndLine = 8, 3 }, "evidence[0]"},
 		{"malformed evidence hash", func(k *KnowledgeItem) { k.Evidence[0].SHA256 = "1234" }, "evidence[0].sha256"},

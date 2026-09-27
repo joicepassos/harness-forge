@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"harnessforge/internal/harness/domain"
 	"harnessforge/internal/inputlimits"
@@ -191,12 +190,7 @@ func (r EvidenceRevalidator) Fingerprint(path, id string, evidence []domain.Evid
 		}
 		values = append(values, item.File+":"+hex.EncodeToString(fileHash[:]))
 	}
-	encoded, err := json.Marshal(values)
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(encoded)
-	return hex.EncodeToString(sum[:]), nil
+	return domain.HashKnowledgeEvidence(values), nil
 }
 
 type boundedOutput struct {

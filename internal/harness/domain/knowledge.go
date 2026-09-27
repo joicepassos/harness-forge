@@ -3,6 +3,7 @@ package domain
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -49,6 +50,7 @@ type KnowledgeItem struct {
 	Evidence           []KnowledgeEvidence  `json:"evidence,omitempty" yaml:"evidence,omitempty"`
 	Reviewer           string               `json:"reviewer,omitempty" yaml:"reviewer,omitempty"`
 	ContentSHA256      string               `json:"content_sha256,omitempty" yaml:"content_sha256,omitempty"`
+	EvidenceSHA256     string               `json:"evidence_sha256,omitempty" yaml:"evidence_sha256,omitempty"`
 	LegacyReviewStatus string               `json:"legacy_review_status,omitempty" yaml:"legacy_review_status,omitempty"`
 	LegacyReview       *ReviewRecord        `json:"legacy_review,omitempty" yaml:"legacy_review,omitempty"`
 }
@@ -99,6 +101,9 @@ func (k KnowledgeItem) Validate() error {
 	if k.ContentSHA256 != "" && !validSHA256(k.ContentSHA256) {
 		return fmt.Errorf("content_sha256: expected 64 hexadecimal characters")
 	}
+	if k.EvidenceSHA256 != "" && !validSHA256(k.EvidenceSHA256) {
+		return fmt.Errorf("evidence_sha256: expected 64 hexadecimal characters")
+	}
 	if k.LegacyReviewStatus != "" && k.LegacyReviewStatus != "candidate" && k.LegacyReviewStatus != "approved" && k.LegacyReviewStatus != "rejected" {
 		return fmt.Errorf("legacy_review_status: unsupported value %q", k.LegacyReviewStatus)
 	}
@@ -108,6 +113,9 @@ func (k KnowledgeItem) Validate() error {
 		}
 		if k.ContentSHA256 == "" {
 			return fmt.Errorf("content_sha256: required after candidate review")
+		}
+		if k.EvidenceSHA256 == "" {
+			return fmt.Errorf("evidence_sha256: required after candidate review")
 		}
 	}
 	for i, evidence := range k.Evidence {
@@ -147,6 +155,16 @@ func ValidateKnowledge(items []KnowledgeItem) error {
 // HashKnowledgeContent returns the SHA-256 hash used to bind a review to content.
 func HashKnowledgeContent(content string) string {
 	sum := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(sum[:])
+}
+
+// HashKnowledgeEvidence binds review to the ordered evidence file contents.
+func HashKnowledgeEvidence(values []string) string {
+	if values == nil {
+		values = []string{}
+	}
+	encoded, _ := json.Marshal(values)
+	sum := sha256.Sum256(encoded)
 	return hex.EncodeToString(sum[:])
 }
 
