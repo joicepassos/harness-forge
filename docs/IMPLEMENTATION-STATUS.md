@@ -61,10 +61,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   enforcement executor is implemented. T8.6 adds a dedicated CI workflow that
   verifies Forge sync and runs the repository's `go test ./...` gate; both
   commands passed locally. The workflow has not yet run on GitHub.
-- T9.1: pilot protocol and a versioned inventory separate development material
-  from validation data. No independent validation repositories or frozen
-  tasks are currently available. T0.4 baseline execution and T9.2–T9.5 runs
-  therefore remain pending. T9.6 runtime decision is deferred pending evidence.
+- T9.1: pilot protocol and versioned inventory separate development material
+  from validation data. Mili is recorded as a candidate at its clean HEAD, but
+  its checkout has local changes and no tasks/configuration are frozen. T0.4
+  baseline execution and T9.2–T9.5 runs remain pending; T9.6 is deferred until
+  comparative evidence exists.
 
 ## Verification
 
@@ -83,8 +84,9 @@ has not yet been run. No paid provider calls were made.
 - External Cursor/OpenCode/Codex/Claude runtime validation, end-to-end clone
   agent runs, pilot measurements, and the runtime decision require pinned agent
   builds and representative repositories; none are fabricated here.
-- T0.4 and T9.2–T9.5 need an independent validation corpus, executable tasks,
-  pinned agent/model configurations, and human review. The available Go fixture
-  is only a development fixture and is not treated as pilot evidence.
+- T0.4 and T9.2–T9.5 need a frozen validation corpus, executable tasks, pinned
+  agent/model configurations, and human review. Mili's clean HEAD is available
+  as one candidate; its modified working tree is excluded. The available Go
+  fixture is only development data and is not treated as pilot evidence.
 - This checkout contains pre-existing repository-context/retrieval changes;
   they remain outside the Forge plan task commits.
