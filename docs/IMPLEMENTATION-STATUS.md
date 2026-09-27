@@ -33,8 +33,10 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   optional explicit gate execution, and CI drift workflow are implemented.
 - T5.2–T5.4: explicit candidate import, reviewer-bound approval with evidence
   revalidation, local observation promotion, and knowledge checks are covered.
-- T5.5: shared context preview and proposal generation exist; interactive
-  project wizard and conflict-resolution UX remain incomplete.
+- T5.5: `harnessforge onboard` provides text/JSON guidance, explicit handling of
+  missing/invalid/ambiguous layouts, candidate import, review-before-export
+  steps, and safe sync guidance. It is command-driven rather than an interactive
+  wizard; model-backed proposals remain optional.
 - T6.1–T6.4: approved knowledge context, scope/path selection, explicit budget
   overflow, provenance, and comparison proxies are implemented. Quality remains
   unmeasured; the metrics are deterministic proxies.
@@ -47,9 +49,13 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T8.4: portable skill publication contract is documented; sync keeps
   references rather than duplicating skill bodies.
 - T8.5: opt-in runner supports workspace, timeout, cancellation and bounded
-  output. T8.6 CI execution on selected real project gates remains to validate.
-- T9.1–T9.5: pilot protocol and run schema are documented; no pilot runs or
-  measurements exist. T9.6 runtime decision is deferred pending evidence.
+  output. T8.6 adds a dedicated CI workflow that verifies Forge sync and runs
+  the repository's `go test ./...` gate; both commands passed locally. The
+  workflow has not yet run on GitHub.
+- T9.1: pilot protocol and a versioned inventory separate development material
+  from validation data. No independent validation repositories or frozen
+  tasks are currently available. T0.4 baseline execution and T9.2–T9.5 runs
+  therefore remain pending. T9.6 runtime decision is deferred pending evidence.
 
 ## Verification
 
@@ -68,5 +74,8 @@ has not yet been run. No paid provider calls were made.
 - External Cursor/OpenCode/Codex/Claude runtime validation, end-to-end clone
   agent runs, pilot measurements, and the runtime decision require pinned agent
   builds and representative repositories; none are fabricated here.
+- T0.4 and T9.2–T9.5 need an independent validation corpus, executable tasks,
+  pinned agent/model configurations, and human review. The available Go fixture
+  is only a development fixture and is not treated as pilot evidence.
 - This checkout contains pre-existing repository-context/retrieval changes;
   they remain outside the Forge plan task commits.
