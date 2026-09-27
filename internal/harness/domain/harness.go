@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 type Harness struct {
@@ -60,11 +61,34 @@ type Skill struct {
 	Evidence    []Evidence `json:"evidence,omitempty"`
 }
 type QualityGate struct {
-	ID         string   `json:"id" yaml:"id"`
-	Command    string   `json:"command" yaml:"command"`
-	Workspace  string   `json:"workspace,omitempty" yaml:"workspace,omitempty"`
-	Workspaces []string `json:"workspaces,omitempty" yaml:"workspaces,omitempty"`
+	ID         string            `json:"id" yaml:"id"`
+	Command    string            `json:"command" yaml:"command"`
+	Workspace  string            `json:"workspace,omitempty" yaml:"workspace,omitempty"`
+	Workspaces []string          `json:"workspaces,omitempty" yaml:"workspaces,omitempty"`
+	Env        map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 }
+
+// ValidateGateEnvironment enforces portable environment names and values accepted by OS process APIs.
+func ValidateGateEnvironment(env map[string]string) error {
+	for key, value := range env {
+		if key == "" || !isEnvKeyStart(rune(key[0])) {
+			return fmt.Errorf("environment key %q: expected [A-Za-z_][A-Za-z0-9_]*", key)
+		}
+		for _, r := range key[1:] {
+			if !isEnvKeyPart(r) {
+				return fmt.Errorf("environment key %q: expected [A-Za-z_][A-Za-z0-9_]*", key)
+			}
+		}
+		if strings.ContainsRune(value, 0) {
+			return fmt.Errorf("environment value for %q contains NUL", key)
+		}
+	}
+	return nil
+}
+func isEnvKeyStart(r rune) bool {
+	return r == '_' || (r < unicode.MaxASCII && (r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z'))
+}
+func isEnvKeyPart(r rune) bool { return isEnvKeyStart(r) || r >= '0' && r <= '9' }
 
 func (h Harness) Validate() error {
 	if h.Version != 1 && h.Version != 2 {
@@ -150,6 +174,9 @@ func (h Harness) Validate() error {
 		}
 		if strings.TrimSpace(g.Command) == "" {
 			return fmt.Errorf("%s.command: must not be empty", field)
+		}
+		if err := ValidateGateEnvironment(g.Env); err != nil {
+			return fmt.Errorf("%s.env: %w", field, err)
 		}
 		if g.Workspace != "" && strings.TrimSpace(g.Workspace) == "" {
 			return fmt.Errorf("%s.workspace: must not be blank", field)

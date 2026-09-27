@@ -10,6 +10,7 @@ import (
 	harnessdomain "harnessforge/internal/harness/domain"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -158,6 +159,37 @@ func TestForgeCheckRunsDeclaredGatesOnlyWhenExplicit(t *testing.T) {
 	cmd.SetOut(out)
 	if err := cmd.Execute(); err == nil || !strings.Contains(out.String(), "gate.failed") {
 		t.Fatalf("Forge gate result missing: %v %s", err, out)
+	}
+}
+
+func TestCheckPropagatesQualityGateEnvironmentFromManifest(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HARNESSFORGE_GATE_PARENT", "inherited")
+	t.Setenv("HARNESSFORGE_GATE_OVERRIDE", "parent")
+	command := `printf '%s|%s' "$HARNESSFORGE_GATE_PARENT" "$HARNESSFORGE_GATE_OVERRIDE"`
+	if runtime.GOOS == "windows" {
+		command = `echo %HARNESSFORGE_GATE_PARENT%^|%HARNESSFORGE_GATE_OVERRIDE%`
+	}
+	manifest := filepath.Join(root, ".forge", "forge.yaml")
+	if err := os.MkdirAll(filepath.Dir(manifest), 0700); err != nil {
+		t.Fatal(err)
+	}
+	content := "layout_version: 1\nir_version: 2\nproject: {name: sample}\ntargets: [codex]\nreferences: {}\nquality_gates:\n  - id: env\n    command: " + command + "\n    workspace: .\n    workspaces: [.]\n    env:\n      HARNESSFORGE_GATE_OVERRIDE: gate\n"
+	if err := os.WriteFile(manifest, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := generation.SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	cmd := newRootCommand()
+	cmd.SetArgs([]string{"check", "--repository", root, "--run-gates", "--format", "json"})
+	out := new(bytes.Buffer)
+	cmd.SetOut(out)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("check failed: %v: %s", err, out)
+	}
+	if !strings.Contains(out.String(), "inherited") || !strings.Contains(out.String(), "gate") {
+		t.Fatalf("gate environment not propagated: %s", out)
 	}
 }
 

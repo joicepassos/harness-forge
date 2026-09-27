@@ -111,6 +111,9 @@ func (m Manifest) Validate() error {
 		if strings.TrimSpace(gate.Command) == "" {
 			return fmt.Errorf("%s.command: must not be empty", field)
 		}
+		if err := ValidateGateEnvironment(gate.Env); err != nil {
+			return fmt.Errorf("%s.env: %w", field, err)
+		}
 		if gate.Workspace != "" {
 			if err := validateRelativePath(field+".workspace", gate.Workspace); err != nil {
 				return err

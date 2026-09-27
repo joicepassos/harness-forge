@@ -229,7 +229,7 @@ func newCheckCommand() *cobra.Command {
 				}
 				items := make([]gates.Gate, 0, len(quality))
 				for _, g := range quality {
-					items = append(items, gates.Gate{ID: g.ID, Command: g.Command, Workspace: g.Workspace, Workspaces: g.Workspaces})
+					items = append(items, gates.Gate{ID: g.ID, Command: g.Command, Workspace: g.Workspace, Workspaces: g.Workspaces, Env: g.Env})
 				}
 				if len(items) == 0 {
 					env.OK = false

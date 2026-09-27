@@ -38,6 +38,11 @@
   "$defs": {
     "text": { "type": "string", "pattern": "\\S" },
     "texts": { "type": "array", "items": { "$ref": "#/$defs/text" } },
+    "environment": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+      "additionalProperties": { "type": "string" }
+    },
     "relativePath": {
       "type": "string",
       "minLength": 1,
@@ -64,7 +69,8 @@
       "properties": {
         "id": { "$ref": "#/$defs/text" }, "command": { "$ref": "#/$defs/text" },
         "workspace": { "$ref": "#/$defs/relativePath" },
-        "workspaces": { "type": "array", "items": { "$ref": "#/$defs/relativePath" } }
+        "workspaces": { "type": "array", "items": { "$ref": "#/$defs/relativePath" } },
+        "env": { "$ref": "#/$defs/environment" }
       }
     },
     "policy": {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -137,5 +138,32 @@ func TestRunRejectsSymlinkWorkspace(t *testing.T) {
 	}
 	if results[0].Status != "failed" {
 		t.Fatalf("symlink gate workspace accepted: %#v", results[0])
+	}
+}
+
+func TestRunInheritsProcessEnvironmentAndAppliesGateOverrides(t *testing.T) {
+	t.Setenv("HARNESSFORGE_GATE_PARENT", "inherited")
+	t.Setenv("HARNESSFORGE_GATE_OVERRIDE", "parent")
+	command := `printf '%s|%s' "$HARNESSFORGE_GATE_PARENT" "$HARNESSFORGE_GATE_OVERRIDE"`
+	if runtime.GOOS == "windows" {
+		command = `echo %HARNESSFORGE_GATE_PARENT%^|%HARNESSFORGE_GATE_OVERRIDE%`
+	}
+	results, err := Run(context.Background(), t.TempDir(), []Gate{{ID: "env", Command: command, Env: map[string]string{"HARNESSFORGE_GATE_OVERRIDE": "gate"}}}, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 || results[0].Status != "passed" {
+		t.Fatalf("results=%#v", results)
+	}
+	if !strings.Contains(results[0].Output, "inherited") || !strings.Contains(results[0].Output, "gate") {
+		t.Fatalf("environment not inherited/overridden: %#v", results[0])
+	}
+}
+
+func TestRunRejectsInvalidEnvironment(t *testing.T) {
+	for key, value := range map[string]string{"BAD-NAME": "x", "9BAD": "x", "GOOD": "bad\x00value"} {
+		if _, err := Run(context.Background(), t.TempDir(), []Gate{{ID: "invalid", Command: "exit 0", Env: map[string]string{key: value}}}, time.Second); err == nil {
+			t.Errorf("accepted invalid env %q=%q", key, value)
+		}
 	}
 }

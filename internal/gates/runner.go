@@ -22,6 +22,7 @@ type Gate struct {
 	Command    string
 	Workspace  string
 	Workspaces []string
+	Env        map[string]string
 }
 type Result struct {
 	ID              string `json:"id"`
@@ -39,6 +40,11 @@ type Result struct {
 func Run(ctx context.Context, root string, items []Gate, timeout time.Duration) ([]Result, error) {
 	if timeout <= 0 {
 		return nil, fmt.Errorf("gate timeout must be positive")
+	}
+	for _, gate := range items {
+		if err := validateEnv(gate.Env); err != nil {
+			return nil, fmt.Errorf("quality gate %q environment: %w", gate.ID, err)
+		}
 	}
 	abs, err := filepath.Abs(root)
 	if err != nil {
@@ -79,6 +85,7 @@ func Run(ctx context.Context, root string, items []Gate, timeout time.Duration) 
 			}
 			configureProcessTree(command)
 			command.Dir = cwd
+			command.Env = mergeEnv(os.Environ(), gate.Env)
 			capture := &limitedOutput{}
 			command.Stdout = capture
 			command.Stderr = capture
@@ -110,6 +117,59 @@ func Run(ctx context.Context, root string, items []Gate, timeout time.Duration) 
 		}
 	}
 	return results, nil
+}
+
+func validateEnv(env map[string]string) error {
+	for key, value := range env {
+		if key == "" || !envStart(key[0]) {
+			return fmt.Errorf("invalid environment key %q", key)
+		}
+		for i := 1; i < len(key); i++ {
+			if !envPart(key[i]) {
+				return fmt.Errorf("invalid environment key %q", key)
+			}
+		}
+		if strings.IndexByte(value, 0) >= 0 {
+			return fmt.Errorf("environment value for %q contains NUL", key)
+		}
+	}
+	return nil
+}
+func envStart(c byte) bool { return c == '_' || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' }
+func envPart(c byte) bool  { return envStart(c) || c >= '0' && c <= '9' }
+func mergeEnv(parent []string, overrides map[string]string) []string {
+	key := func(s string) string {
+		if runtime.GOOS == "windows" {
+			return strings.ToUpper(s)
+		}
+		return s
+	}
+	values := make(map[string]string, len(parent)+len(overrides))
+	order := make([]string, 0, len(parent)+len(overrides))
+	for _, entry := range parent {
+		sep := strings.IndexByte(entry, '=')
+		if sep <= 0 {
+			continue
+		}
+		k := entry[:sep]
+		n := key(k)
+		if _, ok := values[n]; !ok {
+			order = append(order, n)
+		}
+		values[n] = entry
+	}
+	for k, v := range overrides {
+		n := key(k)
+		if _, ok := values[n]; !ok {
+			order = append(order, n)
+		}
+		values[n] = k + "=" + v
+	}
+	result := make([]string, 0, len(order))
+	for _, n := range order {
+		result = append(result, values[n])
+	}
+	return result
 }
 
 func resolveWorkspace(root, workspace string) (string, error) {

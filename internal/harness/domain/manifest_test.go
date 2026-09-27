@@ -83,3 +83,13 @@ func TestManifestReportsClearFieldErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestQualityGateEnvironmentRejectsInvalidKeysAndValues(t *testing.T) {
+	for key, value := range map[string]string{"BAD-NAME": "x", "9BAD": "x", "GOOD": "bad\x00value"} {
+		m := validManifest()
+		m.QualityGates[0].Env = map[string]string{key: value}
+		if err := m.Validate(); err == nil || !strings.Contains(err.Error(), "quality_gates[0].env") {
+			t.Errorf("accepted invalid gate env %q=%q: %v", key, value, err)
+		}
+	}
+}

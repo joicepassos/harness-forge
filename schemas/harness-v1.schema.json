@@ -88,6 +88,9 @@
           },
           "command": {
             "$ref": "#/$defs/text"
+          },
+          "env": {
+            "$ref": "#/$defs/environment"
           }
         }
       }
@@ -97,6 +100,11 @@
     "text": {
       "type": "string",
       "pattern": "\\S"
+    },
+    "environment": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+      "additionalProperties": { "type": "string" }
     },
     "texts": {
       "type": "array",

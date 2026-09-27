@@ -96,3 +96,18 @@ func TestLoadProjectRejectsCoexistingLayoutsWithoutSelection(t *testing.T) {
 		t.Fatalf("coexisting layouts did not require selection: %v", err)
 	}
 }
+
+func TestYAMLLoaderLoadsQualityGateEnvironment(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "harness.yaml")
+	content := "version: 2\nproject: {name: sample}\nquality_gates:\n  - id: tests\n    command: go test ./...\n    env:\n      GOFLAGS: -count=1\n"
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	h, err := (YAMLLoader{}).Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := h.QualityGates[0].Env["GOFLAGS"]; got != "-count=1" {
+		t.Fatalf("gate env = %q", got)
+	}
+}
