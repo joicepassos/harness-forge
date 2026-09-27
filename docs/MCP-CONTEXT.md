@@ -10,8 +10,8 @@ harnessforge mcp serve --repository . --budget 4000
 
 The static resource URI `forge://context/current` returns a general repository
 context plan. The server also lists the parameterized resource template
-`forge://context/task/{prompt}`. Clients can percent-encode the task prompt and
-append one or more `path` query parameters, such as
+`forge://context/task/{prompt}{?path*}`. Clients can percent-encode the task prompt and
+provide one or more `path` query parameters, such as
 `forge://context/task/Find%20JWT%20validation?path=internal%2Fauth%2Fmiddleware.go`.
 Task paths must be repository-relative. The `application/json` body contains
 source IDs, evidence paths, inclusion/exclusion reasons, estimated input size,
