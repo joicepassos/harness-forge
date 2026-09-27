@@ -75,9 +75,10 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   snapshots separate documented behavior from exact-build runtime evidence.
 - T8.3: the read-only context resolver is exposed through MCP JSON-RPC stdio
   for protocol `2025-06-18`, with initialize, resources/list, resources/read,
+  a task-prompt resource template, optional repository-relative task paths,
   bounded messages, and no tools or write operations. Protocol behavior is
   covered locally; remote transport, authentication, and client-specific
-  discovery remain out of scope.
+  discovery remain out of scope. See [MCP context contract](MCP-CONTEXT.md).
 - T8.4: sync validates and publishes portable Agent Skills bundles under
   `.agents/skills/` and `.claude/skills/`; generated instruction files link to
   skills without duplicating their bodies. Updates and stale-file cleanup use
