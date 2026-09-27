@@ -84,7 +84,7 @@ func forgeKnowledgeCandidates(root, selection, prompt string) ([]domain.Excerpt,
 		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing {
 			continue
 		}
-		evidenceHash, err := validateKnowledgeEvidence(rootHandle, item.Evidence)
+		evidenceHash, err := harnessinfra.KnowledgeFingerprint(root, reference.Path, reference.ID, item.Evidence)
 		if err != nil {
 			return nil, fmt.Errorf("knowledge %q evidence: %w", item.ID, err)
 		}
@@ -138,15 +138,11 @@ func regularLayoutConfig(path string) (bool, error) {
 
 func parseKnowledgeDocument(data []byte) (harnessdomain.KnowledgeItem, error) {
 	var item harnessdomain.KnowledgeItem
-	text := strings.TrimSpace(string(data))
-	if !strings.HasPrefix(text, "---") {
-		return item, fmt.Errorf("expected YAML front matter")
+	frontMatter, err := knowledgeFrontMatter(data)
+	if err != nil {
+		return item, err
 	}
-	parts := strings.SplitN(strings.TrimPrefix(text, "---"), "---", 2)
-	if len(parts) != 2 {
-		return item, fmt.Errorf("unterminated YAML front matter")
-	}
-	decoder := yaml.NewDecoder(strings.NewReader(strings.TrimSpace(parts[0])))
+	decoder := yaml.NewDecoder(strings.NewReader(frontMatter))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&item); err != nil {
 		return item, err
@@ -154,10 +150,41 @@ func parseKnowledgeDocument(data []byte) (harnessdomain.KnowledgeItem, error) {
 	if err := decoder.Decode(new(any)); err != io.EOF {
 		return item, fmt.Errorf("expected one YAML document")
 	}
-	if err := item.Validate(); err != nil {
+	if err := validateKnowledgeItem(item); err != nil {
 		return item, err
 	}
 	return item, nil
+}
+
+// knowledgeFrontMatter recognizes delimiters only when they occupy a whole
+// line. YAML values such as review_diff may contain text beginning with "---".
+func knowledgeFrontMatter(data []byte) (string, error) {
+	text := strings.TrimSpace(string(data))
+	lines := strings.SplitAfter(text, "\n")
+	if len(lines) == 0 || strings.TrimSpace(strings.TrimSuffix(lines[0], "\n")) != "---" {
+		return "", fmt.Errorf("expected YAML front matter")
+	}
+	offset := len(lines[0])
+	for i := 1; i < len(lines); i++ {
+		line := lines[i]
+		if strings.TrimSpace(strings.TrimSuffix(line, "\n")) == "---" {
+			return strings.TrimSpace(text[len(lines[0]):offset]), nil
+		}
+		offset += len(line)
+	}
+	return "", fmt.Errorf("unterminated YAML front matter")
+}
+
+func validateKnowledgeItem(item harnessdomain.KnowledgeItem) error {
+	if item.Review != harnessdomain.KnowledgeCandidate {
+		if item.ContentSHA256 == "" {
+			return fmt.Errorf("content_sha256: required after candidate review")
+		}
+		if item.EvidenceSHA256 == "" {
+			return fmt.Errorf("evidence_sha256: required after candidate review")
+		}
+	}
+	return item.Validate()
 }
 
 func validateKnowledgeEvidence(root *os.Root, evidence []harnessdomain.KnowledgeEvidence) (string, error) {

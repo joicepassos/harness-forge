@@ -117,6 +117,53 @@ func TestForgeKnowledgeCandidatesRejectChangedContentOrEvidenceHashes(t *testing
 	}
 }
 
+func TestParseKnowledgeDocumentPreservesReviewDiffDelimitersAndHashes(t *testing.T) {
+	root := t.TempDir()
+	writeKnowledgeFixture(t, root, "reviewed", harnessdomain.KnowledgeApproved, "reviewer", "Approved knowledge.", nil)
+	data, err := os.ReadFile(filepath.Join(root, ".forge", "knowledge", "reviewed.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, err := parseKnowledgeDocument(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.ContentSHA256 != harnessdomain.HashKnowledgeContent(item.Content) || item.EvidenceSHA256 != harnessdomain.HashKnowledgeEvidence(nil) {
+		t.Fatalf("review hashes were lost while parsing: %+v", item)
+	}
+	if !strings.Contains(item.ReviewDiff, "--- candidate") {
+		t.Fatalf("review diff was truncated: %q", item.ReviewDiff)
+	}
+}
+
+func TestParseKnowledgeDocumentRequiresReviewHashes(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		content   string
+		evidence  string
+		wantError string
+	}{
+		{name: "content hash", evidence: harnessdomain.HashKnowledgeEvidence(nil), wantError: "content_sha256: required"},
+		{name: "evidence hash", content: harnessdomain.HashKnowledgeContent("Reviewed content."), wantError: "evidence_sha256: required"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			item := harnessdomain.KnowledgeItem{
+				ID: "reviewed", Kind: harnessdomain.KnowledgeConvention, Content: "Reviewed content.",
+				Origin: "human", Review: harnessdomain.KnowledgeApproved, Health: harnessdomain.KnowledgeVerified,
+				Reviewer: "reviewer", ContentSHA256: test.content, EvidenceSHA256: test.evidence,
+			}
+			data, err := yaml.Marshal(item)
+			if err != nil {
+				t.Fatal(err)
+			}
+			document := append(append([]byte("---\n"), data...), []byte("---\n")...)
+			if _, err := parseKnowledgeDocument(document); err == nil || !strings.Contains(err.Error(), test.wantError) {
+				t.Fatalf("expected %q error, got %v", test.wantError, err)
+			}
+		})
+	}
+}
+
 func TestForgeKnowledgeCandidatesRejectAmbiguousLayout(t *testing.T) {
 	root := t.TempDir()
 	writeKnowledgeFixture(t, root, "rule", harnessdomain.KnowledgeApproved, "reviewer", "Use auth middleware.", nil)
@@ -178,6 +225,7 @@ func writeKnowledgeFixture(t *testing.T, root, id string, review harnessdomain.K
 			values = append(values, e.Path+":"+hex.EncodeToString(sum[:]))
 		}
 		item.EvidenceSHA256 = harnessdomain.HashKnowledgeEvidence(values)
+		item.ReviewDiff = "--- candidate\n+++ reviewed\n+" + content + "\n"
 	}
 	data, err := yamlMarshalFixture(item)
 	if err != nil {
