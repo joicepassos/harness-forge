@@ -11,6 +11,7 @@ import (
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/config"
 	"harnessforge/internal/harness"
+	harnessdomain "harnessforge/internal/harness/domain"
 	"harnessforge/internal/onboarding"
 
 	"github.com/spf13/cobra"
@@ -20,6 +21,56 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	cobra.CheckErr(newRootCommand().ExecuteContext(ctx))
+}
+
+func newOnboardCommand() *cobra.Command {
+	var repository, layout, format string
+	command := &cobra.Command{
+		Use:   "onboard [repository]",
+		Short: "Guide onboarding for an existing project without changing files",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				repository = args[0]
+			}
+			guide, err := onboarding.BuildGuide(repository, layout)
+			if err != nil {
+				return err
+			}
+			switch format {
+			case "json":
+				encoder := json.NewEncoder(cmd.OutOrStdout())
+				encoder.SetIndent("", "  ")
+				return encoder.Encode(guide)
+			case "text":
+				_, err := fmt.Fprint(cmd.OutOrStdout(), onboarding.FormatGuide(guide))
+				return err
+			default:
+				return fmt.Errorf("unsupported format %q; expected text or json", format)
+			}
+		},
+	}
+	var importRepository, importKind string
+	importCommand := &cobra.Command{
+		Use:   "import <file>",
+		Short: "Import a local text document as an unapproved Forge candidate",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, path, err := onboarding.ImportKnowledgeFile(importRepository, args[0], harnessdomain.KnowledgeKind(importKind))
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Imported %s as candidate %s at %s. Inspect its content and evidence, then run harnessforge review %s approved --reviewer <name> --repository <repository> --layout forge.\n", args[0], id, path, id)
+			return err
+		},
+	}
+	importCommand.Flags().StringVar(&importRepository, "repository", ".", "Forge repository to import into")
+	importCommand.Flags().StringVar(&importKind, "kind", "", "Knowledge type: fact, convention, business_rule, decision, constraint")
+	command.AddCommand(importCommand)
+	command.Flags().StringVar(&repository, "repository", ".", "Repository to inspect")
+	command.Flags().StringVar(&layout, "layout", "", "Select harness or forge when both project layouts exist")
+	command.Flags().StringVar(&format, "format", "text", "Output format: text or json")
+	return command
 }
 
 func newRootCommand() *cobra.Command {
@@ -142,6 +193,7 @@ func newRootCommand() *cobra.Command {
 	rootCmd.AddCommand(analyzeCmd)
 
 	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newCheckCommand(), newMigrateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand(), newDoctorCommand(), newGitHubCommand(), newDriftCommand(), newEmbeddingCommand(), newSymbolsCommand(), newGenerateCommand(), newSyncCommand(), newDiscoverCommand(), newIndexCommand(), newSearchCommand(), newRAGCommand(), newPluginCommand(), newTUICommand(), newMemoryCommand())
+	rootCmd.AddCommand(newOnboardCommand())
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		l, err := newLocalizer(string(language))
 		if err != nil {
