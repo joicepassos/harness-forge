@@ -1,8 +1,9 @@
 # HarnessForge pilot protocol (T9.1–T9.5)
 
-Status: protocol plus an initial inventory; no external agent runs or paid
-provider calls are represented here. Results must be added only after a run is
-completed. The versioned inventory is
+Status: protocol, candidate inventory, and a draft set of 12 proposed tasks;
+no external agent runs or paid provider calls are represented here. The task
+draft is [tasks-draft-v1.md](pilot/tasks-draft-v1.md) and is not frozen. Results
+must be added only after a run is completed. The versioned inventory is
 [`pilot/inventory-v1.json`](pilot/inventory-v1.json); it deliberately records
 the current corpus gaps rather than treating development fixtures as validation
 data.
@@ -65,13 +66,20 @@ Store one JSON object per run with this shape (extend only with versioned fields
 
 Before the pilot, populate an independent validation set of repositories and
 executable tasks, pin clean commits and software versions, and validate
-condition isolation. The current inventory contains one synthetic Go
-development fixture, the HarnessForge development repository, and Mili as a
-user-selected validation candidate. Mili's recorded HEAD is not a pilot freeze:
-its working tree had 12 modified tracked files and 14 untracked paths, and no
-pilot tasks or agent/model configuration have been frozen. The development
-fixture has no behavioral acceptance task. At the inventory audit, Go was
-available as `go1.26.2 windows/amd64` and Codex CLI was
+condition isolation. Mili is the user-selected candidate; PromptForge and Toca
+are additional local candidates identified during repository inventory. All
+three have pinned clean commits available, while the original checkouts contain
+untracked or modified user data. Mili's checkout had 12 modified tracked files
+and 14 untracked paths. No pilot tasks or agent/model configuration have been
+frozen. Isolated baseline checks passed for Mili's selected 8 unit tests,
+PromptForge's Go packages, and Toca's two npm workspace builds; these checks
+are environment feasibility evidence, not agent pilot runs. PromptForge has no
+tests, and Toca has no test scripts. A Docker client was not available, so
+Mili's database-backed integration tests were not run. `npm ci` for Toca
+reported 9 dependency advisories; they have not been triaged as part of this
+pilot. The
+development fixture has no behavioral acceptance task. At the inventory audit,
+Go was available as `go1.26.2 windows/amd64` and Codex CLI was
 available as `codex-cli 0.158.0-alpha.2.1`. Claude Code, Cursor CLI, and
 OpenCode CLI were not discoverable on PATH. These are environment observations,
 not claims about product availability elsewhere. No run has been performed by

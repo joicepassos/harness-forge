@@ -48,6 +48,30 @@
       "untracked_path_count_at_audit": 14,
       "tasks": [],
       "reason_excluded_from_validation": "The user identified Mili as a pilot candidate. Its HEAD is recorded, but the checkout has local modifications and untracked files, and no pilot tasks, agent/model configuration, or evaluation rubric have been frozen."
+    },
+    {
+      "repository_id": "promptforge",
+      "role": "candidate_not_frozen",
+      "local_path": "../PromptForge",
+      "commit": "e33bee6a45ce40aba2d6413fd0c283e8e62eeefc",
+      "commit_is_pilot_freeze": false,
+      "working_tree_modified_at_audit": true,
+      "modified_tracked_file_count_at_audit": 0,
+      "untracked_path_count_at_audit": 1,
+      "tasks": [],
+      "reason_excluded_from_validation": "Assistant-discovered candidate at a pinned commit; the original checkout contains an untracked Claude worktree directory, no evaluation tasks or agent/model configuration have been frozen. A clean snapshot at this commit passed `go test ./...`, but the packages currently have no tests."
+    },
+    {
+      "repository_id": "toca",
+      "role": "candidate_not_frozen",
+      "local_path": "../toca",
+      "commit": "3000adc7c5766e1a4cd88493d864843b4647abdd",
+      "commit_is_pilot_freeze": false,
+      "working_tree_modified_at_audit": true,
+      "modified_tracked_file_count_at_audit": 0,
+      "untracked_path_count_at_audit": 4,
+      "tasks": [],
+      "reason_excluded_from_validation": "Assistant-discovered candidate at a pinned commit with independently buildable server/client npm workspaces; the original checkout has four untracked paths and no test suite or frozen task/configuration. A clean snapshot passed npm ci and npm run build."
     }
   ],
   "tasks": [],
@@ -67,6 +91,10 @@
   ],
   "software_versions": {
     "go_observed_during_inventory": "go1.26.2 windows/amd64",
+    "java_observed_during_inventory": "openjdk 25.0.4.1 windows/amd64",
+    "node_observed_during_inventory": "v24.18.0 windows/amd64",
+    "npm_observed_during_inventory": "11.16.0",
+    "docker_client_observed_during_inventory": null,
     "agent_product_versions": {
       "codex_cli": "codex-cli 0.158.0-alpha.2.1",
       "claude_code": null,
@@ -76,7 +104,7 @@
   },
   "runs": [],
   "limitations": [
-    "Mili was selected as a candidate repository, but no clean repository/task/configuration freeze has been completed.",
+    "Mili was selected by the user; PromptForge and Toca were identified as additional candidates, but no clean repository/task/configuration freeze has been approved.",
     "No pilot task with executable acceptance criteria has been selected.",
     "Codex CLI was found and its version recorded, but no exact agent/model configuration or condition-isolation setup has been frozen and no pilot run was performed.",
     "Command-line executables named claude, cursor, and opencode were not discoverable on PATH; this does not establish whether their products are available through other interfaces or machines.",

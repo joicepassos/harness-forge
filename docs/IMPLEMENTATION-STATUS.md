@@ -61,11 +61,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   enforcement executor is implemented. T8.6 adds a dedicated CI workflow that
   verifies Forge sync and runs the repository's `go test ./...` gate; both
   commands passed locally. The workflow has not yet run on GitHub.
-- T9.1: pilot protocol and versioned inventory separate development material
-  from validation data. Mili is recorded as a candidate at its clean HEAD, but
-  its checkout has local changes and no tasks/configuration are frozen. T0.4
-  baseline execution and T9.2–T9.5 runs remain pending; T9.6 is deferred until
-  comparative evidence exists.
+- T9.1: the versioned inventory records Mili, PromptForge, and Toca as candidate
+  commits, and a 12-task draft is available for review. User task approval,
+  agent/model configuration, and the run/evaluation protocol are not frozen.
+  T0.4 and T9.2–T9.5 remain pending; T9.6 is deferred until comparative
+  evidence exists.
 
 ## Verification
 
