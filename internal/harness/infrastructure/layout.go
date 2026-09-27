@@ -72,7 +72,7 @@ func (l ProjectLayout) ResolveReference(reference string) (string, error) {
 		return "", fmt.Errorf("reference must be a non-empty repository-relative path")
 	}
 	clean := filepath.Clean(filepath.FromSlash(reference))
-	if clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+	if clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("reference escapes the project root")
 	}
 	resolved := filepath.Join(l.Root, clean)

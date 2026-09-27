@@ -63,6 +63,10 @@ func TestResolveLayoutRejectsSymlinkAndInvalidSelection(t *testing.T) {
 
 func TestResolveReferenceRejectsTraversalAndPreservesProjectRelativePaths(t *testing.T) {
 	layout := ProjectLayout{Root: filepath.Clean("C:/repo")}
+	rootPath, err := layout.ResolveReference(".")
+	if err != nil || rootPath != layout.Root {
+		t.Fatalf("root workspace resolved to %q: %v", rootPath, err)
+	}
 	resolved, err := layout.ResolveReference(".forge/knowledge/architecture.md")
 	if err != nil || resolved != filepath.Join(layout.Root, ".forge", "knowledge", "architecture.md") {
 		t.Fatalf("resolved=%q err=%v", resolved, err)
