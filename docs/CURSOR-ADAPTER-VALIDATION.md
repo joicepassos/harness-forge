@@ -1,6 +1,6 @@
 # Cursor adapter validation matrix (T8.1)
 
-Research snapshot: 2026-09-27. This records the current public Cursor documentation and proposes a testable target contract for Forge. Cursor documentation is rolling and does not give minimum application/CLI versions for most rule features. Therefore “current” below means the behavior stated by the official documentation on the snapshot date, not a compatibility guarantee for every installed build.
+Research snapshot: 2026-09-27. This records the current public Cursor documentation and proposes a testable target contract for Forge. The official Rules and CLI pages are rolling and do not give minimum application/CLI versions for most rule features; they are product documentation, not a versioned specification. Therefore “current” below means the behavior stated by the official documentation on the snapshot date, not a compatibility guarantee for any particular installed build. No Cursor editor or CLI runtime was available for this audit; every executable scenario below remains unverified.
 
 ## Verified from official documentation
 
@@ -18,7 +18,7 @@ Research snapshot: 2026-09-27. This records the current public Cursor documentat
 | Legacy `.cursorrules` | Current Rules page's listed types no longer includes `.cursorrules`; the legacy file is absent from its current documented rule format. Older official docs described it as supported but deprecated. | Treat `.cursorrules` as legacy/undocumented for current support. Do not emit it. Import it only as legacy input with an explicit migration warning; test detection and never infer precedence. |
 | Cursor CLI | CLI docs say CLI uses the same rules system as editor, loads `.cursor/rules` according to configuration, and also reads root `AGENTS.md` and `CLAUDE.md` alongside those rules. | Mark adapter target as Cursor Agent (editor/CLI) only when tested separately. The docs establish the CLI's root CLAUDE.md support; they do not establish all editor/CLI discovery parity. |
 | Scope of application | Rules docs say rule context affects Agent and that rules do not affect Tab or other AI features; the current FAQ says User Rules do not apply to Inline Edit. | Describe the adapter as Agent-context output; do not claim Tab completion, Bugbot, or all inline-edit coverage. |
-| Version declarations | The current rules and CLI documentation are rolling pages and do not state a minimum Cursor editor build or CLI version for `.mdc`, nested AGENTS.md, or the precedence model. | Forge must not invent a minimum version. Store the tested product, exact build/version, OS, date and scenario in validation results. |
+| Version declarations | The current Rules and CLI documentation are rolling pages and do not state a minimum Cursor editor build or CLI version for `.mdc`, nested AGENTS.md, or the precedence model. The source snapshot for this matrix is 2026-09-27. | Forge must not invent a minimum version. Store the tested product, exact build/version, OS, date and scenario in validation results. |
 
 Sources are linked in [Official sources](#official-sources). The old documentation's “AGENTS.md root only (v1.5), nested support planned for v1.6” wording is historical and must not be used as the current contract: the current Rules page explicitly states nested AGENTS.md support is available.
 
@@ -63,4 +63,3 @@ Release gate for T8.1: check in runtime results with the exact versions and all 
 - [Cursor CLI: Using Agent in CLI](https://cursor.com/docs/cli/using) — CLI rule system, root `AGENTS.md`/`CLAUDE.md`, and relation to editor rules.
 - [Cursor CLI overview](https://cursor.com/docs/cli/overview) — current CLI install and modes.
 - [Cursor changelog 0.45.x](https://cursor.com/changelog/0-45-x) — historical introduction of `.cursor/rules` (January 2025); not a current minimum-version guarantee.
-
