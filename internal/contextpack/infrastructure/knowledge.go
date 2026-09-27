@@ -1,0 +1,236 @@
+package infrastructure
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"harnessforge/internal/contextpack/application"
+	"harnessforge/internal/contextpack/domain"
+	harnessdomain "harnessforge/internal/harness/domain"
+	harnessinfra "harnessforge/internal/harness/infrastructure"
+	"harnessforge/internal/inputlimits"
+
+	"go.yaml.in/yaml/v3"
+)
+
+// forgeKnowledgeCandidates loads only explicitly referenced, approved Forge
+// knowledge. It opens manifest and evidence files directly beneath the project
+// root; it does not perform another repository scan or execute project code.
+func forgeKnowledgeCandidates(root, selection, prompt string) ([]domain.Excerpt, error) {
+	forgeConfig := filepath.Join(root, ".forge", "forge.yaml")
+	harnessConfig := filepath.Join(root, ".harness", "harness.yaml")
+	forgeExists, err := regularLayoutConfig(forgeConfig)
+	if err != nil {
+		return nil, err
+	}
+	harnessExists, err := regularLayoutConfig(harnessConfig)
+	if err != nil {
+		return nil, err
+	}
+	if !forgeExists && !harnessExists {
+		if selection == "forge" {
+			return nil, fmt.Errorf("selected forge layout is missing %s", forgeConfig)
+		}
+		if selection != "" && selection != "harness" {
+			return nil, fmt.Errorf("unknown layout %q; expected harness or forge", selection)
+		}
+		return nil, nil
+	}
+	layout, err := harnessinfra.ResolveLayout(root, selection)
+	if err != nil {
+		return nil, err
+	}
+	if layout.Kind != harnessinfra.LayoutForge {
+		return nil, nil
+	}
+	manifest, err := (harnessinfra.ManifestLoader{}).Load(layout.ManifestPath)
+	if err != nil {
+		return nil, err
+	}
+	if len(manifest.References.Knowledge) == 0 {
+		return nil, nil
+	}
+	rootHandle, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, err
+	}
+	defer rootHandle.Close()
+	var candidates []domain.Excerpt
+	for _, reference := range manifest.References.Knowledge {
+		data, err := readSafeProjectFile(rootHandle, reference.Path, inputlimits.HarnessYAMLBytes)
+		if err != nil {
+			return nil, fmt.Errorf("knowledge %q: %w", reference.ID, err)
+		}
+		item, err := parseKnowledgeDocument(data)
+		if err != nil {
+			return nil, fmt.Errorf("knowledge %q: %w", reference.ID, err)
+		}
+		if item.ID != reference.ID {
+			return nil, fmt.Errorf("knowledge reference %q points to item %q", reference.ID, item.ID)
+		}
+		// Candidates, rejected items, and deprecated items are never context.
+		if item.Review != harnessdomain.KnowledgeApproved {
+			continue
+		}
+		if got := harnessdomain.HashKnowledgeContent(item.Content); !strings.EqualFold(got, item.ContentSHA256) {
+			return nil, fmt.Errorf("knowledge %q content hash mismatch; review is no longer valid", item.ID)
+		}
+		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing {
+			continue
+		}
+		evidenceHash, err := validateKnowledgeEvidence(rootHandle, item.Evidence)
+		if err != nil {
+			return nil, fmt.Errorf("knowledge %q evidence: %w", item.ID, err)
+		}
+		if !strings.EqualFold(evidenceHash, item.EvidenceSHA256) {
+			return nil, fmt.Errorf("knowledge %q evidence changed after review", item.ID)
+		}
+		origins := []string{"forge-knowledge:" + item.ID, "forge-document:" + reference.Path}
+		for _, evidence := range item.Evidence {
+			origins = append(origins, "evidence:"+evidence.Path)
+		}
+		scope := append([]string(nil), item.Scope.Paths...)
+		text := item.Content
+		candidates = append(candidates, domain.Excerpt{
+			ID:              application.StableID("forge-knowledge", item.ID),
+			Source:          "forge-knowledge:" + item.ID,
+			Path:            reference.Path,
+			Text:            text,
+			Relevance:       application.Relevance(prompt, strings.Join(scope, " "), text),
+			EstimatedTokens: application.EstimateTokens(text),
+			Origins:         origins,
+			KnowledgeID:     item.ID,
+			KnowledgeScope:  scope,
+		})
+	}
+	return candidates, nil
+}
+
+func regularLayoutConfig(path string) (bool, error) {
+	parent, err := os.Lstat(filepath.Dir(path))
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if parent.Mode()&os.ModeSymlink != 0 || !parent.IsDir() {
+		return false, fmt.Errorf("layout directory must be a regular non-symlink directory: %s", filepath.Dir(path))
+	}
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return false, fmt.Errorf("layout configuration must be a regular non-symlink file: %s", path)
+	}
+	return true, nil
+}
+
+func parseKnowledgeDocument(data []byte) (harnessdomain.KnowledgeItem, error) {
+	var item harnessdomain.KnowledgeItem
+	text := strings.TrimSpace(string(data))
+	if !strings.HasPrefix(text, "---") {
+		return item, fmt.Errorf("expected YAML front matter")
+	}
+	parts := strings.SplitN(strings.TrimPrefix(text, "---"), "---", 2)
+	if len(parts) != 2 {
+		return item, fmt.Errorf("unterminated YAML front matter")
+	}
+	decoder := yaml.NewDecoder(strings.NewReader(strings.TrimSpace(parts[0])))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&item); err != nil {
+		return item, err
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return item, fmt.Errorf("expected one YAML document")
+	}
+	if err := item.Validate(); err != nil {
+		return item, err
+	}
+	return item, nil
+}
+
+func validateKnowledgeEvidence(root *os.Root, evidence []harnessdomain.KnowledgeEvidence) (string, error) {
+	values := make([]string, 0, len(evidence))
+	for index, item := range evidence {
+		data, err := readSafeProjectFile(root, item.Path, inputlimits.HistoricalEvidenceBytes)
+		if err != nil {
+			return "", fmt.Errorf("evidence[%d] %q: %w", index, item.Path, err)
+		}
+		if item.SHA256 != "" {
+			sum := sha256.Sum256(data)
+			if !strings.EqualFold(hex.EncodeToString(sum[:]), item.SHA256) {
+				return "", fmt.Errorf("evidence[%d] %q hash mismatch", index, item.Path)
+			}
+		}
+		if item.Quote != "" && !bytes.Contains(data, []byte(item.Quote)) {
+			return "", fmt.Errorf("evidence[%d] %q quote no longer matches", index, item.Path)
+		}
+		if item.Symbol != "" && !bytes.Contains(data, []byte(item.Symbol)) {
+			return "", fmt.Errorf("evidence[%d] %q symbol no longer matches", index, item.Path)
+		}
+		sum := sha256.Sum256(data)
+		values = append(values, item.Path+":"+hex.EncodeToString(sum[:]))
+	}
+	return harnessdomain.HashKnowledgeEvidence(values), nil
+}
+
+func readSafeProjectFile(root *os.Root, relative string, maxBytes int64) ([]byte, error) {
+	if relative == "" || filepath.IsAbs(relative) || strings.Contains(relative, "\\") || strings.Contains(relative, ":") {
+		return nil, fmt.Errorf("expected a repository-relative path")
+	}
+	clean := filepath.Clean(filepath.FromSlash(relative))
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("path escapes the project root")
+	}
+	// Reject symlinks at every component before opening through os.Root, which
+	// independently prevents path traversal outside the root even under races.
+	current := "."
+	parts := strings.Split(filepath.ToSlash(clean), "/")
+	for _, part := range parts {
+		current = filepath.Join(current, filepath.FromSlash(part))
+		info, err := root.Lstat(current)
+		if err != nil {
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil, fmt.Errorf("symlink path component is not allowed")
+		}
+		if current != clean && !info.IsDir() {
+			return nil, fmt.Errorf("parent path component is not a directory")
+		}
+		if current == clean && !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("expected a regular non-symlink file")
+		}
+	}
+	file, err := root.Open(clean)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > maxBytes {
+		return nil, fmt.Errorf("file must be regular and no larger than %d bytes", maxBytes)
+	}
+	data, err := io.ReadAll(io.LimitReader(file, maxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxBytes {
+		return nil, fmt.Errorf("file exceeds %d bytes", maxBytes)
+	}
+	return data, nil
+}

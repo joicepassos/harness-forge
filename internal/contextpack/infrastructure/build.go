@@ -7,11 +7,11 @@ import (
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/contextpack/application"
 	"harnessforge/internal/contextpack/domain"
-	"harnessforge/internal/inputlimits"
+	"harnessforge/internal/repository"
 	"harnessforge/internal/securityboundary"
-	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"unicode/utf8"
 )
@@ -42,34 +42,99 @@ func Build(ctx context.Context, repositoryPath, prompt, model string, options do
 
 	options = defaults(options, model)
 	if required := application.RequiredTokens(prompt); required > options.BudgetTokens {
-		return nil, fmt.Errorf("context budget %d is smaller than required prompt envelope %d", options.BudgetTokens, required)
+		return &domain.Plan{BudgetTokens: options.BudgetTokens, EstimatedTokens: required, Estimator: "payload-byte-upper-bound-v1", BudgetOverflow: true, OverflowTokens: required - options.BudgetTokens}, nil
 	}
-	analysis, err := analyzer.AnalyzeWithOptions(ctx, root, analyzer.Options{})
+	snapshot, err := repository.Scan(ctx, root, repository.ScanOptions{HonorIgnores: true, SkipDirs: repository.DefaultSkipDirs()})
 	if err != nil {
 		return nil, err
 	}
-	files, fileExclusions, err := collectFiles(ctx, root, options.MaxFiles)
+	defer snapshot.Close()
+	analysis, err := analyzer.AnalyzeSnapshot(ctx, snapshot, analyzer.Options{})
 	if err != nil {
 		return nil, err
+	}
+	files := make([]string, 0, len(snapshot.Files))
+	for _, file := range snapshot.Files {
+		parts := strings.Split(filepath.ToSlash(file.Path), "/")
+		if len(parts) > 1 && strings.HasPrefix(parts[0], ".") && parts[0] != ".github" {
+			continue
+		}
+		files = append(files, file.Path)
+	}
+	var fileExclusions []domain.Excerpt
+	// Catalog the whole repository before applying the deep-read limit. This
+	// prevents lexicographic walk order from deciding which files can provide
+	// evidence for the prompt.
+	sort.SliceStable(files, func(i, j int) bool {
+		a := application.Relevance(prompt, files[i], "")
+		b := application.Relevance(prompt, files[j], "")
+		if a != b {
+			return a > b
+		}
+		return files[i] < files[j]
+	})
+	if len(files) > options.MaxFiles {
+		for _, rel := range files[options.MaxFiles:] {
+			fileExclusions = append(fileExclusions, excluded(rel, "deep-read limit reached after relevance ranking"))
+		}
+		files = files[:options.MaxFiles]
 	}
 
 	candidates, previousAnalyzerTokens := candidatesFromAnalysis(analysis)
-	fileCandidates, fileBaseline, err := candidatesFromFiles(ctx, root, files, prompt, options.MaxBytesPerFile)
+	fileCandidates, fileBaseline, err := candidatesFromFiles(ctx, snapshot, files, prompt, options.MaxBytesPerFile)
 	if err != nil {
 		return nil, err
 	}
 	candidates = append(candidates, fileCandidates...)
+	knowledgeCandidates, err := forgeKnowledgeCandidates(root, options.Layout, prompt)
+	if err != nil {
+		return nil, err
+	}
+	candidates = append(candidates, knowledgeCandidates...)
+	if required := application.RequiredTokens(prompt); required > options.BudgetTokens {
+		return &domain.Plan{BudgetTokens: options.BudgetTokens, EstimatedTokens: required, Estimator: "payload-byte-upper-bound-v1", BudgetOverflow: true, OverflowTokens: required - options.BudgetTokens}, nil
+	}
 	candidates = append(candidates, fileExclusions...)
+	if options.UseBM25 {
+		applyBM25(candidates, prompt)
+	}
 	metrics := domain.Metrics{
 		PreviousAnalyzerJSONEstimatedTokens: previousAnalyzerTokens + application.RequiredTokens(prompt),
 		UnfilteredCandidateEstimatedTokens:  previousAnalyzerTokens + fileBaseline + application.RequiredTokens(prompt),
 		PreviousRelevantRecallPercent:       previousAnalyzerRecall(candidates),
 	}
 
-	return application.Select(candidates, prompt, options.BudgetTokens, metrics), nil
+	return application.SelectWithBudget(ctx, candidates, prompt, application.Budget{
+		MaxInputTokens: options.BudgetTokens,
+		Model:          options.Model,
+		Counter:        options.Counter,
+		UseMMR:         options.UseMMR,
+	}, metrics), nil
+}
+
+func applyBM25(candidates []domain.Excerpt, prompt string) {
+	documents := make([]application.BM25Document, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.Status != "excluded" {
+			documents = append(documents, application.BM25Document{ID: candidate.ID, Text: candidate.Path + " " + candidate.Text})
+		}
+	}
+	ranked := application.RankBM25(prompt, documents, len(documents))
+	scores := map[string]float64{}
+	for _, result := range ranked {
+		scores[result.ID] = result.Score
+	}
+	for i := range candidates {
+		if score, ok := scores[candidates[i].ID]; ok {
+			candidates[i].Relevance += int(score * 100)
+		}
+	}
 }
 
 func defaults(options domain.Options, model string) domain.Options {
+	if options.Model == "" {
+		options.Model = model
+	}
 	if options.BudgetTokens <= 0 {
 		options.BudgetTokens = domain.DefaultBudgetTokens
 		switch strings.ToLower(model) {
@@ -95,12 +160,26 @@ func candidatesFromAnalysis(analysis *analyzer.Analysis) ([]domain.Excerpt, int)
 	addFindings := func(group string, findings []analyzer.Finding) {
 		for _, finding := range findings {
 			text := group + ": " + finding.Value
+			if len(finding.Workspaces) > 0 {
+				text += " workspaces: " + strings.Join(finding.Workspaces, ", ")
+			}
 			if len(finding.Evidence) > 0 {
 				text += " evidence: " + strings.Join(finding.Evidence, ", ")
+			}
+			for _, evidence := range finding.EvidenceItems {
+				text += fmt.Sprintf(" structured evidence: %s (%s, workspace=%s", evidence.Path, evidence.Kind, evidence.Workspace)
+				if evidence.StartLine > 0 {
+					text += fmt.Sprintf(", lines=%d-%d", evidence.StartLine, evidence.EndLine)
+				}
+				if evidence.SHA256 != "" {
+					text += ", sha256=" + evidence.SHA256
+				}
+				text += ")"
 			}
 			candidates = append(candidates, domain.Excerpt{
 				ID:              application.StableID("analysis", group, finding.Value),
 				Source:          "repository-analysis:" + group + ":" + finding.Value,
+				Workspace:       finding.Workspace,
 				Text:            text,
 				EstimatedTokens: application.EstimateTokens(text),
 				Origins:         []string{"repository-analysis"},
@@ -113,32 +192,47 @@ func candidatesFromAnalysis(analysis *analyzer.Analysis) ([]domain.Excerpt, int)
 	addFindings("infrastructure", analysis.Infrastructure)
 	addFindings("database", analysis.Database)
 	addFindings("tests", analysis.Tests)
+	for _, module := range analysis.GoModules {
+		text := "go module: " + module.Module + " (" + module.Path + ")"
+		candidates = append(candidates, domain.Excerpt{
+			ID:              application.StableID("go-module", module.Path, module.Module),
+			Source:          "repository-analysis:go-module:" + module.Path,
+			Path:            module.Path,
+			Workspace:       module.Workspace,
+			Text:            text,
+			EstimatedTokens: application.EstimateTokens(text),
+			Origins:         []string{"repository-analysis"},
+		})
+	}
+	for _, gate := range analysis.QualityGates {
+		text := "quality gate: " + gate.Command
+		if gate.Workspace != "" {
+			text += " [workspace: " + gate.Workspace + "]"
+		}
+		if gate.Reason != "" {
+			text += " (" + gate.Reason + ")"
+		}
+		candidates = append(candidates, domain.Excerpt{
+			ID:              application.StableID("quality-gate", gate.ID, gate.Command),
+			Source:          "repository-analysis:quality-gate:" + gate.ID,
+			Workspace:       gate.Workspace,
+			Text:            text,
+			EstimatedTokens: application.EstimateTokens(text),
+			Origins:         []string{"repository-analysis"},
+		})
+	}
 	return candidates, baseline
 }
 
-func candidatesFromFiles(ctx context.Context, root string, files []string, prompt string, maxBytes int) ([]domain.Excerpt, int, error) {
+func candidatesFromFiles(ctx context.Context, snapshot *repository.RepositorySnapshot, files []string, prompt string, maxBytes int) ([]domain.Excerpt, int, error) {
 	var candidates []domain.Excerpt
 	baseline := 0
 	for _, rel := range files {
 		if err := ctx.Err(); err != nil {
 			return nil, 0, err
 		}
-		full := filepath.Join(root, filepath.FromSlash(rel))
-		info, err := os.Lstat(full)
-		if err != nil {
-			candidates = append(candidates, excluded(rel, "unreadable file"))
-			continue
-		}
 		if unsafePath(rel) {
 			candidates = append(candidates, excluded(rel, "unsafe relative path"))
-			continue
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			candidates = append(candidates, excluded(rel, "symlink skipped"))
-			continue
-		}
-		if !info.Mode().IsRegular() {
-			candidates = append(candidates, excluded(rel, "non-regular file skipped"))
 			continue
 		}
 		if looksSecret(rel) || securityboundary.SensitivePath(rel) {
@@ -149,7 +243,7 @@ func candidatesFromFiles(ctx context.Context, root string, files []string, promp
 			candidates = append(candidates, excluded(rel, "agent instruction file skipped"))
 			continue
 		}
-		content, truncated, err := readLimited(full, maxBytes)
+		content, truncated, err := snapshot.Read(rel, int64(maxBytes))
 		if err != nil {
 			candidates = append(candidates, excluded(rel, "unreadable file"))
 			continue
@@ -177,6 +271,7 @@ func candidatesFromFiles(ctx context.Context, root string, files []string, promp
 			ID:              application.StableID("file", rel, snippet),
 			Source:          "repository-file:" + rel,
 			Path:            rel,
+			Workspace:       snapshot.WorkspaceForPath(rel),
 			Text:            snippet,
 			Relevance:       application.Relevance(prompt, rel, snippet),
 			EstimatedTokens: application.EstimateTokens(snippet),
@@ -185,45 +280,6 @@ func candidatesFromFiles(ctx context.Context, root string, files []string, promp
 		})
 	}
 	return candidates, baseline, nil
-}
-
-func collectFiles(ctx context.Context, root string, limit int) ([]string, []domain.Excerpt, error) {
-	ignored, err := securityboundary.LoadGitIgnoreContext(ctx, root, inputlimits.RepositoryFiles)
-	if err != nil {
-		return nil, nil, err
-	}
-	var files []string
-	var exclusions []domain.Excerpt
-	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		if err != nil {
-			return err
-		}
-		name := entry.Name()
-		if entry.IsDir() {
-			if securityboundary.SkipRepositoryDirectory(name) || strings.HasPrefix(name, ".") {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		rel = filepath.ToSlash(rel)
-		if ignored.Match(rel) {
-			return nil
-		}
-		if len(files) >= limit {
-			exclusions = append(exclusions, excluded(rel, "file limit reached"))
-			return filepath.SkipAll
-		}
-		files = append(files, rel)
-		return nil
-	})
-	return files, exclusions, err
 }
 
 func excluded(path string, reason string) domain.Excerpt {
@@ -236,22 +292,6 @@ func excluded(path string, reason string) domain.Excerpt {
 		EstimatedTokens: 0,
 		Origins:         []string{path},
 	}
-}
-
-func readLimited(path string, maxBytes int) ([]byte, bool, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, false, err
-	}
-	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, int64(maxBytes)+1))
-	if err != nil {
-		return nil, false, err
-	}
-	if len(data) > maxBytes {
-		return data[:maxBytes], true, nil
-	}
-	return data, false, nil
 }
 
 func matchingExcerpt(prompt, path, text string) string {
