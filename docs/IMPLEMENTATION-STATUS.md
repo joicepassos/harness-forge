@@ -34,8 +34,10 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   field-level coverage.
 - T3.1–T3.4: migration preview reports unmapped choices, apply preserves the
   legacy source, rollback protects modified/unowned output, and v1 migration
-  remains compatible. Skill evidence is currently dropped during conversion;
-  cross-layout legacy command compatibility is not fully demonstrated.
+  remains compatible. Skill evidence now survives conversion through the
+  versioned manifest and schema. Cross-layout legacy command compatibility is
+  explicit: legacy `generate` directs Forge projects to native `sync` rather
+  than emitting a partial document.
 - T4.1–T4.6: deterministic Codex/Claude compile adapters, shared ownership
   manifest, dry-run/check/apply, collision and edit protection, staging, clone
   ownership, idempotence, and symlink checks are implemented. Native target
@@ -43,8 +45,9 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   unverified.
 - T5.1/T5.6: read-only aggregate `check`, static Forge/Harness output drift,
   optional explicit gate execution, and CI drift workflow are implemented.
-  CLI exit codes do not yet match ADR 0001's 0/1/2 contract, and the workflow
-  does not run an agent against the no-Forge clone.
+  CLI exit codes follow ADR 0001: success 0, failed checks 1, and usage,
+  configuration, or execution errors 2. The workflow does not run an agent
+  against the no-Forge clone.
 - T5.2–T5.3: explicit candidate import and reviewer-bound approval with
   evidence revalidation are covered. T5.4 remains partial: Forge knowledge and
   evidence drift are not integrated into the `drift` command.
@@ -59,10 +62,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   T6.3 reports budget overflow for selected knowledge, but early prompt-envelope
   overflow lacks complete exclusion details. T6.4 exposes comparison proxies;
   task-level quality and an independent baseline remain unmeasured.
-- T7.1–T7.3 and T7.5: local observation capture, review, candidate publication,
+- T7.1–T7.5: local observation capture, review, candidate publication,
   audit provenance, deduplication, and checkout isolation are implemented and
-  covered. T7.4 supports preview/apply, age and quota retention, and pending-item
-  preservation; interruption/recovery/resume behavior is not demonstrated.
+  covered. T7.4 supports preview/apply, age and quota retention, pending-item
+  preservation, atomic snapshot replacement, and safe retry after an injected
+  interruption; pending items survive and repeated collection is idempotent.
 - T8.1/T8.2: official-doc behavior matrices exist; no Cursor/OpenCode binary
   runtime tests were performed, so release acceptance remains open. The
   snapshots separate documented behavior from exact-build runtime evidence.
@@ -104,8 +108,10 @@ has not yet been run. No paid provider calls were made.
   agent/model configurations, and human review. Mili's clean HEAD is available
   as one candidate; its modified working tree is excluded. The available Go
   fixture is only development data and is not treated as pilot evidence.
-- T6.2/T6.3 and T7.4 retain the specific coverage gaps above; T6.4 comparison
-  proxies must not be described as measured task quality.
+- T6.2 retains the scope-selection coverage gaps above; T6.3 now reports early
+  prompt-envelope overflow with the configured estimator and an explicit
+  excluded-prompt reason. T6.4 comparison proxies must not be described as
+  measured task quality.
 - T1.7/T2/T3/T4/T5 also retain acceptance gaps listed in their status entries;
   static fixtures and repository-level tests are not external runtime evidence.
 - This checkout contains pre-existing repository-context/retrieval changes;
