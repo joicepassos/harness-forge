@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go.yaml.in/yaml/v3"
 	"harnessforge/internal/agentskills"
@@ -21,6 +22,22 @@ import (
 )
 
 const generatedManifest = ".forge/generated-manifest.json"
+const syncJournal = ".forge-sync-journal.json"
+
+type syncJournalEntry struct {
+	Path        string `json:"path"`
+	HadOriginal bool   `json:"had_original"`
+	Original    []byte `json:"original,omitempty"`
+	NewSHA256   string `json:"new_sha256,omitempty"`
+}
+
+type syncJournalFile struct {
+	Version int                `json:"version"`
+	Stage   string             `json:"stage"`
+	Entries []syncJournalEntry `json:"entries"`
+}
+
+var errSyncInterrupted = errors.New("simulated sync interruption")
 
 type GeneratedFile struct {
 	Path           string            `json:"path"`
@@ -63,7 +80,7 @@ func isSupportedGeneratedPath(value string) bool {
 }
 
 func validateOutputParents(root, relative string) error {
-	if !isSupportedGeneratedPath(relative) {
+	if relative != generatedManifest && !isSupportedGeneratedPath(relative) {
 		return fmt.Errorf("unsupported generated path %q", relative)
 	}
 	parts := strings.Split(filepath.ToSlash(relative), "/")
@@ -82,6 +99,174 @@ func validateOutputParents(root, relative string) error {
 		}
 	}
 	return nil
+}
+
+func syncDirectory(path string) error {
+	dir, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	if err := dir.Sync(); err != nil && !os.IsPermission(err) {
+		return err
+	}
+	return nil
+}
+
+func writeDurableFile(path string, data []byte, mode os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".forge-sync-write-")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if err := tmp.Chmod(mode); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	return syncDirectory(filepath.Dir(path))
+}
+
+func createDurableFileExclusive(path string, data []byte, mode os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".forge-sync-journal-")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if err := tmp.Chmod(mode); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Link(tmpName, path); err != nil {
+		return err
+	}
+	return syncDirectory(filepath.Dir(path))
+}
+
+// recoverSyncJournal rolls back an interrupted apply. It only changes a file
+// when it still contains the transaction's published bytes (or is absent when
+// the transaction intended deletion), so a human edit made after interruption
+// is preserved and reported as a conflict.
+func recoverSyncJournal(root string) error {
+	path := filepath.Join(root, syncJournal)
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return fmt.Errorf("sync recovery journal must be a regular non-symlink file")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var journal syncJournalFile
+	if err := json.Unmarshal(data, &journal); err != nil || journal.Version != 1 {
+		return fmt.Errorf("invalid sync recovery journal")
+	}
+	seen := map[string]bool{}
+	for i := len(journal.Entries) - 1; i >= 0; i-- {
+		entry := journal.Entries[i]
+		if seen[entry.Path] || (entry.Path != filepath.ToSlash(generatedManifest) && !isSupportedGeneratedPath(entry.Path)) {
+			return fmt.Errorf("invalid path in sync recovery journal")
+		}
+		seen[entry.Path] = true
+		if err := validateOutputParents(root, entry.Path); err != nil {
+			return err
+		}
+		dest := filepath.Join(root, filepath.FromSlash(entry.Path))
+		currentInfo, statErr := os.Lstat(dest)
+		if os.IsNotExist(statErr) {
+			if !entry.HadOriginal {
+				continue
+			}
+			if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+				return err
+			}
+			if err := writeDurableFile(dest, entry.Original, 0644); err != nil {
+				return err
+			}
+			continue
+		}
+		if statErr != nil {
+			return statErr
+		}
+		if currentInfo.Mode()&os.ModeSymlink != 0 || !currentInfo.Mode().IsRegular() {
+			return fmt.Errorf("refusing to recover unsafe generated file %s", entry.Path)
+		}
+		current, err := os.ReadFile(dest)
+		if err != nil {
+			return err
+		}
+		if entry.HadOriginal && bytes.Equal(current, entry.Original) {
+			continue
+		}
+		if entry.NewSHA256 == "" {
+			return fmt.Errorf("refusing to recover changed file %s", entry.Path)
+		}
+		sum := sha256.Sum256(current)
+		if hex.EncodeToString(sum[:]) != entry.NewSHA256 {
+			return fmt.Errorf("refusing to overwrite post-interruption edit %s", entry.Path)
+		}
+		if entry.HadOriginal {
+			if err := writeDurableFile(dest, entry.Original, 0644); err != nil {
+				return err
+			}
+		} else if err := os.Remove(dest); err != nil {
+			return err
+		} else if err := syncDirectory(filepath.Dir(dest)); err != nil {
+			return err
+		}
+	}
+	if journal.Stage != "" {
+		if filepath.Base(journal.Stage) != journal.Stage || !strings.HasPrefix(journal.Stage, ".forge-sync-stage-") {
+			return fmt.Errorf("invalid staging path in sync recovery journal")
+		}
+		stage := filepath.Join(root, journal.Stage)
+		if stageInfo, err := os.Lstat(stage); err == nil {
+			if stageInfo.Mode()&os.ModeSymlink != 0 || !stageInfo.IsDir() {
+				return fmt.Errorf("refusing to remove unsafe sync staging path")
+			}
+			if err := os.RemoveAll(stage); err != nil {
+				return err
+			}
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+	}
+	if err := os.Remove(path); err != nil {
+		return err
+	}
+	return syncDirectory(root)
 }
 
 // CompileForge loads approved knowledge and renders deterministic target files without writing.
@@ -285,14 +470,23 @@ func parseKnowledgeDocument(data []byte) (harnessdomain.KnowledgeItem, error) {
 
 // SyncForge supports read-only preview/check and staged apply for static agent files.
 func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
+	return syncForge(ctx, root, mode, nil)
+}
+
+func syncForge(ctx context.Context, root, mode string, afterMutation func(int) error) (SyncResult, error) {
 	if mode != "dry-run" && mode != "check" && mode != "apply" {
 		return SyncResult{}, fmt.Errorf("mode must be dry-run, check, or apply")
 	}
-	result, err := CompileForge(root)
-	if err != nil {
-		return result, err
-	}
 	abs, err := filepath.Abs(root)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	if mode == "apply" {
+		if err := recoverSyncJournal(abs); err != nil {
+			return SyncResult{}, err
+		}
+	}
+	result, err := CompileForge(root)
 	if err != nil {
 		return result, err
 	}
@@ -504,57 +698,112 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 	if old, e := os.ReadFile(manifestDest); e == nil {
 		backups[manifestDest] = old
 	}
-	committed := []string{}
-	rollback := func() {
-		for _, p := range committed {
-			if b, ok := backups[p]; ok {
-				_ = os.WriteFile(p, b, 0644)
-			} else {
-				_ = os.Remove(p)
-			}
+	journal := syncJournalFile{Version: 1, Stage: filepath.Base(stage)}
+	newHashes := map[string]string{}
+	for _, f := range result.Files {
+		newHashes[f.Path] = f.SHA256
+	}
+	manifestSum := sha256.Sum256(raw)
+	newHashes[generatedManifest] = hex.EncodeToString(manifestSum[:])
+	paths := make([]string, 0, len(staleOwned)+len(result.Files)+1)
+	paths = append(paths, staleOwned...)
+	for _, f := range result.Files {
+		paths = append(paths, f.Path)
+	}
+	paths = append(paths, generatedManifest)
+	for _, relative := range paths {
+		entry := syncJournalEntry{Path: relative, NewSHA256: newHashes[relative]}
+		if old, ok := backups[filepath.Join(abs, filepath.FromSlash(relative))]; ok {
+			entry.HadOriginal = true
+			entry.Original = old
 		}
+		journal.Entries = append(journal.Entries, entry)
+	}
+	journalData, err := json.Marshal(journal)
+	if err != nil {
+		return result, err
+	}
+	journalPath := filepath.Join(abs, syncJournal)
+	if err := createDurableFileExclusive(journalPath, append(journalData, '\n'), 0600); err != nil {
+		return result, fmt.Errorf("create sync recovery journal: %w", err)
+	}
+	rollbackOnError := func(cause error) error {
+		if recoveryErr := recoverSyncJournal(abs); recoveryErr != nil {
+			return errors.Join(cause, fmt.Errorf("sync recovery failed: %w", recoveryErr))
+		}
+		return cause
+	}
+	mutation := 0
+	after := func() error {
+		mutation++
+		if afterMutation != nil {
+			return afterMutation(mutation)
+		}
+		return nil
 	}
 	for _, old := range staleOwned {
 		if err := ctx.Err(); err != nil {
-			rollback()
-			return result, err
+			return result, rollbackOnError(err)
 		}
 		path := filepath.Join(abs, filepath.FromSlash(old))
 		if err := os.Remove(path); err != nil {
-			rollback()
-			return result, err
+			return result, rollbackOnError(err)
 		}
-		committed = append(committed, path)
+		if err := syncDirectory(filepath.Dir(path)); err != nil {
+			return result, rollbackOnError(err)
+		}
+		if err := after(); err != nil {
+			if errors.Is(err, errSyncInterrupted) {
+				return result, err
+			}
+			return result, rollbackOnError(err)
+		}
 	}
 	for _, f := range result.Files {
 		if err := ctx.Err(); err != nil {
-			rollback()
-			return result, err
+			return result, rollbackOnError(err)
 		}
 		dest := filepath.Join(abs, filepath.FromSlash(f.Path))
 		if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
-			rollback()
-			return result, err
+			return result, rollbackOnError(err)
 		}
 		if err := validateOutputParents(abs, f.Path); err != nil {
-			rollback()
-			return result, err
+			return result, rollbackOnError(err)
 		}
 		if err := os.Rename(filepath.Join(stage, filepath.FromSlash(f.Path)), dest); err != nil {
-			rollback()
-			return result, err
+			return result, rollbackOnError(err)
 		}
-		committed = append(committed, dest)
+		if err := syncDirectory(filepath.Dir(dest)); err != nil {
+			return result, rollbackOnError(err)
+		}
+		if err := after(); err != nil {
+			if errors.Is(err, errSyncInterrupted) {
+				return result, err
+			}
+			return result, rollbackOnError(err)
+		}
 	}
 	if err := os.MkdirAll(filepath.Dir(manifestDest), 0755); err != nil {
-		rollback()
-		return result, err
+		return result, rollbackOnError(err)
 	}
 	if err := os.Rename(filepath.Join(stage, "generated-manifest.json"), manifestDest); err != nil {
-		rollback()
-		return result, err
+		return result, rollbackOnError(err)
 	}
-	committed = append(committed, manifestDest)
+	if err := syncDirectory(filepath.Dir(manifestDest)); err != nil {
+		return result, rollbackOnError(err)
+	}
+	if err := after(); err != nil {
+		if errors.Is(err, errSyncInterrupted) {
+			return result, err
+		}
+		return result, rollbackOnError(err)
+	}
+	if err := os.Remove(journalPath); err != nil {
+		return result, fmt.Errorf("sync completed but recovery journal could not be removed: %w", err)
+	}
+	if err := syncDirectory(abs); err != nil {
+		return result, fmt.Errorf("sync completed but recovery journal removal was not durable: %w", err)
+	}
 	return result, nil
 }
 

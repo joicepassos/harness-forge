@@ -2,8 +2,10 @@ package infrastructure
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -488,6 +490,99 @@ references:
 	}
 	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); !os.IsNotExist(err) {
 		t.Fatalf("partial apply left replacement output behind: %v", err)
+	}
+}
+
+func TestSyncRecoversDurablyAfterInterruptionAtEveryCommitPhase(t *testing.T) {
+	for interruptAt := 1; interruptAt <= 3; interruptAt++ {
+		t.Run(strconv.Itoa(interruptAt), func(t *testing.T) {
+			root := forgeSyncFixture(t)
+			if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+				t.Fatal(err)
+			}
+			human := filepath.Join(root, "notes.txt")
+			if err := os.WriteFile(human, []byte("keep this human file\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".forge", "forge.yaml"), []byte(`layout_version: 1
+ir_version: 2
+project: {name: demo, languages: [Go]}
+targets: [claude]
+references:
+  knowledge:
+    - id: rule-a
+      path: .forge/knowledge/items/rule.md
+`), 0600); err != nil {
+				t.Fatal(err)
+			}
+			_, err := syncForge(context.Background(), root, "apply", func(phase int) error {
+				if phase == interruptAt {
+					return errSyncInterrupted
+				}
+				return nil
+			})
+			if !errors.Is(err, errSyncInterrupted) {
+				t.Fatalf("expected simulated process interruption at phase %d, got %v", interruptAt, err)
+			}
+			if _, err := os.Stat(filepath.Join(root, syncJournal)); err != nil {
+				t.Fatalf("interrupted apply did not leave a durable recovery journal: %v", err)
+			}
+			if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+				t.Fatalf("next apply did not recover and finish: %v", err)
+			}
+			if _, err := SyncForge(context.Background(), root, "check"); err != nil {
+				t.Fatalf("recovered outputs are inconsistent: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); !os.IsNotExist(err) {
+				t.Fatalf("stale target remains after recovery: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+				t.Fatalf("new target missing after recovery: %v", err)
+			}
+			if data, err := os.ReadFile(human); err != nil || string(data) != "keep this human file\n" {
+				t.Fatalf("human file changed during recovery: %q, %v", data, err)
+			}
+			if _, err := os.Stat(filepath.Join(root, syncJournal)); !os.IsNotExist(err) {
+				t.Fatalf("completed apply retained journal: %v", err)
+			}
+		})
+	}
+}
+
+func TestSyncRecoveryPreservesHumanEditMadeAfterInterruption(t *testing.T) {
+	root := forgeSyncFixture(t)
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".forge", "forge.yaml"), []byte(`layout_version: 1
+ir_version: 2
+project: {name: demo, languages: [Go]}
+targets: [claude]
+references:
+  knowledge:
+    - id: rule-a
+      path: .forge/knowledge/items/rule.md
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := syncForge(context.Background(), root, "apply", func(phase int) error {
+		if phase == 1 {
+			return errSyncInterrupted
+		}
+		return nil
+	})
+	if !errors.Is(err, errSyncInterrupted) {
+		t.Fatalf("expected simulated interruption, got %v", err)
+	}
+	human := filepath.Join(root, "CLAUDE.md")
+	if err := os.WriteFile(human, []byte("human instructions\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err == nil || !strings.Contains(err.Error(), "post-interruption edit") {
+		t.Fatalf("recovery did not report post-interruption edit: %v", err)
+	}
+	if data, err := os.ReadFile(human); err != nil || string(data) != "human instructions\n" {
+		t.Fatalf("recovery overwrote human edit: %q, %v", data, err)
 	}
 }
 
