@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"go.yaml.in/yaml/v3"
+	harnessdomain "harnessforge/internal/harness/domain"
 	"harnessforge/internal/memory"
 )
 
@@ -53,6 +56,27 @@ func TestMemoryObservationRequiresTwoExplicitReviewStepsBeforeSync(t *testing.T)
 	cmd.SetOut(new(bytes.Buffer))
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
+	}
+	paths, err := filepath.Glob(filepath.Join(root, ".forge", "knowledge", "items", "*.md"))
+	if err != nil || len(paths) != 1 {
+		t.Fatalf("published knowledge files=%v err=%v", paths, err)
+	}
+	published, err := os.ReadFile(paths[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	frontMatter := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(string(published), "---"), "---"))
+	var knowledge harnessdomain.KnowledgeItem
+	if err := yaml.Unmarshal([]byte(frontMatter), &knowledge); err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{"reviewer:alice", "repository:", "checkout:", "revision:", "reviewed_at:"} {
+		if !strings.Contains(knowledge.Origin, value) {
+			t.Fatalf("publication origin omits %q: %s", value, knowledge.Origin)
+		}
+	}
+	if !strings.Contains(knowledge.ReviewDiff, "Auth policy is explicit.") || knowledge.ContentSHA256 == "" {
+		t.Fatalf("publication lost review evidence: %#v", knowledge)
 	}
 	cmd = newRootCommand()
 	cmd.SetArgs([]string{"review", "observation-" + observation.ID, "approved", "--reviewer", "bob", "--layout", "forge", "--repository", root})

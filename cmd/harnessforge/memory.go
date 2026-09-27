@@ -193,7 +193,13 @@ func newMemoryCommand() *cobra.Command {
 		default:
 			return fmt.Errorf("--kind must classify the knowledge item")
 		}
-		item := harnessdomain.KnowledgeItem{ID: "observation-" + observation.ID, Kind: harnessdomain.KnowledgeKind(kind), Content: observation.Content, Origin: "local-observation:" + observation.ID + "; source:" + observation.Source, Review: harnessdomain.KnowledgeCandidate, Health: harnessdomain.KnowledgeUnknown}
+		if strings.TrimSpace(reviewer) != "" && observation.Reviewer != strings.TrimSpace(reviewer) {
+			return fmt.Errorf("--reviewer does not match the approved observation reviewer")
+		}
+		if observation.ReviewDiff == "" || observation.ReviewedAt.IsZero() || strings.TrimSpace(observation.Reviewer) == "" {
+			return fmt.Errorf("approved observation is missing review audit data")
+		}
+		item := harnessdomain.KnowledgeItem{ID: "observation-" + observation.ID, Kind: harnessdomain.KnowledgeKind(kind), Content: observation.Content, Origin: "local-observation:" + observation.ID + "; source:" + observation.Source + "; revision:" + observation.Revision + "; repository:" + observation.RepositoryID + "; checkout:" + observation.CheckoutID + "; reviewed_at:" + observation.ReviewedAt.UTC().Format(time.RFC3339Nano) + "; reviewer:" + observation.Reviewer, Review: harnessdomain.KnowledgeCandidate, Health: harnessdomain.KnowledgeUnknown, ContentSHA256: harnessdomain.HashKnowledgeContent(observation.Content), ReviewDiff: observation.ReviewDiff}
 		for _, e := range observation.Evidence {
 			item.Evidence = append(item.Evidence, harnessdomain.KnowledgeEvidence{Path: e.Path, SHA256: e.SHA256, Quote: e.Quote})
 		}

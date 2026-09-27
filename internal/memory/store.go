@@ -43,6 +43,8 @@ type Observation struct {
 	Source        string     `json:"source"`
 	Evidence      []Evidence `json:"evidence,omitempty"`
 	Reviewer      string     `json:"reviewer,omitempty"`
+	ReviewedAt    time.Time  `json:"reviewed_at,omitempty"`
+	ReviewDiff    string     `json:"review_diff,omitempty"`
 }
 
 type Store struct {
@@ -185,12 +187,24 @@ func (s *Store) Review(id string, state State, reviewer string) (Observation, er
 		}
 		entries[i].State = state
 		entries[i].Reviewer = strings.TrimSpace(reviewer)
+		if state != Candidate {
+			entries[i].ReviewedAt = time.Now().UTC()
+			entries[i].ReviewDiff = "--- candidate\n+++ reviewed\n" + strings.Join(prefixLines(entries[i].Content), "\n") + "\n"
+		}
 		if err := s.save(entries); err != nil {
 			return Observation{}, err
 		}
 		return entries[i], nil
 	}
 	return Observation{}, fmt.Errorf("observation %q not found", id)
+}
+
+func prefixLines(content string) []string {
+	lines := strings.Split(content, "\n")
+	for i := range lines {
+		lines[i] = "+" + lines[i]
+	}
+	return lines
 }
 
 type GCPlan struct {
