@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"fmt"
+	"harnessforge/internal/agentskills"
 	"harnessforge/internal/harness/domain"
 	"os"
 	"path/filepath"
@@ -20,13 +21,18 @@ func ValidateManifestReferences(layout ProjectLayout, manifest domain.Manifest) 
 			return fmt.Errorf("references.knowledge[%s].path: %w", item.ID, err)
 		}
 	}
+	root, err := os.OpenRoot(layout.Root)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
 	for index, reference := range manifest.References.Skills {
-		path, err := layout.ResolveReference(reference.Path)
+		bundle, err := agentskills.Read(root, reference.Path)
 		if err != nil {
 			return fmt.Errorf("references.skills[%d]: %w", index, err)
 		}
-		if err := requireRegularFile(path); err != nil {
-			return fmt.Errorf("references.skills[%d]: %w", index, err)
+		if bundle.Description != reference.Description {
+			return fmt.Errorf("references.skills[%d]: manifest description does not match SKILL.md", index)
 		}
 	}
 	for index, gate := range manifest.QualityGates {

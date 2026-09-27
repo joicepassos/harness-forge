@@ -20,7 +20,7 @@ func (g *Generate) Execute(repository string, proposal domain.Proposal, approved
 	if err := ValidateID(proposal.ID); err != nil {
 		return err
 	}
-	if proposal.Description == "" || len(proposal.Examples) == 0 {
+	if proposal.Description == "" || len(proposal.Description) > 1024 || len(proposal.Examples) == 0 {
 		return fmt.Errorf("proposal requires a description and examples")
 	}
 	if err := ValidateEvidence(proposal.Examples); err != nil {

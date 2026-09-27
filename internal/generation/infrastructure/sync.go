@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go.yaml.in/yaml/v3"
+	"harnessforge/internal/agentskills"
 	"harnessforge/internal/generation/domain"
 	harnessdomain "harnessforge/internal/harness/domain"
 	harnessinfra "harnessforge/internal/harness/infrastructure"
@@ -45,6 +46,42 @@ func containsGeneratedPath(files []GeneratedFile, path string) bool {
 		}
 	}
 	return false
+}
+
+func isSupportedGeneratedPath(value string) bool {
+	if value == "AGENTS.md" || value == "CLAUDE.md" {
+		return true
+	}
+	clean := filepath.ToSlash(filepath.Clean(filepath.FromSlash(value)))
+	for _, prefix := range []string{".agents/skills/", ".claude/skills/"} {
+		if strings.HasPrefix(clean, prefix) && clean == value && !strings.Contains(value, "\\") {
+			parts := strings.Split(strings.TrimPrefix(value, prefix), "/")
+			return len(parts) >= 2 && parts[0] != "" && parts[0] != "." && parts[0] != ".." && parts[len(parts)-1] != "" && parts[len(parts)-1] != "." && parts[len(parts)-1] != ".."
+		}
+	}
+	return false
+}
+
+func validateOutputParents(root, relative string) error {
+	if !isSupportedGeneratedPath(relative) {
+		return fmt.Errorf("unsupported generated path %q", relative)
+	}
+	parts := strings.Split(filepath.ToSlash(relative), "/")
+	current := root
+	for _, part := range parts[:len(parts)-1] {
+		current = filepath.Join(current, filepath.FromSlash(part))
+		info, err := os.Lstat(current)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return fmt.Errorf("generated path parent must be a regular directory: %s", relative)
+		}
+	}
+	return nil
 }
 
 // CompileForge loads approved knowledge and renders deterministic target files without writing.
@@ -96,6 +133,14 @@ func CompileForge(root string) (SyncResult, error) {
 	for _, s := range project.Manifest.References.Skills {
 		input.Skills = append(input.Skills, domain.Skill{ID: s.ID, Description: s.Description, Path: s.Path})
 	}
+	skillBundles := make([]agentskills.Bundle, 0, len(project.Manifest.References.Skills))
+	for _, ref := range project.Manifest.References.Skills {
+		bundle, err := agentskills.Read(rootHandle, ref.Path)
+		if err != nil {
+			return SyncResult{}, fmt.Errorf("skill %q: %w", ref.ID, err)
+		}
+		skillBundles = append(skillBundles, bundle)
+	}
 	for _, g := range project.Manifest.QualityGates {
 		input.Gates = append(input.Gates, domain.QualityGate{ID: g.ID, Command: g.Command, Workspace: g.Workspace, Workspaces: append([]string(nil), g.Workspaces...)})
 	}
@@ -104,12 +149,21 @@ func CompileForge(root string) (SyncResult, error) {
 	}
 	result := SyncResult{Diff: map[string]string{}}
 	for _, target := range project.Manifest.Targets {
+		targetInput := input
+		targetInput.Skills = append([]domain.Skill(nil), input.Skills...)
+		for i := range targetInput.Skills {
+			prefix := ".agents/skills/"
+			if target == "claude" {
+				prefix = ".claude/skills/"
+			}
+			targetInput.Skills[i].Path = filepath.ToSlash(filepath.Join(prefix, skillBundles[i].Name, "SKILL.md"))
+		}
 		var doc domain.Document
 		switch target {
 		case "codex":
-			doc, err = (CodexAdapter{}).Render(input)
+			doc, err = (CodexAdapter{}).Render(targetInput)
 		case "claude":
-			doc, err = (ClaudeAdapter{}).Render(input)
+			doc, err = (ClaudeAdapter{}).Render(targetInput)
 		default:
 			return SyncResult{}, fmt.Errorf("unsupported target %q", target)
 		}
@@ -121,9 +175,22 @@ func CompileForge(root string) (SyncResult, error) {
 		if len(input.Policies) > 0 {
 			policyCapability = "declared per policy"
 		}
-		entry := GeneratedFile{Path: doc.Path, SHA256: hex.EncodeToString(sum[:]), Target: target, AdapterVersion: "1", Capabilities: map[string]string{"scope": "textual", "skills": "reference", "quality_gates": "advisory", "policy": policyCapability}}
+		entry := GeneratedFile{Path: doc.Path, SHA256: hex.EncodeToString(sum[:]), Target: target, AdapterVersion: "1", Capabilities: map[string]string{"scope": "textual", "skills": "native", "quality_gates": "advisory", "policy": policyCapability}}
 		result.Files = append(result.Files, entry)
 		result.Diff[doc.Path] = string(doc.Content)
+		for _, bundle := range skillBundles {
+			prefix := ".agents/skills/"
+			if target == "claude" {
+				prefix = ".claude/skills/"
+			}
+			for _, relative := range bundle.SortedPaths() {
+				output := filepath.ToSlash(filepath.Join(prefix, bundle.Name, filepath.FromSlash(relative)))
+				content := bundle.Files[relative]
+				sum := sha256.Sum256(content)
+				result.Files = append(result.Files, GeneratedFile{Path: output, SHA256: hex.EncodeToString(sum[:]), Target: target, AdapterVersion: "1", Capabilities: map[string]string{"skills": "agent-skills"}})
+				result.Diff[output] = string(content)
+			}
+		}
 	}
 	sort.Slice(result.Files, func(i, j int) bool { return result.Files[i].Path < result.Files[j].Path })
 	seen := map[string]bool{}
@@ -265,7 +332,7 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 		seen := map[string]bool{}
 		stalePaths := []string{}
 		for _, owned := range recorded.Files {
-			if (owned.Path != "AGENTS.md" && owned.Path != "CLAUDE.md") || seen[owned.Path] {
+			if !isSupportedGeneratedPath(owned.Path) || seen[owned.Path] {
 				return result, fmt.Errorf("invalid generated manifest file entry")
 			}
 			seen[owned.Path] = true
@@ -273,6 +340,9 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 				return result, fmt.Errorf("invalid generated manifest hash")
 			}
 			path := filepath.Join(abs, filepath.FromSlash(owned.Path))
+			if err := validateOutputParents(abs, owned.Path); err != nil {
+				return result, err
+			}
 			info, err := os.Lstat(path)
 			if err != nil || !info.Mode().IsRegular() {
 				result.Changed = true
@@ -334,7 +404,7 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 	}
 	owned := map[string]string{}
 	for _, f := range prior.Files {
-		if f.Path != "AGENTS.md" && f.Path != "CLAUDE.md" {
+		if !isSupportedGeneratedPath(f.Path) {
 			return result, fmt.Errorf("invalid path in generated manifest")
 		}
 		owned[f.Path] = f.SHA256
@@ -368,7 +438,14 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 		delete(owned, previous.Path)
 	}
 	for _, f := range result.Files {
+		if err := validateOutputParents(abs, f.Path); err != nil {
+			return result, err
+		}
 		dest := filepath.Join(abs, filepath.FromSlash(f.Path))
+		info, e := os.Lstat(dest)
+		if e == nil && (info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular()) {
+			return result, fmt.Errorf("refusing to overwrite unsafe generated file %s", f.Path)
+		}
 		old, e := os.ReadFile(dest)
 		if e == nil {
 			sum := sha256.Sum256(old)
@@ -385,7 +462,11 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 	}
 	defer os.RemoveAll(stage)
 	for _, f := range result.Files {
-		if err := os.WriteFile(filepath.Join(stage, filepath.Base(f.Path)), []byte(result.Diff[f.Path]), 0644); err != nil {
+		staged := filepath.Join(stage, filepath.FromSlash(f.Path))
+		if err := os.MkdirAll(filepath.Dir(staged), 0755); err != nil {
+			return result, err
+		}
+		if err := os.WriteFile(staged, []byte(result.Diff[f.Path]), 0644); err != nil {
 			return result, err
 		}
 	}
@@ -409,6 +490,12 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 	}
 	for _, f := range result.Files {
 		dest := filepath.Join(abs, filepath.FromSlash(f.Path))
+		if err := validateOutputParents(abs, f.Path); err != nil {
+			return result, err
+		}
+		if info, e := os.Lstat(dest); e == nil && (info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular()) {
+			return result, fmt.Errorf("refusing to back up unsafe generated file %s", f.Path)
+		}
 		if old, e := os.ReadFile(dest); e == nil {
 			backups[dest] = old
 		}
@@ -445,7 +532,15 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 			return result, err
 		}
 		dest := filepath.Join(abs, filepath.FromSlash(f.Path))
-		if err := os.Rename(filepath.Join(stage, filepath.Base(f.Path)), dest); err != nil {
+		if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+			rollback()
+			return result, err
+		}
+		if err := validateOutputParents(abs, f.Path); err != nil {
+			rollback()
+			return result, err
+		}
+		if err := os.Rename(filepath.Join(stage, filepath.FromSlash(f.Path)), dest); err != nil {
 			rollback()
 			return result, err
 		}

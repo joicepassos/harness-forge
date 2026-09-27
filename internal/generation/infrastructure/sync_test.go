@@ -138,6 +138,119 @@ func TestSyncForgePreviewApplyCheckAndCloneOwnership(t *testing.T) {
 	}
 }
 
+func TestSyncForgePublishesNativeSkillsAndManagedResources(t *testing.T) {
+	root := forgeSyncFixture(t)
+	skillDir := filepath.Join(root, ".forge", "skills", "review")
+	if err := os.MkdirAll(filepath.Join(skillDir, "references"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	skill := "---\nname: review\ndescription: Review code changes and use during code review.\n---\n\nReview each change carefully. See [guide](references/guide.md).\n"
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(skill), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "references", "guide.md"), []byte("Inspect tests and error paths.\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = []byte(strings.Replace(string(manifest), "targets: [codex]", "targets: [codex, claude]", 1))
+	manifest = append(manifest, []byte("  skills:\n    - id: code-review\n      description: Review code changes and use during code review.\n      path: .forge/skills/review/SKILL.md\n")...)
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := CompileForge(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{".agents/skills/review/SKILL.md", ".agents/skills/review/references/guide.md", ".claude/skills/review/SKILL.md", ".claude/skills/review/references/guide.md"} {
+		if _, ok := plan.Diff[expected]; !ok {
+			t.Fatalf("compiled output omitted %s", expected)
+		}
+	}
+	for _, instructions := range []string{plan.Diff["AGENTS.md"], plan.Diff["CLAUDE.md"]} {
+		if strings.Contains(instructions, "Review each change carefully") {
+			t.Fatal("skill body was duplicated in agent instructions")
+		}
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{".agents/skills/review/references/guide.md", ".claude/skills/review/references/guide.md"} {
+		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if err != nil || string(content) != "Inspect tests and error paths.\n" {
+			t.Fatalf("published resource %s=%q err=%v", rel, content, err)
+		}
+	}
+	if _, err := SyncForge(context.Background(), root, "check"); err != nil {
+		t.Fatalf("skill outputs not owned or in sync: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "references", "guide.md"), []byte("Updated reference.\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatalf("intact owned skill output did not update: %v", err)
+	}
+	for _, rel := range []string{".agents/skills/review/references/guide.md", ".claude/skills/review/references/guide.md"} {
+		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if err != nil || string(content) != "Updated reference.\n" {
+			t.Fatalf("updated resource %s=%q err=%v", rel, content, err)
+		}
+	}
+}
+
+func TestSyncForgeRemovesOnlyIntactOwnedSkillFiles(t *testing.T) {
+	root := forgeSyncFixture(t)
+	skill := filepath.Join(root, ".forge", "skills", "review", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(skill), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(skill, []byte("---\nname: review\ndescription: Review source code.\n---\n\nReview it.\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = append(manifest, []byte("  skills:\n    - id: review\n      description: Review source code.\n      path: .forge/skills/review/SKILL.md\n")...)
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	ownedSkill := filepath.Join(root, ".agents", "skills", "review", "SKILL.md")
+	ownedBefore, err := os.ReadFile(ownedSkill)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = []byte(strings.Replace(string(manifest), "  skills:\n    - id: review\n      description: Review source code.\n      path: .forge/skills/review/SKILL.md\n", "", 1))
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ownedSkill, []byte("manual edit"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err == nil || !strings.Contains(err.Error(), "manually edited") {
+		t.Fatalf("edited stale skill was removed: %v", err)
+	}
+	if err := os.WriteFile(ownedSkill, ownedBefore, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatalf("intact stale skill wasn't removed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".agents", "skills", "review", "SKILL.md")); !os.IsNotExist(err) {
+		t.Fatal("stale Codex skill remained")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "review", "SKILL.md")); !os.IsNotExist(err) {
+		t.Fatal("stale Claude skill remained")
+	}
+}
+
 func TestSyncForgeRejectsEvidenceChangedAfterApproval(t *testing.T) {
 	root := forgeSyncFixture(t)
 	document := filepath.Join(root, ".forge", "knowledge", "items", "rule.md")
@@ -330,5 +443,30 @@ func TestSyncForgeRejectsSymlinkTarget(t *testing.T) {
 	}
 	if _, err := SyncForge(context.Background(), root, "dry-run"); err == nil {
 		t.Fatal("symlink target was accepted")
+	}
+}
+
+func TestSyncForgeRefusesOwnedSymlinkWithoutChangingItsTarget(t *testing.T) {
+	root := forgeSyncFixture(t)
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(t.TempDir(), "outside.md")
+	if err := os.WriteFile(target, []byte("external content"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	generated := filepath.Join(root, "AGENTS.md")
+	if err := os.Remove(generated); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, generated); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err == nil || !strings.Contains(err.Error(), "unsafe generated file") {
+		t.Fatalf("owned symlink was accepted: %v", err)
+	}
+	content, err := os.ReadFile(target)
+	if err != nil || string(content) != "external content" {
+		t.Fatalf("symlink target was changed: %q, %v", content, err)
 	}
 }

@@ -12,7 +12,7 @@ import (
 func TestValidateManifestReferencesChecksFilesAndWorkspacesWithoutRunningCommands(t *testing.T) {
 	root := t.TempDir()
 	layout := ProjectLayout{Root: root, Kind: LayoutForge}
-	for _, name := range []string{".forge/knowledge/architecture.md", ".forge/skills/review/SKILL.md"} {
+	for _, name := range []string{".forge/knowledge/architecture.md"} {
 		path := filepath.Join(root, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 			t.Fatal(err)
@@ -20,6 +20,13 @@ func TestValidateManifestReferencesChecksFilesAndWorkspacesWithoutRunningCommand
 		if err := os.WriteFile(path, []byte("content"), 0600); err != nil {
 			t.Fatal(err)
 		}
+	}
+	skill := filepath.Join(root, ".forge", "skills", "review", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(skill), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(skill, []byte("---\nname: review\ndescription: Review skill\n---\n\nReview the change.\n"), 0600); err != nil {
+		t.Fatal(err)
 	}
 	manifest := domain.Manifest{
 		References: domain.ManifestReferences{
