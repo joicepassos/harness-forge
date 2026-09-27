@@ -62,6 +62,18 @@ func TestReviewKnowledgeRefusesChangedEvidenceAndMissingReviewer(t *testing.T) {
 	}
 }
 
+func TestReviewKnowledgeRejectsSecondDecision(t *testing.T) {
+	root := t.TempDir()
+	item := harnessdomain.KnowledgeItem{ID: "decision", Kind: harnessdomain.KnowledgeFact, Content: "Keep the boundary explicit.", Origin: "human", Review: harnessdomain.KnowledgeCandidate, Health: harnessdomain.KnowledgeUnknown}
+	writeForgeKnowledgeReviewFixture(t, root, item)
+	if err := ReviewKnowledge(root, "forge", item.ID, "approved", "alice"); err != nil {
+		t.Fatal(err)
+	}
+	if err := ReviewKnowledge(root, "forge", item.ID, "rejected", "bob"); err == nil || !strings.Contains(err.Error(), "only candidate knowledge") {
+		t.Fatalf("second review decision accepted: %v", err)
+	}
+}
+
 func writeForgeKnowledgeReviewFixture(t *testing.T, root string, item harnessdomain.KnowledgeItem) {
 	t.Helper()
 	doc := filepath.Join(root, ".forge", "knowledge", "boundary.md")

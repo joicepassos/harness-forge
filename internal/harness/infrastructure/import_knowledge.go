@@ -10,6 +10,7 @@ import (
 	"harnessforge/internal/safefile"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 )
 
@@ -18,6 +19,9 @@ import (
 func ImportKnowledgeCandidate(root string, item harnessdomain.KnowledgeItem) (string, error) {
 	if item.Review != harnessdomain.KnowledgeCandidate {
 		return "", fmt.Errorf("imported knowledge must remain candidate")
+	}
+	if item.ContentSHA256 == "" {
+		item.ContentSHA256 = harnessdomain.HashKnowledgeContent(item.Content)
 	}
 	if err := item.Validate(); err != nil {
 		return "", err
@@ -37,7 +41,7 @@ func ImportKnowledgeCandidate(root string, item harnessdomain.KnowledgeItem) (st
 			if err != nil {
 				return "", err
 			}
-			if current.Content == item.Content && current.Origin == item.Origin {
+			if current.Content == item.Content && current.Origin == item.Origin && current.Kind == item.Kind && reflect.DeepEqual(current.Scope, item.Scope) && current.EvidenceSHA256 == item.EvidenceSHA256 && reflect.DeepEqual(current.Evidence, item.Evidence) {
 				return ref.Path, nil
 			}
 			return "", fmt.Errorf("knowledge ID %q already exists with different content", item.ID)

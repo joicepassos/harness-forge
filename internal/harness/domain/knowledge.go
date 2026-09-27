@@ -49,6 +49,7 @@ type KnowledgeItem struct {
 	Health             KnowledgeHealth      `json:"health" yaml:"health"`
 	Evidence           []KnowledgeEvidence  `json:"evidence,omitempty" yaml:"evidence,omitempty"`
 	Reviewer           string               `json:"reviewer,omitempty" yaml:"reviewer,omitempty"`
+	ReviewDiff         string               `json:"review_diff,omitempty" yaml:"review_diff,omitempty"`
 	ContentSHA256      string               `json:"content_sha256,omitempty" yaml:"content_sha256,omitempty"`
 	EvidenceSHA256     string               `json:"evidence_sha256,omitempty" yaml:"evidence_sha256,omitempty"`
 	LegacyReviewStatus string               `json:"legacy_review_status,omitempty" yaml:"legacy_review_status,omitempty"`

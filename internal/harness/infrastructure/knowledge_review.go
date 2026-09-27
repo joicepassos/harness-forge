@@ -102,32 +102,36 @@ func ReviewKnowledge(root, selection, id, state, reviewer string) error {
 	if err := decoder.Decode(new(any)); err != io.EOF {
 		return fmt.Errorf("expected one YAML document")
 	}
-	if err := item.Validate(); err != nil && item.Review != harnessdomain.KnowledgeCandidate {
-		return err
-	}
 	if item.ID != id {
 		return fmt.Errorf("manifest ID %q does not match document ID %q", id, item.ID)
+	}
+	// A review decision can only be made once from the candidate state. Check
+	// the source state before changing it; comparing after assignment would
+	// compare the requested state with itself and allow repeat reviews.
+	if state != "candidate" && item.Review != harnessdomain.KnowledgeCandidate {
+		return fmt.Errorf("only candidate knowledge can enter a new review")
 	}
 	if state == "candidate" {
 		item.Review = harnessdomain.KnowledgeCandidate
 		item.Reviewer = ""
+		item.ReviewDiff = ""
 		item.ContentSHA256 = ""
 		item.EvidenceSHA256 = ""
+		item.Health = harnessdomain.KnowledgeUnknown
 	} else {
 		item.Review = harnessdomain.KnowledgeReviewState(state)
 		item.Reviewer = strings.TrimSpace(reviewer)
+		item.ReviewDiff = reviewDiff(item.Content)
 		item.ContentSHA256 = harnessdomain.HashKnowledgeContent(item.Content)
+		fingerprint, err := KnowledgeFingerprint(project.Layout.Root, path, id, item.Evidence)
+		if err != nil {
+			return fmt.Errorf("knowledge evidence is invalid; review refused: %w", err)
+		}
+		item.EvidenceSHA256 = fingerprint
 		if state == "approved" {
-			var evidence []harnessdomain.Evidence
-			for _, e := range item.Evidence {
-				evidence = append(evidence, harnessdomain.Evidence{File: e.Path, Workspace: e.Workspace, Kind: e.Kind, Symbol: e.Symbol, Quote: e.Quote, StartLine: e.StartLine, EndLine: e.EndLine, SHA256: e.SHA256, Revision: e.Revision})
-			}
-			fingerprint, err := (EvidenceRevalidator{Root: project.Layout.Root}).Fingerprint(path, id, evidence)
-			if err != nil {
-				return fmt.Errorf("knowledge evidence is invalid; approval refused: %w", err)
-			}
-			item.EvidenceSHA256 = fingerprint
 			item.Health = harnessdomain.KnowledgeVerified
+		} else {
+			item.Health = harnessdomain.KnowledgeUnknown
 		}
 	}
 	if err := item.Validate(); err != nil {
@@ -164,6 +168,18 @@ func ReviewKnowledge(root, selection, id, state, reviewer string) error {
 		return err
 	}
 	return safefile.Replace(name, path)
+}
+
+func reviewDiff(content string) string {
+	lines := strings.Split(content, "\n")
+	var out strings.Builder
+	// Avoid YAML front-matter delimiter tokens: several lightweight readers
+	// locate the closing delimiter by scanning for `---`.
+	out.WriteString("candidate content reviewed:\n")
+	for _, line := range lines {
+		fmt.Fprintf(&out, "+%s\n", line)
+	}
+	return out.String()
 }
 
 func rejectSymlinkPath(root *os.Root, relative string) error {
