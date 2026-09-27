@@ -95,14 +95,16 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   dedicated CI workflow that
   verifies Forge sync and runs the repository's `go test ./...` gate; both
   commands passed locally. The workflow has not yet run on GitHub.
-- T9.1: the versioned inventory records Mili, PromptForge, and Toca as candidate
-  commits, and a 12-task draft is available. The user approved MLI-01–05,
-  Codex CLI's local default configuration, and three repetitions. Pilot
-  conditions and the Forge source/export still need a clean, reproducible freeze;
-  the Mili checkout's current context/index files are untracked and derive from
-  a modified tree. See [the partial task approval](pilot/mili-task-approval-v1.json).
-  T0.4 and T9.2–T9.5 remain pending; T9.6 is deferred until comparative
-  evidence exists.
+- T9.1: the user approved MLI-01–05, Codex CLI local defaults, and three
+  repetitions. The pinned Mili commit, four-file team bundle, generated Forge
+  source/export, task text, model/effort, run rotation, and baseline smoke are
+  hash-recorded in the pilot freeze files. The original Mili checkout is intact.
+  Evaluator coverage is partial: MLI-02 and the MLI-05 parser probe were tested
+  independently; MLI-01/03/04 acceptance evaluators are not yet frozen. A local
+  PostgreSQL 18 service is running, but the available postgres role requires an
+  unavailable password, so MLI-02's real keyset SQL is unverified and its status
+  remains PARTIAL. No coding-agent pilot runs have started. T0.4 and T9.2–T9.5
+  remain pending; T9.6 awaits comparative evidence.
 
 ## Verification
 
@@ -124,10 +126,11 @@ paid provider calls were made.
 - External Cursor/OpenCode/Codex/Claude runtime validation, end-to-end clone
   agent runs, pilot measurements, and the runtime decision require pinned agent
   builds and representative repositories; none are fabricated here.
-- T0.4 and T9.2–T9.5 need the remaining condition/export freeze and independent
-  evaluator rubric. Mili's clean HEAD and the five approved task texts are
-  pinned; its modified code working tree is excluded. The available Go
-  fixture is only development data and is not treated as pilot evidence.
+- T0.4 and T9.2–T9.5 need independent acceptance evaluators for MLI-01/03/04
+  and authenticated access for the PostgreSQL keyset check. Mili's clean HEAD,
+  approved tasks, run configuration, and instruction bundles are frozen; the
+  original modified working tree is excluded. The available Go fixture is only
+  development data and is not treated as pilot evidence.
 - T6.2 now supports explicit knowledge keywords and task paths through the
   context API and `context explain --task-path`; glob matching is segment-aware
   with `**`, and backend/frontend scope fixtures pass. T6.3 reports early

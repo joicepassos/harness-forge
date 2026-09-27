@@ -83,7 +83,7 @@ carry the authenticated A scope for list, detail, and reprocess. Otherwise
 Command:
 
 ```powershell
-& '.\gradlew.bat' test --tests 'com.mili.core.webhook.pilot.Mli02AcceptanceTest' --no-daemon
+& '.\gradlew.bat' test --tests 'com.mili.core.webhook.internal.infrastructure.http.Mli02AcceptanceTest' --no-daemon
 ```
 
 Required deterministic observations, using a mocked repository/service and an
@@ -93,8 +93,7 @@ in-process HTTP controller:
    both boundary components null.
 2. A valid fixed cursor, `1730000000123|evt-2`, is parsed as epoch millis
    `1730000000123` and event ID `evt-2`.
-3. Each malformed cursor (`abc|evt-2`, `1730000000123`,
-   `1730000000123|`, and overflowing epoch `9223372036854775808|evt-2`)
+3. Each malformed cursor (`abc|evt-2`, `1730000000123`, `1730000000123|`, and overflowing epoch `9223372036854775808|evt-2`)
    produces HTTP 400 and causes no repository query. Malformed input must not
    silently restart at page one or become HTTP 500.
 4. A deterministic 50-item first-page response emits exactly
@@ -174,7 +173,7 @@ Status: `PASS` if all observations pass. These checks must not inherit
 Command:
 
 ```powershell
-& '.\gradlew.bat' test --tests 'com.mili.core.webhook.pilot.Mli05AcceptanceTest' --no-daemon
+& '.\gradlew.bat' test --tests 'com.mili.core.webhook.internal.application.inbound.Mli05AcceptanceTest' --no-daemon
 ```
 
 Required deterministic observations:
@@ -188,9 +187,10 @@ Required deterministic observations:
 4. Creating with `$.type` passes expression validation. Do not require actual
    database persistence in this primary evaluator.
 
-Before freezing the evaluator source, verify the selected malformed literal is
-rejected by the Jayway JsonPath version resolved from the pinned commit; do not
-depend on incidental parser message text.
+Frozen malformed literal: `$[`. The independent `Mli05JsonPathProbe` runs
+against Jayway JsonPath 2.10.0 resolved by the pinned build and asserts that
+`$.type` compiles while `$[` raises `InvalidPathException`; parser message text
+is deliberately not asserted.
 
 Status: `PASS` if all four observations pass; otherwise `FAIL`. All primary
 checks must be unit/controller tests without Testcontainers. Persistence tests

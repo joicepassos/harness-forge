@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "pilot_id": "harnessforge-mili-v1",
+  "status": "frozen_pre_run",
+  "frozen_on": "2026-09-27",
+  "repository": {
+    "repository_id": "mili",
+    "commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+    "task_text_source": "tasks-draft-v1.md",
+    "task_text_source_sha256": "b54814e4b9c37c3e242ad051472037c9dabc220086f0209d8f34b062afa6348f",
+    "approved_task_ids": [
+      "MLI-01",
+      "MLI-02",
+      "MLI-03",
+      "MLI-04",
+      "MLI-05"
+    ],
+    "include_original_checkout_changes": false
+  },
+  "approval_record": {
+    "path": "mili-task-approval-v1.json",
+    "sha256": "0abd3f6541be33e2d02ba97369f62d7ba618d56385fd0e8b73ac4592e544398a"
+  },
+  "conditions": {
+    "baseline": {
+      "overlay": [],
+      "source": "clean pinned commit only; backend/CLAUDE.md remains present but is not a Codex CLI discovery file"
+    },
+    "team": {
+      "bundle": "mili-team-v1/files",
+      "files": [
+        {
+          "path": ".agents/skills/mili-cycle/SKILL.md",
+          "sha256": "21fa9dc595b0ed17363600e71c14f6a38a2ff332d8db64cfd6ce249a1d78f1dc"
+        },
+        {
+          "path": ".agents/skills/mili-domain/SKILL.md",
+          "sha256": "22559b989e796e701192cf49dff0cd8c1ed155144f24f0aaadc5094a84bb09a4"
+        },
+        {
+          "path": ".codex/context/product.md",
+          "sha256": "8895fdcf763d6289d5ab79505b2ebb543f51057817f42afed7a95452825e03a0"
+        },
+        {
+          "path": "AGENTS.md",
+          "sha256": "7d55a0151c11af967f43f2ff5daf4cbc4f9642f0f0fcf590f52ad4b392b39c2b"
+        }
+      ]
+    },
+    "forge": {
+      "bundle": "mili-forge-condition-v1/files",
+      "source_project": "mili-forge-source",
+      "source_manifest_sha256": "d91e319b7559b9d3b4c46dba0cc47132a826074f557d7490d04bc07973d0fe22",
+      "reviewer": "codex-pilot-preparation",
+      "reviewed_knowledge_id": "import-agents-09e217e70d1f",
+      "generated_manifest_sha256": "8d6226b43305c97a2b8312f651d1b0770a15cd3d5226167b1cc07ce2ebd6b66e",
+      "files": [
+        {
+          "path": ".agents/skills/mili-cycle/SKILL.md",
+          "sha256": "21fa9dc595b0ed17363600e71c14f6a38a2ff332d8db64cfd6ce249a1d78f1dc"
+        },
+        {
+          "path": ".agents/skills/mili-domain/SKILL.md",
+          "sha256": "22559b989e796e701192cf49dff0cd8c1ed155144f24f0aaadc5094a84bb09a4"
+        },
+        {
+          "path": ".codex/context/product.md",
+          "sha256": "8895fdcf763d6289d5ab79505b2ebb543f51057817f42afed7a95452825e03a0"
+        },
+        {
+          "path": "AGENTS.md",
+          "sha256": "a12e3331027ead01ec0439033499c9489158f14b6f443685b68ffc0a8916adcd"
+        }
+      ],
+      "transformation_note": "The team AGENTS.md text is retained as one reviewed convention item. Forge adds its deterministic generated header and item wrapper; the two native skills and product context are byte-identical to the team condition."
+    }
+  },
+  "agent": {
+    "product": "Codex CLI",
+    "version": "0.158.0-alpha.2.1",
+    "model": "gpt-6-luna",
+    "reasoning_effort": "low",
+    "service_tier": "default",
+    "configuration_source": "User-approved local Codex CLI defaults observed at freeze; pinned explicitly for each task invocation.",
+    "execution": {
+      "sandbox": "workspace-write",
+      "approval": "never",
+      "additional_write_directories": [],
+      "web_search": false,
+      "user_config_and_MCP": "ignored for task sessions to prevent machine-specific tools from leaking into conditions",
+      "session_persistence": "ephemeral",
+      "source_commits": false
+    }
+  },
+  "runtime": {
+    "operating_system": "Windows 11 10.0 amd64",
+    "java": "Eclipse Temurin OpenJDK 25.0.4.1+1-LTS",
+    "gradle": "9.5.1",
+    "docker": "not required in primary acceptance path"
+  },
+  "repetitions_per_task_per_condition": 3,
+  "planned_agent_runs": 45,
+  "run_order": {
+    "condition_rotation_by_repetition": [
+      [
+        "baseline",
+        "team",
+        "forge"
+      ],
+      [
+        "team",
+        "forge",
+        "baseline"
+      ],
+      [
+        "forge",
+        "baseline",
+        "team"
+      ]
+    ],
+    "task_order_by_repetition": [
+      [
+        "MLI-01",
+        "MLI-02",
+        "MLI-03",
+        "MLI-04",
+        "MLI-05"
+      ],
+      [
+        "MLI-03",
+        "MLI-04",
+        "MLI-05",
+        "MLI-01",
+        "MLI-02"
+      ],
+      [
+        "MLI-05",
+        "MLI-02",
+        "MLI-04",
+        "MLI-01",
+        "MLI-03"
+      ]
+    ],
+    "isolation": "Every run starts from a fresh detached copy of the pinned commit, with exactly one frozen condition overlay and no prior agent session state."
+  },
+  "evaluation": {
+    "rubric_file": "mili-evaluator-v1.md",
+    "rubric_sha256": "88411823abb37a0306e2e1b99bce05e3f0b18ec13dbef562af4b0c7d3581a802",
+    "evaluator_source": "docs/pilot/mili-evaluator-sources-v1/: Mli02AcceptanceTest.java and Mli05JsonPathProbe.java, independently exercised in scratch copies. The malformed-path probe passes; MLI-02 evaluator passes on an explicitly patched scratch tree but its unmodified baseline result is recorded separately.",
+    "status": "partial: MLI-02 and MLI-05 probes only; MLI-01/03/04 evaluator sources pending",
+    "baseline_smoke_file": "baseline-mili-v1.json",
+    "baseline_smoke_status": "passed: 8 tests, 0 failures, 0 skipped, no Docker",
+    "evaluator_sources": [
+      {
+        "path": "Mli02AcceptanceTest.java",
+        "sha256": "b3b1304c51ab4b84230aaaac3e2a8a70ac343f6c55d34b2b5e11573830eb94c0"
+      },
+      {
+        "path": "Mli05JsonPathProbe.java",
+        "sha256": "d503a4b83ae589428987969d00d9f926db3035f2159adb8ecacf873dd4d8d1e8"
+      }
+    ],
+    "run_status": "no_agent_runs_started",
+    "mli02_probe": "The acceptance test passed on a copied scratch tree with strict cursor parsing and HTTP 400 advice. Evaluator-construction only, not a coding-agent outcome; baseline fails malformed-cursor assertions.",
+    "mli05_probe": "Jayway JsonPath 2.10.0 resolved from the pinned build; frozen expression `$[` throws InvalidPathException and $.type compiles.",
+    "mli02_postgresql_check": "PostgreSQL 18 is running locally, but the postgres role requires a password not supplied for this pilot. No authentication or server configuration was changed; SQL keyset semantics remain unverified and MLI-02 is PARTIAL."
+  },
+  "run_performed": false
+}
