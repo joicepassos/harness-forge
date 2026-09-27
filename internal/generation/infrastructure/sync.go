@@ -38,6 +38,15 @@ type SyncResult struct {
 	Changed bool              `json:"changed"`
 }
 
+func containsGeneratedPath(files []GeneratedFile, path string) bool {
+	for _, file := range files {
+		if file.Path == path {
+			return true
+		}
+	}
+	return false
+}
+
 // CompileForge loads approved knowledge and renders deterministic target files without writing.
 func CompileForge(root string) (SyncResult, error) {
 	layout, err := harnessinfra.ResolveLayout(root, "forge")
@@ -52,9 +61,17 @@ func CompileForge(root string) (SyncResult, error) {
 		return SyncResult{}, err
 	}
 	input := domain.Input{Project: project.Manifest.Project.Name}
+	rootHandle, err := os.OpenRoot(layout.Root)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	defer rootHandle.Close()
 	for _, ref := range project.Manifest.References.Knowledge {
-		path, _ := layout.ResolveReference(ref.Path)
-		item, err := loadKnowledge(path)
+		data, err := harnessinfra.ReadProjectFile(rootHandle, ref.Path, inputlimits.HarnessYAMLBytes)
+		if err != nil {
+			return SyncResult{}, fmt.Errorf("knowledge %q: %w", ref.ID, err)
+		}
+		item, err := parseKnowledgeDocument(data)
 		if err != nil {
 			return SyncResult{}, fmt.Errorf("knowledge %q: %w", ref.ID, err)
 		}
@@ -66,6 +83,13 @@ func CompileForge(root string) (SyncResult, error) {
 		}
 		if item.ContentSHA256 != harnessdomain.HashKnowledgeContent(item.Content) {
 			return SyncResult{}, fmt.Errorf("approved knowledge %q changed after review", item.ID)
+		}
+		fingerprint, err := harnessinfra.KnowledgeFingerprint(root, ref.Path, ref.ID, item.Evidence)
+		if err != nil {
+			return SyncResult{}, fmt.Errorf("approved knowledge %q evidence: %w", item.ID, err)
+		}
+		if !strings.EqualFold(fingerprint, item.EvidenceSHA256) {
+			return SyncResult{}, fmt.Errorf("approved knowledge %q evidence changed after review", item.ID)
 		}
 		input.Rules = append(input.Rules, domain.Rule{ID: item.ID, Description: item.Content, Paths: append([]string(nil), item.Scope.Paths...)})
 	}
@@ -117,15 +141,11 @@ func loadKnowledge(path string) (harnessdomain.KnowledgeItem, error) {
 	if err != nil {
 		return harnessdomain.KnowledgeItem{}, err
 	}
-	text := strings.TrimSpace(string(data))
-	if !strings.HasPrefix(text, "---") {
-		return harnessdomain.KnowledgeItem{}, fmt.Errorf("expected YAML front matter")
+	frontMatter, _, err := splitKnowledgeFrontMatter(data)
+	if err != nil {
+		return harnessdomain.KnowledgeItem{}, err
 	}
-	parts := strings.SplitN(strings.TrimPrefix(text, "---"), "---", 2)
-	if len(parts) != 2 {
-		return harnessdomain.KnowledgeItem{}, fmt.Errorf("unterminated YAML front matter")
-	}
-	dec := yaml.NewDecoder(strings.NewReader(strings.TrimSpace(parts[0])))
+	dec := yaml.NewDecoder(strings.NewReader(frontMatter))
 	dec.KnownFields(true)
 	var item harnessdomain.KnowledgeItem
 	if err := dec.Decode(&item); err != nil {
@@ -134,7 +154,63 @@ func loadKnowledge(path string) (harnessdomain.KnowledgeItem, error) {
 	if err := dec.Decode(new(any)); err != io.EOF {
 		return item, fmt.Errorf("expected one YAML document")
 	}
-	if err := item.Validate(); err != nil {
+	if err := validateKnowledgeItem(item); err != nil {
+		return item, err
+	}
+	return item, nil
+}
+
+// splitKnowledgeFrontMatter recognizes delimiters only when they occupy a
+// complete line. A plain substring split corrupts values such as review_diff
+// that may themselves contain strings beginning with "---".
+func splitKnowledgeFrontMatter(data []byte) (frontMatter, body string, err error) {
+	text := strings.TrimSpace(string(data))
+	lines := strings.SplitAfter(text, "\n")
+	if len(lines) == 0 || strings.TrimSpace(strings.TrimSuffix(lines[0], "\n")) != "---" {
+		return "", "", fmt.Errorf("expected YAML front matter")
+	}
+	var offset int
+	for i, line := range lines {
+		if i == 0 {
+			offset += len(line)
+			continue
+		}
+		if strings.TrimSpace(strings.TrimSuffix(line, "\n")) == "---" {
+			end := offset
+			return strings.TrimSpace(text[len(lines[0]):end]), strings.TrimSpace(text[end+len(line):]), nil
+		}
+		offset += len(line)
+	}
+	return "", "", fmt.Errorf("unterminated YAML front matter")
+}
+
+func validateKnowledgeItem(item harnessdomain.KnowledgeItem) error {
+	if item.Review != harnessdomain.KnowledgeCandidate {
+		if item.ContentSHA256 == "" {
+			return fmt.Errorf("content_sha256: required after candidate review")
+		}
+		if item.EvidenceSHA256 == "" {
+			return fmt.Errorf("evidence_sha256: required after candidate review")
+		}
+	}
+	return item.Validate()
+}
+
+func parseKnowledgeDocument(data []byte) (harnessdomain.KnowledgeItem, error) {
+	var item harnessdomain.KnowledgeItem
+	frontMatter, _, err := splitKnowledgeFrontMatter(data)
+	if err != nil {
+		return item, err
+	}
+	dec := yaml.NewDecoder(strings.NewReader(frontMatter))
+	dec.KnownFields(true)
+	if err := dec.Decode(&item); err != nil {
+		return item, err
+	}
+	if err := dec.Decode(new(any)); err != io.EOF {
+		return item, fmt.Errorf("expected one YAML document")
+	}
+	if err := validateKnowledgeItem(item); err != nil {
 		return item, err
 	}
 	return item, nil
@@ -187,6 +263,7 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 			return result, fmt.Errorf("invalid generated manifest")
 		}
 		seen := map[string]bool{}
+		stalePaths := []string{}
 		for _, owned := range recorded.Files {
 			if (owned.Path != "AGENTS.md" && owned.Path != "CLAUDE.md") || seen[owned.Path] {
 				return result, fmt.Errorf("invalid generated manifest file entry")
@@ -208,6 +285,7 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 			sum := sha256.Sum256(content)
 			if hex.EncodeToString(sum[:]) != owned.SHA256 {
 				result.Changed = true
+				stalePaths = append(stalePaths, owned.Path)
 			}
 		}
 		actual, err := json.Marshal(result.Files)
@@ -224,8 +302,15 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 		if len(seen) != len(result.Files) {
 			result.Changed = true
 		}
+		if len(seen) != len(result.Files) {
+			for _, old := range recorded.Files {
+				if !containsGeneratedPath(result.Files, old.Path) {
+					stalePaths = append(stalePaths, old.Path)
+				}
+			}
+		}
 		if result.Changed {
-			return result, fmt.Errorf("generated files are out of date")
+			return result, fmt.Errorf("generated files are out of date: %s", strings.Join(stalePaths, ", "))
 		}
 		return result, nil
 	}
@@ -253,6 +338,34 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 			return result, fmt.Errorf("invalid path in generated manifest")
 		}
 		owned[f.Path] = f.SHA256
+	}
+	staleOwned := make([]string, 0)
+	for _, previous := range prior.Files {
+		if containsGeneratedPath(result.Files, previous.Path) {
+			continue
+		}
+		path := filepath.Join(abs, filepath.FromSlash(previous.Path))
+		info, err := os.Lstat(path)
+		if os.IsNotExist(err) {
+			delete(owned, previous.Path)
+			continue
+		}
+		if err != nil {
+			return result, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return result, fmt.Errorf("refusing to remove unsafe generated file %s", previous.Path)
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return result, err
+		}
+		sum := sha256.Sum256(content)
+		if hex.EncodeToString(sum[:]) != previous.SHA256 {
+			return result, fmt.Errorf("refusing to remove manually edited generated file %s", previous.Path)
+		}
+		staleOwned = append(staleOwned, previous.Path)
+		delete(owned, previous.Path)
 	}
 	for _, f := range result.Files {
 		dest := filepath.Join(abs, filepath.FromSlash(f.Path))
@@ -286,6 +399,14 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 		return result, err
 	}
 	backups := map[string][]byte{}
+	for _, old := range staleOwned {
+		path := filepath.Join(abs, filepath.FromSlash(old))
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return result, err
+		}
+		backups[path] = content
+	}
 	for _, f := range result.Files {
 		dest := filepath.Join(abs, filepath.FromSlash(f.Path))
 		if old, e := os.ReadFile(dest); e == nil {
@@ -305,6 +426,18 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 				_ = os.Remove(p)
 			}
 		}
+	}
+	for _, old := range staleOwned {
+		if err := ctx.Err(); err != nil {
+			rollback()
+			return result, err
+		}
+		path := filepath.Join(abs, filepath.FromSlash(old))
+		if err := os.Remove(path); err != nil {
+			rollback()
+			return result, err
+		}
+		committed = append(committed, path)
 	}
 	for _, f := range result.Files {
 		if err := ctx.Err(); err != nil {

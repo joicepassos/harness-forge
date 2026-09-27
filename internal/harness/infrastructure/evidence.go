@@ -193,6 +193,65 @@ func (r EvidenceRevalidator) Fingerprint(path, id string, evidence []domain.Evid
 	return domain.HashKnowledgeEvidence(values), nil
 }
 
+// KnowledgeFingerprint converts Forge knowledge evidence to the canonical
+// Harness evidence contract so review, check, context, and sync share hashing.
+func KnowledgeFingerprint(root, path, id string, evidence []domain.KnowledgeEvidence) (string, error) {
+	converted := make([]domain.Evidence, 0, len(evidence))
+	for _, item := range evidence {
+		converted = append(converted, domain.Evidence{File: item.Path, Workspace: item.Workspace, Kind: item.Kind, Symbol: item.Symbol, Quote: item.Quote, StartLine: item.StartLine, EndLine: item.EndLine, SHA256: item.SHA256, Revision: item.Revision})
+	}
+	return (EvidenceRevalidator{Root: root}).Fingerprint(path, id, converted)
+}
+
+// ReadProjectFile reads one bounded regular file under an opened project root,
+// rejecting symlinks in every path component.
+func ReadProjectFile(root *os.Root, relative string, limit int64) ([]byte, error) {
+	if relative == "" || filepath.IsAbs(relative) || strings.Contains(relative, "\\") || strings.Contains(relative, ":") {
+		return nil, fmt.Errorf("expected a repository-relative path")
+	}
+	clean := filepath.Clean(filepath.FromSlash(relative))
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("path escapes project root")
+	}
+	current := "."
+	for _, part := range strings.Split(filepath.ToSlash(clean), "/") {
+		current = filepath.Join(current, filepath.FromSlash(part))
+		info, err := root.Lstat(current)
+		if err != nil {
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil, fmt.Errorf("symlink path component is not allowed")
+		}
+		if current != clean && !info.IsDir() {
+			return nil, fmt.Errorf("parent path component is not a directory")
+		}
+		if current == clean && !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("expected a regular file")
+		}
+	}
+	f, err := root.Open(clean)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > limit {
+		return nil, fmt.Errorf("file exceeds size limit or is not regular")
+	}
+	data, err := io.ReadAll(io.LimitReader(f, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("file exceeds size limit")
+	}
+	return data, nil
+}
+
 type boundedOutput struct {
 	bytes.Buffer
 	exceeded bool
