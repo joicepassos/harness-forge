@@ -40,9 +40,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   than emitting a partial document.
 - T4.1–T4.6: deterministic Codex/Claude compile adapters, shared ownership
   manifest, dry-run/check/apply, collision and edit protection, staging, clone
-  ownership, idempotence, and symlink checks are implemented. Native target
-  scope semantics, concurrent writers, and crash/restart recovery remain
-  unverified.
+  ownership, idempotence, and symlink checks are implemented. T4.5 now records a
+  durable recovery journal before publishing files; interrupted transactions
+  roll back on the next apply, and post-interruption human edits are preserved
+  with an explicit conflict. Native target scope semantics and concurrent
+  writers remain unverified.
 - T5.1/T5.6: read-only aggregate `check`, static Forge/Harness output drift,
   optional explicit gate execution, and CI drift workflow are implemented.
   CLI exit codes follow ADR 0001: success 0, failed checks 1, and usage,
@@ -109,8 +111,10 @@ has not yet been run. No paid provider calls were made.
   agent/model configurations, and human review. Mili's clean HEAD is available
   as one candidate; its modified working tree is excluded. The available Go
   fixture is only development data and is not treated as pilot evidence.
-- T6.2 retains the scope-selection coverage gaps above; T6.3 now reports early
-  prompt-envelope overflow with the configured estimator and an explicit
+- T6.2 now supports explicit knowledge keywords and task paths through the
+  context API and `context explain --task-path`; glob matching is segment-aware
+  with `**`, and backend/frontend scope fixtures pass. T6.3 reports early
+  prompt-envelope overflow with the same configured estimator and an explicit
   excluded-prompt reason. T6.4 comparison proxies must not be described as
   measured task quality.
 - T1.7/T2/T3/T4/T5 also retain acceptance gaps listed in their status entries;
