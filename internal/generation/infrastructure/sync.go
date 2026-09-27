@@ -75,6 +75,9 @@ func CompileForge(root string) (SyncResult, error) {
 	for _, g := range project.Manifest.QualityGates {
 		input.Gates = append(input.Gates, domain.QualityGate{ID: g.ID, Command: g.Command, Workspace: g.Workspace, Workspaces: append([]string(nil), g.Workspaces...)})
 	}
+	for _, policy := range project.Manifest.Policies {
+		input.Policies = append(input.Policies, domain.Policy{ID: policy.ID, Description: policy.Description, Capability: policy.Capability, Executor: policy.Executor})
+	}
 	result := SyncResult{Diff: map[string]string{}}
 	for _, target := range project.Manifest.Targets {
 		var doc domain.Document
@@ -90,7 +93,11 @@ func CompileForge(root string) (SyncResult, error) {
 			return SyncResult{}, err
 		}
 		sum := sha256.Sum256(doc.Content)
-		entry := GeneratedFile{Path: doc.Path, SHA256: hex.EncodeToString(sum[:]), Target: target, AdapterVersion: "1", Capabilities: map[string]string{"scope": "textual", "skills": "reference", "quality_gates": "advisory"}}
+		policyCapability := "unsupported"
+		if len(input.Policies) > 0 {
+			policyCapability = "declared per policy"
+		}
+		entry := GeneratedFile{Path: doc.Path, SHA256: hex.EncodeToString(sum[:]), Target: target, AdapterVersion: "1", Capabilities: map[string]string{"scope": "textual", "skills": "reference", "quality_gates": "advisory", "policy": policyCapability}}
 		result.Files = append(result.Files, entry)
 		result.Diff[doc.Path] = string(doc.Content)
 	}
@@ -166,6 +173,11 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 	}
 	if mode == "check" {
 		manifestPath := filepath.Join(abs, filepath.FromSlash(generatedManifest))
+		if info, err := os.Lstat(manifestPath); err != nil {
+			return result, fmt.Errorf("generated manifest unavailable: %w", err)
+		} else if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return result, fmt.Errorf("generated manifest must be a regular non-symlink file")
+		}
 		data, readErr := os.ReadFile(manifestPath)
 		if readErr != nil {
 			return result, fmt.Errorf("generated manifest unavailable: %w", readErr)
@@ -174,7 +186,15 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 		if err := json.Unmarshal(data, &recorded); err != nil || recorded.Version != 1 {
 			return result, fmt.Errorf("invalid generated manifest")
 		}
+		seen := map[string]bool{}
 		for _, owned := range recorded.Files {
+			if (owned.Path != "AGENTS.md" && owned.Path != "CLAUDE.md") || seen[owned.Path] {
+				return result, fmt.Errorf("invalid generated manifest file entry")
+			}
+			seen[owned.Path] = true
+			if len(owned.SHA256) != sha256.Size*2 {
+				return result, fmt.Errorf("invalid generated manifest hash")
+			}
 			path := filepath.Join(abs, filepath.FromSlash(owned.Path))
 			info, err := os.Lstat(path)
 			if err != nil || !info.Mode().IsRegular() {
@@ -201,6 +221,9 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 		if !bytes.Equal(actual, expected) {
 			result.Changed = true
 		}
+		if len(seen) != len(result.Files) {
+			result.Changed = true
+		}
 		if result.Changed {
 			return result, fmt.Errorf("generated files are out of date")
 		}
@@ -217,6 +240,9 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 		}
 		if prior.Version != 1 {
 			return result, fmt.Errorf("unsupported generated manifest version")
+		}
+		if info, err := os.Lstat(manifestPath); err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return result, fmt.Errorf("generated manifest must be a regular non-symlink file")
 		}
 	} else if !os.IsNotExist(e) {
 		return result, e
@@ -302,4 +328,71 @@ func SyncForge(ctx context.Context, root, mode string) (SyncResult, error) {
 	}
 	committed = append(committed, manifestDest)
 	return result, nil
+}
+
+// CheckForge reports generated drift without writing any project files.
+func CheckForge(ctx context.Context, root string) (SyncResult, error) {
+	return SyncForge(ctx, root, "check")
+}
+
+// CheckLegacyForgeOutputs compiles the existing Harness layout without writing
+// and compares it to its generated agent files. A project with no layout is
+// outside this check and succeeds without findings.
+func CheckLegacyForgeOutputs(ctx context.Context, root string) (SyncResult, error) {
+	layout, err := harnessinfra.ResolveLayout(root, "harness")
+	if err != nil {
+		if strings.Contains(err.Error(), "missing") || strings.Contains(err.Error(), "no supported") {
+			return SyncResult{}, nil
+		}
+		return SyncResult{}, err
+	}
+	ownership, err := os.ReadFile(filepath.Join(root, ownershipFile))
+	if os.IsNotExist(err) {
+		return SyncResult{}, nil
+	}
+	if err != nil {
+		return SyncResult{}, err
+	}
+	if parseOwnedHash(ownership, "AGENTS.md") == "" {
+		return SyncResult{}, nil
+	}
+	h, err := (harnessinfra.YAMLLoader{}).Load(layout.HarnessPath)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	input := domain.Input{Project: h.Project.Name}
+	for _, r := range h.Rules {
+		if r.Status == "approved" {
+			input.Rules = append(input.Rules, domain.Rule{ID: r.ID, Description: r.Description, Paths: append([]string(nil), r.Scope.Paths...)})
+		}
+	}
+	for _, s := range h.Skills {
+		if s.Status == "" || s.Status == "approved" {
+			input.Skills = append(input.Skills, domain.Skill{ID: s.ID, Description: s.Description, Path: s.Path})
+		}
+	}
+	for _, g := range h.QualityGates {
+		input.Gates = append(input.Gates, domain.QualityGate{ID: g.ID, Command: g.Command, Workspace: g.Workspace, Workspaces: append([]string(nil), g.Workspaces...)})
+	}
+	doc, err := (CodexAdapter{}).Render(input)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	outputPath := filepath.Join(root, doc.Path)
+	info, err := os.Lstat(outputPath)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return SyncResult{}, fmt.Errorf("managed generated output %s is unavailable or unsafe", doc.Path)
+	}
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		return SyncResult{}, fmt.Errorf("generated output %s unavailable: %w", doc.Path, err)
+	}
+	sum := sha256.Sum256(data)
+	if parseOwnedHash(ownership, doc.Path) != hex.EncodeToString(sum[:]) {
+		return SyncResult{}, fmt.Errorf("generated output %s was edited after generation", doc.Path)
+	}
+	if !bytes.Equal(data, doc.Content) {
+		return SyncResult{}, fmt.Errorf("generated output %s is out of date", doc.Path)
+	}
+	return SyncResult{Files: []GeneratedFile{{Path: doc.Path}}, Changed: false}, nil
 }

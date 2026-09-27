@@ -18,7 +18,7 @@ func forgeSyncFixture(t *testing.T) string {
 	if err := os.MkdirAll(itemDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	item := domain.KnowledgeItem{ID: "rule-a", Kind: domain.KnowledgeConvention, Content: "Use explicit errors.", Origin: "human", Review: domain.KnowledgeApproved, Health: domain.KnowledgeUnknown, Reviewer: "alice", ContentSHA256: domain.HashKnowledgeContent("Use explicit errors.")}
+	item := domain.KnowledgeItem{ID: "rule-a", Kind: domain.KnowledgeConvention, Content: "Use explicit errors.", Origin: "human", Review: domain.KnowledgeApproved, Health: domain.KnowledgeUnknown, Reviewer: "alice", ContentSHA256: domain.HashKnowledgeContent("Use explicit errors."), EvidenceSHA256: domain.HashKnowledgeEvidence(nil)}
 	data, err := yaml.Marshal(item)
 	if err != nil {
 		t.Fatal(err)
@@ -143,6 +143,26 @@ func TestSyncForgeProtectsUnownedAndEditedFiles(t *testing.T) {
 	data, err := os.ReadFile(target)
 	if err != nil || string(data) != "manual edit\n" {
 		t.Fatal("manual content was overwritten")
+	}
+}
+
+func TestCompileForgeCarriesPolicyCapabilityNotes(t *testing.T) {
+	root := forgeSyncFixture(t)
+	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := string(data) + "policies:\n  - id: network\n    description: Do not use network\n    capability: advisory\n    executor: text\n"
+	if err := os.WriteFile(manifestPath, []byte(updated), 0600); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := CompileForge(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(plan.Diff["AGENTS.md"], "capability: **advisory**") || !strings.Contains(plan.Diff["AGENTS.md"], "does not enforce system permissions") {
+		t.Fatalf("policy limit missing from output: %s", plan.Diff["AGENTS.md"])
 	}
 }
 

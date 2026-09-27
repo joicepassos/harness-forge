@@ -29,10 +29,27 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T4.1–T4.6: deterministic Codex/Claude compile adapters, shared ownership
   manifest, dry-run/check/apply, collision and edit protection, staging, clone
   ownership, idempotence, and symlink checks are implemented.
-- T5.1/T5.6 scope delivered: `validate` discovers the selected project layout;
-  static clone fixtures prove generated instructions are consumable without
-  Forge configuration. Aggregate `check`, project onboarding/import and CI
-  drift facade remain follow-up work.
+- T5.1/T5.6: read-only aggregate `check`, static Forge/Harness output drift,
+  optional explicit gate execution, and CI drift workflow are implemented.
+- T5.2–T5.4: explicit candidate import, reviewer-bound approval with evidence
+  revalidation, local observation promotion, and knowledge checks are covered.
+- T5.5: shared context preview and proposal generation exist; interactive
+  project wizard and conflict-resolution UX remain incomplete.
+- T6.1–T6.4: approved knowledge context, scope/path selection, explicit budget
+  overflow, provenance, and comparison proxies are implemented. Quality remains
+  unmeasured; the metrics are deterministic proxies.
+- T7.1–T7.5: explicit local capture, review, candidate publication, retention,
+  quota, integrity, and checkout isolation are implemented.
+- T8.1/T8.2: official-doc behavior matrices exist; no Cursor/OpenCode binary
+  runtime tests were performed, so release acceptance remains open.
+- T8.3: transport-neutral read-only context resolver is implemented. JSON-RPC,
+  session, authentication, and client tests remain out of scope.
+- T8.4: portable skill publication contract is documented; sync keeps
+  references rather than duplicating skill bodies.
+- T8.5: opt-in runner supports workspace, timeout, cancellation and bounded
+  output. T8.6 CI execution on selected real project gates remains to validate.
+- T9.1–T9.5: pilot protocol and run schema are documented; no pilot runs or
+  measurements exist. T9.6 runtime decision is deferred pending evidence.
 
 ## Verification
 
@@ -45,13 +62,10 @@ go test ./...
 `go vet ./...` and the cross-platform CI matrix have not yet been run. No paid
 provider calls were made.
 
-## Remaining MVP work
+## Remaining validation
 
-- T5.2–T5.5: explicit candidate import/review and onboarding; broader aggregate
-  diagnostics and drift integration.
-- T5.6 remainder: wire the static sync check into CI and verify the complete
-  maintenance workflow in an external clone.
-
-P4–P8 remain later work as the plan specifies. The repository-context edits that
-pre-dated this implementation remain uncommitted and are excluded from these
-task commits.
+- External Cursor/OpenCode/Codex/Claude runtime validation, end-to-end clone
+  agent runs, pilot measurements, and the runtime decision require pinned agent
+  builds and representative repositories; none are fabricated here.
+- This checkout contains pre-existing repository-context/retrieval changes;
+  they remain outside the Forge plan task commits.
