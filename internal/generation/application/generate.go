@@ -36,8 +36,13 @@ func (g *Generate) Execute(ctx context.Context, harnessPath, repository string) 
 			input.Rules = append(input.Rules, domain.Rule{ID: r.ID, Description: r.Description, Paths: r.Scope.Paths})
 		}
 	}
+	for _, skill := range h.Skills {
+		if skill.Status == "" || skill.Status == "approved" {
+			input.Skills = append(input.Skills, domain.Skill{ID: skill.ID, Description: skill.Description, Path: skill.Path})
+		}
+	}
 	for _, gate := range h.QualityGates {
-		input.Commands = append(input.Commands, gate.Command)
+		input.Gates = append(input.Gates, domain.QualityGate{ID: gate.ID, Command: gate.Command, Workspace: gate.Workspace, Workspaces: append([]string(nil), gate.Workspaces...)})
 	}
 	document, err := g.adapter.Render(input)
 	if err != nil {

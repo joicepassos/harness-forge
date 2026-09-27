@@ -10,7 +10,7 @@ import (
 )
 
 func TestAdaptersAreDeterministicAndAgentSpecific(t *testing.T) {
-	input := domain.Input{Project: "sample", Rules: []domain.Rule{{ID: "z", Description: "Last"}, {ID: "a", Description: "First", Paths: []string{"internal/"}}}, Commands: []string{"go test ./..."}}
+	input := domain.Input{Project: "sample", Rules: []domain.Rule{{ID: "z", Description: "Last"}, {ID: "a", Description: "First", Paths: []string{"internal/"}}}, Skills: []domain.Skill{{ID: "backend", Description: "Backend help", Path: "skills/backend/SKILL.md"}}, Gates: []domain.QualityGate{{ID: "test-api", Command: "go test ./...", Workspace: "services/api", Workspaces: []string{"services/api", "libs/core"}}}}
 	codex, err := (Markdown{Agent: "codex"}).Render(input)
 	if err != nil {
 		t.Fatal(err)
@@ -22,6 +22,11 @@ func TestAdaptersAreDeterministicAndAgentSpecific(t *testing.T) {
 	}
 	if _, err := (Markdown{Agent: "other"}).Render(input); err == nil {
 		t.Fatal("unsupported adapter accepted")
+	}
+	for _, expected := range []string{"skills/backend/SKILL.md", "services/api", "libs/core", "test-api"} {
+		if !bytes.Contains(codex.Content, []byte(expected)) {
+			t.Fatalf("generated instructions omit %q: %s", expected, codex.Content)
+		}
 	}
 }
 func TestWriterProtectsManualFilesAndAllowsOwnedRegeneration(t *testing.T) {
