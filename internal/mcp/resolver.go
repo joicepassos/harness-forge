@@ -1,5 +1,4 @@
-// Package mcp exposes read-only Forge context operations for MCP transports.
-// It deliberately contains no transport or tool-execution implementation.
+// Package mcp exposes a read-only MCP server for Forge context resources.
 package mcp
 
 import (
@@ -11,6 +10,8 @@ import (
 )
 
 const ProtocolVersion = "2025-06-18"
+
+const DefaultBudgetTokens = contextpack.DefaultBudgetTokens
 
 type Resolver struct{}
 
