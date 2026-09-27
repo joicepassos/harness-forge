@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 )
 
@@ -43,6 +44,7 @@ type KnowledgeItem struct {
 	ID                 string               `json:"id" yaml:"id"`
 	Kind               KnowledgeKind        `json:"kind" yaml:"kind"`
 	Scope              Scope                `json:"scope,omitempty" yaml:"scope,omitempty"`
+	Keywords           []string             `json:"keywords,omitempty" yaml:"keywords,omitempty"`
 	Content            string               `json:"content" yaml:"content"`
 	Origin             string               `json:"origin" yaml:"origin"`
 	Review             KnowledgeReviewState `json:"review" yaml:"review"`
@@ -98,6 +100,21 @@ func (k KnowledgeItem) Validate() error {
 	}
 	if err := nonemptyList("scope.paths", k.Scope.Paths); err != nil {
 		return err
+	}
+	for i, scope := range k.Scope.Paths {
+		for _, segment := range strings.Split(scope, "/") {
+			if segment == "**" {
+				continue
+			}
+			if _, err := path.Match(segment, ""); err != nil {
+				return fmt.Errorf("scope.paths[%d]: invalid glob: %w", i, err)
+			}
+		}
+	}
+	for i, keyword := range k.Keywords {
+		if strings.TrimSpace(keyword) == "" {
+			return fmt.Errorf("keywords[%d]: must not be empty", i)
+		}
 	}
 	if k.ContentSHA256 != "" && !validSHA256(k.ContentSHA256) {
 		return fmt.Errorf("content_sha256: expected 64 hexadecimal characters")

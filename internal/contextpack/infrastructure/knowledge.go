@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -22,7 +23,7 @@ import (
 // forgeKnowledgeCandidates loads only explicitly referenced, approved Forge
 // knowledge. It opens manifest and evidence files directly beneath the project
 // root; it does not perform another repository scan or execute project code.
-func forgeKnowledgeCandidates(root, selection, prompt string) ([]domain.Excerpt, error) {
+func forgeKnowledgeCandidates(root, selection, prompt string, taskPaths []string) ([]domain.Excerpt, error) {
 	forgeConfig := filepath.Join(root, ".forge", "forge.yaml")
 	harnessConfig := filepath.Join(root, ".harness", "harness.yaml")
 	forgeExists, err := regularLayoutConfig(forgeConfig)
@@ -84,6 +85,9 @@ func forgeKnowledgeCandidates(root, selection, prompt string) ([]domain.Excerpt,
 		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing {
 			continue
 		}
+		if !knowledgeApplies(item.Scope.Paths, item.Keywords, taskPaths, prompt) {
+			continue
+		}
 		evidenceHash, err := harnessinfra.KnowledgeFingerprint(root, reference.Path, reference.ID, item.Evidence)
 		if err != nil {
 			return nil, fmt.Errorf("knowledge %q evidence: %w", item.ID, err)
@@ -102,7 +106,7 @@ func forgeKnowledgeCandidates(root, selection, prompt string) ([]domain.Excerpt,
 			Source:          "forge-knowledge:" + item.ID,
 			Path:            reference.Path,
 			Text:            text,
-			Relevance:       application.Relevance(prompt, strings.Join(scope, " "), text),
+			Relevance:       application.Relevance(prompt, strings.Join(append(append([]string(nil), scope...), item.Keywords...), " "), text),
 			EstimatedTokens: application.EstimateTokens(text),
 			Origins:         origins,
 			KnowledgeID:     item.ID,
@@ -110,6 +114,65 @@ func forgeKnowledgeCandidates(root, selection, prompt string) ([]domain.Excerpt,
 		})
 	}
 	return candidates, nil
+}
+
+// knowledgeApplies treats scope paths and explicit keywords as independent
+// constraints. Unscoped knowledge remains generally available; scoped
+// knowledge requires at least one matching task path. When keywords are
+// present, at least one must occur in the task prompt (case-insensitively).
+func knowledgeApplies(scopes, keywords, taskPaths []string, prompt string) bool {
+	if len(scopes) > 0 {
+		matched := false
+		for _, taskPath := range taskPaths {
+			for _, scope := range scopes {
+				if knowledgePathMatch(scope, taskPath) {
+					matched = true
+					break
+				}
+			}
+			if matched {
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	if len(keywords) == 0 {
+		return true
+	}
+	lowerPrompt := strings.ToLower(prompt)
+	for _, keyword := range keywords {
+		if strings.Contains(lowerPrompt, strings.ToLower(strings.TrimSpace(keyword))) {
+			return true
+		}
+	}
+	return false
+}
+
+// knowledgePathMatch uses repository-relative slash paths and supports ** as
+// a whole path segment matching zero or more directories.
+func knowledgePathMatch(pattern, candidate string) bool {
+	pattern = strings.TrimPrefix(strings.ReplaceAll(pattern, "\\", "/"), "./")
+	candidate = strings.TrimPrefix(strings.ReplaceAll(candidate, "\\", "/"), "./")
+	return matchKnowledgeSegments(strings.Split(pattern, "/"), strings.Split(candidate, "/"))
+}
+
+func matchKnowledgeSegments(pattern, candidate []string) bool {
+	if len(pattern) == 0 {
+		return len(candidate) == 0
+	}
+	if pattern[0] == "**" {
+		if matchKnowledgeSegments(pattern[1:], candidate) {
+			return true
+		}
+		return len(candidate) > 0 && matchKnowledgeSegments(pattern, candidate[1:])
+	}
+	if len(candidate) == 0 {
+		return false
+	}
+	matched, err := path.Match(pattern[0], candidate[0])
+	return err == nil && matched && matchKnowledgeSegments(pattern[1:], candidate[1:])
 }
 
 func regularLayoutConfig(path string) (bool, error) {

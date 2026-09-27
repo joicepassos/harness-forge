@@ -8,11 +8,15 @@ type Options struct {
 	BudgetTokens    int
 	MaxFiles        int
 	MaxBytesPerFile int
-	UseBM25         bool
-	UseMMR          bool
-	Model           string
-	Layout          string
-	Counter         TokenCounter
+	// TaskPaths identifies the repository-relative files the task concerns.
+	// Approved knowledge with path scopes is eligible only when one of these
+	// paths matches its scope.
+	TaskPaths []string
+	UseBM25   bool
+	UseMMR    bool
+	Model     string
+	Layout    string
+	Counter   TokenCounter
 }
 
 // TokenCounter lets a provider supply model-specific input token accounting

@@ -28,7 +28,7 @@ func TestForgeKnowledgeCandidatesIncludeOnlyApprovedHashBoundItems(t *testing.T)
   - id: rejected
     path: .forge/knowledge/rejected.md`)
 
-	items, err := forgeKnowledgeCandidates(root, "", "auth token expiry")
+	items, err := forgeKnowledgeCandidates(root, "", "auth token expiry", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,6 +74,60 @@ func TestBuildAddsApprovedForgeKnowledgeToSelectedSources(t *testing.T) {
 	t.Fatalf("approved Forge knowledge was not selected: included=%#v excluded=%#v", plan.Included, plan.Excluded)
 }
 
+func TestForgeKnowledgeCandidatesSelectByTaskPathGlobAndKeyword(t *testing.T) {
+	root := t.TempDir()
+	writeScopedKnowledgeFixture(t, root, "backend-webhooks", "services/backend/**", "webhook", "Backend webhook delivery uses the queue.")
+	writeScopedKnowledgeFixture(t, root, "frontend-webhooks", "apps/web/**", "webhook", "Frontend webhook status is shown in the dashboard.")
+	writeForgeManifest(t, root, `
+  - id: backend-webhooks
+    path: .forge/knowledge/backend-webhooks.md
+  - id: frontend-webhooks
+    path: .forge/knowledge/frontend-webhooks.md`)
+
+	for _, test := range []struct {
+		name     string
+		taskPath string
+		prompt   string
+		want     string
+	}{
+		{name: "backend", taskPath: "services/backend/api/handler.go", prompt: "Update webhook delivery", want: "backend-webhooks"},
+		{name: "frontend", taskPath: "apps/web/src/WebhookPanel.tsx", prompt: "Update webhook status", want: "frontend-webhooks"},
+		{name: "keyword required", taskPath: "services/backend/api/handler.go", prompt: "Update audit logging", want: ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			items, err := forgeKnowledgeCandidates(root, "forge", test.prompt, []string{test.taskPath})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.want == "" {
+				if len(items) != 0 {
+					t.Fatalf("expected no scoped knowledge without keyword match, got %#v", items)
+				}
+				return
+			}
+			if len(items) != 1 || items[0].KnowledgeID != test.want {
+				t.Fatalf("task path %q selected %#v; want only %q", test.taskPath, items, test.want)
+			}
+		})
+	}
+}
+
+func TestKnowledgePathMatchSupportsRecursiveAndSegmentGlobs(t *testing.T) {
+	for _, test := range []struct {
+		pattern, candidate string
+		want               bool
+	}{
+		{"services/backend/**", "services/backend/api/handler.go", true},
+		{"services/backend/**", "services/frontend/api/handler.go", false},
+		{"apps/*/src/**", "apps/web/src/App.tsx", true},
+		{"apps/*/src/**", "apps/web/nested/src/App.tsx", false},
+	} {
+		if got := knowledgePathMatch(test.pattern, test.candidate); got != test.want {
+			t.Errorf("knowledgePathMatch(%q, %q) = %t, want %t", test.pattern, test.candidate, got, test.want)
+		}
+	}
+}
+
 func TestForgeKnowledgeCandidatesRejectChangedContentOrEvidenceHashes(t *testing.T) {
 	for _, test := range []struct {
 		name      string
@@ -109,7 +163,7 @@ func TestForgeKnowledgeCandidatesRejectChangedContentOrEvidenceHashes(t *testing
 			writeForgeManifest(t, root, `
   - id: rule
     path: .forge/knowledge/rule.md`)
-			_, err := forgeKnowledgeCandidates(root, "", "auth policy")
+			_, err := forgeKnowledgeCandidates(root, "", "auth policy", nil)
 			if err == nil || !strings.Contains(err.Error(), test.wantError) {
 				t.Fatalf("expected %q error, got %v", test.wantError, err)
 			}
@@ -176,10 +230,10 @@ func TestForgeKnowledgeCandidatesRejectAmbiguousLayout(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".harness", "harness.yaml"), []byte("version: 1\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := forgeKnowledgeCandidates(root, "", "auth middleware"); err == nil || !strings.Contains(err.Error(), "both .harness") {
+	if _, err := forgeKnowledgeCandidates(root, "", "auth middleware", nil); err == nil || !strings.Contains(err.Error(), "both .harness") {
 		t.Fatalf("expected explicit layout selection error, got %v", err)
 	}
-	items, err := forgeKnowledgeCandidates(root, "forge", "auth middleware")
+	items, err := forgeKnowledgeCandidates(root, "forge", "auth middleware", nil)
 	if err != nil || len(items) != 1 {
 		t.Fatalf("explicit Forge layout selection failed: items=%#v err=%v", items, err)
 	}
@@ -194,7 +248,7 @@ func TestForgeKnowledgeCandidatesRejectSymlinkedKnowledgePath(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, ".forge")); err != nil {
 		t.Skipf("symlink creation is unavailable: %v", err)
 	}
-	if _, err := forgeKnowledgeCandidates(root, "forge", "auth"); err == nil || !strings.Contains(err.Error(), "symlink") {
+	if _, err := forgeKnowledgeCandidates(root, "forge", "auth", nil); err == nil || !strings.Contains(err.Error(), "symlink") {
 		t.Fatalf("expected symlinked layout to be rejected, got %v", err)
 	}
 }
@@ -212,7 +266,17 @@ func writeForgeManifest(t *testing.T, root, knowledge string) {
 
 func writeKnowledgeFixture(t *testing.T, root, id string, review harnessdomain.KnowledgeReviewState, reviewer, content string, evidence []harnessdomain.KnowledgeEvidence) {
 	t.Helper()
-	item := harnessdomain.KnowledgeItem{ID: id, Kind: harnessdomain.KnowledgeConvention, Content: content, Origin: "human", Review: review, Health: harnessdomain.KnowledgeVerified, Reviewer: reviewer, Evidence: evidence}
+	writeKnowledgeFixtureWithMetadata(t, root, id, review, reviewer, content, evidence, nil, nil)
+}
+
+func writeScopedKnowledgeFixture(t *testing.T, root, id, scope, keyword, content string) {
+	t.Helper()
+	writeKnowledgeFixtureWithMetadata(t, root, id, harnessdomain.KnowledgeApproved, "alice", content, nil, []string{scope}, []string{keyword})
+}
+
+func writeKnowledgeFixtureWithMetadata(t *testing.T, root, id string, review harnessdomain.KnowledgeReviewState, reviewer, content string, evidence []harnessdomain.KnowledgeEvidence, scopes, keywords []string) {
+	t.Helper()
+	item := harnessdomain.KnowledgeItem{ID: id, Kind: harnessdomain.KnowledgeConvention, Content: content, Origin: "human", Review: review, Health: harnessdomain.KnowledgeVerified, Reviewer: reviewer, Evidence: evidence, Scope: harnessdomain.Scope{Paths: scopes}, Keywords: keywords}
 	if review != harnessdomain.KnowledgeCandidate {
 		item.ContentSHA256 = harnessdomain.HashKnowledgeContent(content)
 		values := make([]string, 0, len(evidence))

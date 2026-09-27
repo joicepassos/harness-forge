@@ -98,7 +98,7 @@ func Build(ctx context.Context, repositoryPath, prompt, model string, options do
 		return nil, err
 	}
 	candidates = append(candidates, fileCandidates...)
-	knowledgeCandidates, err := forgeKnowledgeCandidates(root, options.Layout, prompt)
+	knowledgeCandidates, err := forgeKnowledgeCandidates(root, options.Layout, prompt, options.TaskPaths)
 	if err != nil {
 		return nil, err
 	}
