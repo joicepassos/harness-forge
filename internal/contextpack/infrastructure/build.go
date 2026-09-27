@@ -41,8 +41,20 @@ func Build(ctx context.Context, repositoryPath, prompt, model string, options do
 	}
 
 	options = defaults(options, model)
-	if required := application.RequiredTokens(prompt); required > options.BudgetTokens {
-		return &domain.Plan{BudgetTokens: options.BudgetTokens, EstimatedTokens: required, Estimator: "payload-byte-upper-bound-v1", BudgetOverflow: true, OverflowTokens: required - options.BudgetTokens}, nil
+	counter := options.Counter
+	if counter == nil {
+		counter = application.ConservativeByteEstimator{}
+	}
+	required, estimateErr := counter.Count(ctx, options.Model, []byte(prompt))
+	if estimateErr != nil || required < 0 {
+		required = application.RequiredTokens(prompt)
+		counter = application.ConservativeByteEstimator{}
+	}
+	promptOverflow := func() *domain.Plan {
+		return &domain.Plan{BudgetTokens: options.BudgetTokens, EstimatedTokens: required, Estimator: counter.Name(), BudgetOverflow: true, OverflowTokens: required - options.BudgetTokens, Included: []domain.Excerpt{}, Excluded: []domain.Excerpt{{ID: "prompt-envelope", Source: "prompt", Text: prompt, Relevance: 1, EstimatedTokens: required, Status: "excluded", Reason: "prompt exceeds the entire context budget", Origins: []string{"prompt"}}}}
+	}
+	if required > options.BudgetTokens {
+		return promptOverflow(), nil
 	}
 	snapshot, err := repository.Scan(ctx, root, repository.ScanOptions{HonorIgnores: true, SkipDirs: repository.DefaultSkipDirs()})
 	if err != nil {
@@ -92,7 +104,7 @@ func Build(ctx context.Context, repositoryPath, prompt, model string, options do
 	}
 	candidates = append(candidates, knowledgeCandidates...)
 	if required := application.RequiredTokens(prompt); required > options.BudgetTokens {
-		return &domain.Plan{BudgetTokens: options.BudgetTokens, EstimatedTokens: required, Estimator: "payload-byte-upper-bound-v1", BudgetOverflow: true, OverflowTokens: required - options.BudgetTokens}, nil
+		return promptOverflow(), nil
 	}
 	candidates = append(candidates, fileExclusions...)
 	if options.UseBM25 {
