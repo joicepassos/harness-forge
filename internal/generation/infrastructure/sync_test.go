@@ -308,6 +308,65 @@ func TestSyncForgeProtectsUnownedAndEditedFiles(t *testing.T) {
 	}
 }
 
+func TestCompileForgeRejectsCollidingSkillTargets(t *testing.T) {
+	root := forgeSyncFixture(t)
+	skillDir := filepath.Join(root, ".forge", "skills", "review")
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: review\ndescription: Review code changes.\n---\n\nReview changes.\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = append(manifest, []byte("  skills:\n    - id: review-a\n      description: Review code changes.\n      path: .forge/skills/review/SKILL.md\n    - id: review-b\n      description: Review code changes.\n      path: .forge/skills/review/SKILL.md\n")...)
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CompileForge(root); err == nil || !strings.Contains(err.Error(), "target collision at .agents/skills/review/SKILL.md") {
+		t.Fatalf("expected deterministic skill output collision, got %v", err)
+	}
+}
+
+func TestCompileForgePreservesGlobScopeTextAndWindowsPathsAreRejected(t *testing.T) {
+	root := forgeSyncFixture(t)
+	itemPath := filepath.Join(root, ".forge", "knowledge", "items", "rule.md")
+	item := domain.KnowledgeItem{ID: "rule-a", Kind: domain.KnowledgeConvention, Scope: domain.Scope{Paths: []string{"services/api/**/*.go", "libs/shared/*_test.go"}}, Content: "Use explicit errors.", Origin: "human", Review: domain.KnowledgeApproved, Health: domain.KnowledgeUnknown, Reviewer: "alice", ContentSHA256: domain.HashKnowledgeContent("Use explicit errors."), ReviewDiff: "--- candidate\n+++ reviewed\n+Use explicit errors.\n", EvidenceSHA256: domain.HashKnowledgeEvidence(nil)}
+	encoded, err := yaml.Marshal(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(itemPath, append(append([]byte("---\n"), encoded...), []byte("---\n")...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := CompileForge(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, glob := range item.Scope.Paths {
+		if !strings.Contains(plan.Diff["AGENTS.md"], glob) {
+			t.Errorf("rendered output lost glob scope %q: %s", glob, plan.Diff["AGENTS.md"])
+		}
+	}
+	// Manifest/reference paths use POSIX separators on every host. A Windows
+	// separator is rejected instead of being interpreted differently by OS.
+	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = []byte(strings.Replace(string(manifest), ".forge/knowledge/items/rule.md", `.forge\\knowledge\\items\\rule.md`, 1))
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CompileForge(root); err == nil || !strings.Contains(err.Error(), "references.knowledge[0].path") {
+		t.Fatalf("Windows-style manifest path was not rejected: %v", err)
+	}
+}
+
 func TestCompileForgeCarriesPolicyCapabilityNotes(t *testing.T) {
 	root := forgeSyncFixture(t)
 	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
