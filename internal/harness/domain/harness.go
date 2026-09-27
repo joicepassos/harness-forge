@@ -44,8 +44,10 @@ type Skill struct {
 	Evidence    []Evidence `json:"evidence,omitempty"`
 }
 type QualityGate struct {
-	ID      string `json:"id"`
-	Command string `json:"command"`
+	ID         string   `json:"id"`
+	Command    string   `json:"command"`
+	Workspace  string   `json:"workspace,omitempty"`
+	Workspaces []string `json:"workspaces,omitempty"`
 }
 
 func (h Harness) Validate() error {
