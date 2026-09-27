@@ -19,7 +19,7 @@ const MaxMessageBytes = 1 << 20
 const MaxResourceBytes = MaxMessageBytes - 4096
 
 const contextResourceURI = "forge://context/current"
-const contextResourceTemplateURI = "forge://context/task/{prompt}"
+const contextResourceTemplateURI = "forge://context/task/{prompt}{?path*}"
 
 type Server struct {
 	Resolver   Resolver
