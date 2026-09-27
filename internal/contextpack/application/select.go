@@ -357,6 +357,26 @@ func RequiredTokens(prompt string) int {
 	return serializedEstimate(prompt, nil)
 }
 
+// RequiredTokensWithCounter measures the serialized prompt envelope using the
+// same counter and framing reserve as selection. It returns the counter that
+// produced the result; a failing counter falls back to the local byte estimate.
+func RequiredTokensWithCounter(ctx context.Context, prompt, model string, counter TokenCounter) (int, TokenCounter) {
+	if counter == nil {
+		counter = ConservativeByteEstimator{}
+	}
+	payload, err := json.Marshal(map[string]string{"prompt": prompt})
+	if err != nil {
+		counter = ConservativeByteEstimator{}
+		return RequiredTokens(prompt), counter
+	}
+	count, err := counter.Count(ctx, model, payload)
+	if err != nil || count < 0 {
+		counter = ConservativeByteEstimator{}
+		count, _ = counter.Count(ctx, model, payload)
+	}
+	return count + framingTokens, counter
+}
+
 func EncodePrompt(prompt string, plan *domain.Plan) (string, map[string]string, error) {
 	sources := Sources(prompt, plan)
 	data, err := json.Marshal(sources)
