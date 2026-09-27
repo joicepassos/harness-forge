@@ -132,6 +132,35 @@ func TestCheckRunsGatesOnlyWhenExplicitlyRequested(t *testing.T) {
 	}
 }
 
+func TestForgeCheckRunsDeclaredGatesOnlyWhenExplicit(t *testing.T) {
+	root := t.TempDir()
+	manifest := filepath.Join(root, ".forge", "forge.yaml")
+	if err := os.MkdirAll(filepath.Dir(manifest), 0700); err != nil {
+		t.Fatal(err)
+	}
+	content := "layout_version: 1\nir_version: 2\nproject: {name: sample}\ntargets: [codex]\nreferences: {}\nquality_gates:\n  - id: explicit\n    command: exit 9\n    workspace: .\n    workspaces: [.]\n"
+	if err := os.WriteFile(manifest, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := generation.SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	cmd := newRootCommand()
+	cmd.SetArgs([]string{"check", "--repository", root, "--format", "json"})
+	out := new(bytes.Buffer)
+	cmd.SetOut(out)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Forge check ran gates without explicit request: %v %s", err, out)
+	}
+	cmd = newRootCommand()
+	cmd.SetArgs([]string{"check", "--repository", root, "--run-gates", "--format", "json"})
+	out = new(bytes.Buffer)
+	cmd.SetOut(out)
+	if err := cmd.Execute(); err == nil || !strings.Contains(out.String(), "gate.failed") {
+		t.Fatalf("Forge gate result missing: %v %s", err, out)
+	}
+}
+
 func TestCheckDetectsApprovedKnowledgeChanges(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "evidence.go"), []byte("package example\nconst TokenLifetime = 15\n"), 0600); err != nil {
@@ -176,6 +205,7 @@ func createForgeKnowledgeFixture(t *testing.T, root, id, state, reviewer, conten
 		item.Reviewer = reviewer
 		item.Health = harnessdomain.KnowledgeVerified
 		item.ContentSHA256 = harnessdomain.HashKnowledgeContent(content)
+		item.ReviewDiff = "--- candidate\n+++ reviewed\n+" + content + "\n"
 		values := []string{}
 		if evidence != "" {
 			body, err := os.ReadFile(filepath.Join(root, evidence))
@@ -186,6 +216,7 @@ func createForgeKnowledgeFixture(t *testing.T, root, id, state, reviewer, conten
 			values = append(values, evidence+":"+hex.EncodeToString(sum[:]))
 		}
 		item.EvidenceSHA256 = harnessdomain.HashKnowledgeEvidence(values)
+		item.ReviewDiff = "--- candidate\n+++ reviewed\n+" + content + "\n"
 	}
 	encoded, err := yaml.Marshal(item)
 	if err != nil {

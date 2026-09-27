@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -63,34 +61,11 @@ func validateForgeKnowledgeHealth(ctx context.Context, root string, manifest har
 		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing {
 			continue
 		}
-		values := make([]string, 0, len(item.Evidence))
-		for _, evidence := range item.Evidence {
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			if evidence.Revision != "" {
-				return fmt.Errorf("knowledge %q evidence revisions require explicit revalidation", ref.ID)
-			}
-			body, err := readProjectFile(rootHandle, evidence.Path, 4<<20)
-			if err != nil {
-				return fmt.Errorf("knowledge %q evidence: %w", ref.ID, err)
-			}
-			if evidence.SHA256 != "" {
-				sum := sha256.Sum256(body)
-				if !strings.EqualFold(hex.EncodeToString(sum[:]), evidence.SHA256) {
-					return fmt.Errorf("knowledge %q evidence hash mismatch", ref.ID)
-				}
-			}
-			if evidence.Quote != "" && !bytes.Contains(body, []byte(evidence.Quote)) {
-				return fmt.Errorf("knowledge %q evidence quote no longer matches", ref.ID)
-			}
-			if evidence.Symbol != "" && !bytes.Contains(body, []byte(evidence.Symbol)) {
-				return fmt.Errorf("knowledge %q evidence symbol no longer matches", ref.ID)
-			}
-			sum := sha256.Sum256(body)
-			values = append(values, evidence.Path+":"+hex.EncodeToString(sum[:]))
+		fingerprint, err := harnessinfra.KnowledgeFingerprint(root, ref.Path, ref.ID, item.Evidence)
+		if err != nil {
+			return fmt.Errorf("knowledge %q evidence: %w", ref.ID, err)
 		}
-		if !strings.EqualFold(harnessdomain.HashKnowledgeEvidence(values), item.EvidenceSHA256) {
+		if !strings.EqualFold(fingerprint, item.EvidenceSHA256) {
 			return fmt.Errorf("knowledge %q evidence changed since review", ref.ID)
 		}
 	}
@@ -215,6 +190,12 @@ func newCheckCommand() *cobra.Command {
 					env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "generated.drift", Severity: "error", Message: err.Error(), Path: filepath.Join(root, ".forge", "generated-manifest.json"), Suggestion: "Run harnessforge sync --apply after reviewing the planned output."})
 				}
 			}
+			for _, policy := range projectPolicies(project) {
+				if policy.Capability == "enforced" && policy.Executor == "text" {
+					env.OK = false
+					env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "policy.unsupported_enforcement", Severity: "error", Message: policy.ID + " is marked enforced but only has a text executor."})
+				}
+			}
 			if runGates && valid {
 				var quality []harnessdomain.QualityGate
 				if project.Manifest != nil {
@@ -226,15 +207,29 @@ func newCheckCommand() *cobra.Command {
 				for _, g := range quality {
 					items = append(items, gates.Gate{ID: g.ID, Command: g.Command, Workspace: g.Workspace, Workspaces: g.Workspaces})
 				}
-				results, err := gates.Run(cmd.Context(), root, items, gateTimeout)
-				if err != nil {
-					return err
+				if len(items) == 0 {
+					env.OK = false
+					env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "gate.none_declared", Severity: "error", Message: "--run-gates was requested but no quality gates are declared."})
 				}
-				env.GateResults = results
-				for _, result := range results {
-					if result.Status != "passed" {
-						env.OK = false
-						env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "gate.failed", Severity: "error", Message: result.ID + " failed in " + result.Workspace + ": " + result.Error, Suggestion: "Review the gate command, workspace, output, and timeout before retrying."})
+				if hasUnsupportedEnforcement(project) {
+					for _, policy := range projectPolicies(project) {
+						if policy.Capability == "enforced" && policy.Executor != "text" {
+							env.OK = false
+							env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "policy.unsupported", Severity: "error", Message: policy.ID + " requests enforcement through an executor that check does not implement."})
+						}
+					}
+				}
+				if len(items) > 0 && !hasUnsupportedEnforcement(project) {
+					results, err := gates.Run(cmd.Context(), root, items, gateTimeout)
+					if err != nil {
+						return err
+					}
+					env.GateResults = results
+					for _, result := range results {
+						if result.Status != "passed" {
+							env.OK = false
+							env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "gate.failed", Severity: "error", Message: result.ID + " failed in " + result.Workspace + ": " + result.Error, Suggestion: "Review the gate command, workspace, output, and timeout before retrying."})
+						}
 					}
 				}
 			}
@@ -267,4 +262,20 @@ func newCheckCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&runGates, "run-gates", false, "Explicitly execute declared quality gates")
 	cmd.Flags().DurationVar(&gateTimeout, "gate-timeout", gates.DefaultTimeout, "Maximum runtime per quality gate (requires --run-gates)")
 	return cmd
+}
+
+func projectPolicies(project harnessinfra.ProjectConfig) []harnessdomain.Policy {
+	if project.Manifest == nil {
+		return nil
+	}
+	return project.Manifest.Policies
+}
+
+func hasUnsupportedEnforcement(project harnessinfra.ProjectConfig) bool {
+	for _, p := range projectPolicies(project) {
+		if p.Capability == "enforced" && p.Executor != "text" {
+			return true
+		}
+	}
+	return false
 }
