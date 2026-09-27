@@ -23,6 +23,12 @@ jobs:
         with:
           go-version: '1.26.2'
           check-latest: true
+      - name: Verify Codex clone gate without Forge installed
+        working-directory: testdata/clones/without-forge/codex
+        run: go test ./...
+      - name: Verify Claude clone gate without Forge installed
+        working-directory: testdata/clones/without-forge/claude
+        run: go test ./...
       - name: Verify generated Forge output
         run: go run ./cmd/harnessforge sync --repository . --check
       - name: Check repository and execute declared quality gates
