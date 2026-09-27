@@ -37,6 +37,7 @@ func TestRunCancellationAndTimeoutStopGateDescendants(t *testing.T) {
 			started := filepath.Join(root, "started")
 			command := descendantCommand(t, root, started, marker)
 			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 			timeout := 10 * time.Second
 			if mode == "timeout" {
 				timeout = 500 * time.Millisecond
