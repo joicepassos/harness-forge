@@ -2,6 +2,7 @@ package memory
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -100,6 +101,89 @@ func TestStorePartitionsCheckoutIdentityAndDetectsTampering(t *testing.T) {
 	}
 	if _, err := one.List(); err == nil || !strings.Contains(err.Error(), "integrity") {
 		t.Fatalf("tampered observation accepted: %v", err)
+	}
+}
+
+func TestOpenKeepsObservationsSeparateAcrossGitWorktrees(t *testing.T) {
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git is unavailable")
+	}
+	root := t.TempDir()
+	main := filepath.Join(root, "main")
+	worktree := filepath.Join(root, "worktree")
+	runGit := func(dir string, args ...string) string {
+		t.Helper()
+		command := exec.Command(git, append([]string{"-C", dir}, args...)...)
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, output)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	if err := os.MkdirAll(main, 0700); err != nil {
+		t.Fatal(err)
+	}
+	// Initialize a self-contained repository; no user configuration, providers,
+	// or repositories outside the test's temporary directory are involved.
+	command := exec.Command(git, "-C", main, "init", "-q")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Skipf("git repository initialization unavailable: %v\n%s", err, output)
+	}
+	runGit(main, "-c", "user.name=HarnessForge test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-m", "initial")
+	initial := runGit(main, "rev-parse", "HEAD")
+	command = exec.Command(git, "-C", main, "worktree", "add", "-b", "isolated-worktree", worktree)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Skipf("git worktree is unavailable: %v\n%s", err, output)
+	}
+	defer func() {
+		_ = exec.Command(git, "-C", main, "worktree", "remove", "--force", worktree).Run()
+	}()
+	runGit(worktree, "-c", "user.name=HarnessForge test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-m", "worktree revision")
+	secondary := runGit(worktree, "rev-parse", "HEAD")
+	if initial == secondary {
+		t.Fatalf("test worktrees unexpectedly share HEAD %s", initial)
+	}
+
+	mainStore, err := Open(main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktreeStore, err := Open(worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mainStore.repositoryID != worktreeStore.repositoryID {
+		t.Fatalf("worktrees do not share repository identity: %q != %q", mainStore.repositoryID, worktreeStore.repositoryID)
+	}
+	if mainStore.checkoutID == worktreeStore.checkoutID || mainStore.root == worktreeStore.root {
+		t.Fatalf("worktrees share local state identity: %#v %#v", mainStore, worktreeStore)
+	}
+
+	fromMain, err := mainStore.Capture("Observation captured in the main checkout.", "manual", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fromWorktree, err := worktreeStore.Capture("Observation captured in the linked worktree.", "manual", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fromMain.Revision != initial || fromWorktree.Revision != secondary {
+		t.Fatalf("observations did not record their checkout HEADs: main=%q worktree=%q", fromMain.Revision, fromWorktree.Revision)
+	}
+	mainItems, err := mainStore.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktreeItems, err := worktreeStore.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mainItems) != 1 || mainItems[0].ID != fromMain.ID || mainItems[0].Content != fromMain.Content {
+		t.Fatalf("main checkout observations leaked or disappeared: %#v", mainItems)
+	}
+	if len(worktreeItems) != 1 || worktreeItems[0].ID != fromWorktree.ID || worktreeItems[0].Content != fromWorktree.Content {
+		t.Fatalf("linked worktree observations leaked or disappeared: %#v", worktreeItems)
 	}
 }
 
