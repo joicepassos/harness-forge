@@ -131,7 +131,10 @@ func PreviewToForge(loader Loader, root, source string, targets []string, defaul
 		}
 	}
 	for _, skill := range h.Skills {
-		manifest.References.Skills = append(manifest.References.Skills, domain.SkillReference{ID: skill.ID, Description: skill.Description, Path: skill.Path})
+		manifest.References.Skills = append(manifest.References.Skills, domain.SkillReference{
+			ID: skill.ID, Description: skill.Description, Path: skill.Path,
+			Evidence: append([]domain.Evidence(nil), skill.Evidence...),
+		})
 	}
 	manifestYAML, err := yaml.Marshal(manifest)
 	if err != nil {

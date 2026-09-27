@@ -25,7 +25,8 @@
             "properties": {
               "id": { "$ref": "#/$defs/text" },
               "description": { "$ref": "#/$defs/text" },
-              "path": { "$ref": "#/$defs/relativePath" }
+              "path": { "$ref": "#/$defs/relativePath" },
+              "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
             }
           }
         }
@@ -42,6 +43,21 @@
       "minLength": 1,
       "pattern": "^[^/\\\\:][^\\\\:]*$",
       "not": { "pattern": "(^|/)\\.\\.(/|$)" }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["file"],
+      "properties": {
+        "file": { "$ref": "#/$defs/relativePath" },
+        "kind": { "$ref": "#/$defs/text" },
+        "workspace": { "$ref": "#/$defs/relativePath" },
+        "symbol": { "$ref": "#/$defs/text" },
+        "quote": { "$ref": "#/$defs/text" },
+        "start_line": { "type": "integer", "minimum": 0 },
+        "end_line": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "revision": { "type": "string" }
+      }
     },
     "qualityGate": {
       "type": "object", "additionalProperties": false, "required": ["id", "command"],

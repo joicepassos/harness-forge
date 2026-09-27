@@ -37,9 +37,10 @@ type KnowledgeReference struct {
 }
 
 type SkillReference struct {
-	ID          string `json:"id" yaml:"id"`
-	Description string `json:"description" yaml:"description"`
-	Path        string `json:"path" yaml:"path"`
+	ID          string     `json:"id" yaml:"id"`
+	Description string     `json:"description" yaml:"description"`
+	Path        string     `json:"path" yaml:"path"`
+	Evidence    []Evidence `json:"evidence,omitempty" yaml:"evidence,omitempty"`
 }
 
 // Validate checks the offline manifest contract. It never resolves or reads

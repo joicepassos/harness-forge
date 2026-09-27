@@ -32,6 +32,10 @@ skills:
   - id: payment-review
     description: Review payment provider changes
     path: .harness/skills/payment/SKILL.md
+    evidence:
+      - file: internal/payment/service.go
+        symbol: RequestKey
+        quote: same request key returns the original payment
 quality_gates:
   - id: unit
     command: go test ./...
@@ -104,8 +108,11 @@ func TestPreviewToForgePreservesFieldsAndProducesDeterministicPlan(t *testing.T)
 			}
 		}
 	}
-	if manifest.Project.Name != "payment-service" || manifest.Targets[1] != "claude" || manifest.References.Skills[0] != (domain.SkillReference{ID: "payment-review", Description: "Review payment provider changes", Path: ".harness/skills/payment/SKILL.md"}) {
+	if manifest.Project.Name != "payment-service" || manifest.Targets[1] != "claude" || manifest.References.Skills[0].ID != "payment-review" || manifest.References.Skills[0].Description != "Review payment provider changes" || manifest.References.Skills[0].Path != ".harness/skills/payment/SKILL.md" {
 		t.Fatalf("manifest lost legacy fields: %#v", manifest)
+	}
+	if len(manifest.References.Skills[0].Evidence) != 1 || manifest.References.Skills[0].Evidence[0].File != "internal/payment/service.go" || manifest.References.Skills[0].Evidence[0].Quote != "same request key returns the original payment" {
+		t.Fatalf("skill evidence was lost: %#v", manifest.References.Skills[0].Evidence)
 	}
 	if manifest.QualityGates[0].Command != "go test ./..." || manifest.References.Knowledge[0].ID != "idempotent-payment" {
 		t.Fatalf("gates or knowledge references lost: %#v", manifest)
