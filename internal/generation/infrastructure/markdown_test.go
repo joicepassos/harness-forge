@@ -44,7 +44,11 @@ func TestWriterProtectsManualFilesAndAllowsOwnedRegeneration(t *testing.T) {
 	if !bytes.Equal(after, original) {
 		t.Fatal("manual bytes changed")
 	}
-	if err := os.WriteFile(path, []byte(marker+"\nold"), 0600); err != nil {
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	owned := domain.Document{Path: "AGENTS.md", Content: []byte(marker + "\nold")}
+	if err := (FileWriter{}).Write(context.Background(), dir, owned); err != nil {
 		t.Fatal(err)
 	}
 	if err := (FileWriter{}).Write(context.Background(), dir, document); err != nil {
@@ -53,6 +57,17 @@ func TestWriterProtectsManualFilesAndAllowsOwnedRegeneration(t *testing.T) {
 	after, _ = os.ReadFile(path)
 	if !bytes.Equal(after, document.Content) {
 		t.Fatal("owned file not regenerated")
+	}
+	manualEdit := append(append([]byte(nil), document.Content...), []byte("\nmanual edit")...)
+	if err := os.WriteFile(path, manualEdit, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := (FileWriter{}).Write(context.Background(), dir, owned); err == nil {
+		t.Fatal("manually edited generated file overwritten")
+	}
+	after, _ = os.ReadFile(path)
+	if !bytes.Equal(after, manualEdit) {
+		t.Fatal("conflict changed manually edited bytes")
 	}
 	if err := (FileWriter{}).Write(context.Background(), dir, domain.Document{Path: "../escape", Content: document.Content}); err == nil {
 		t.Fatal("unsafe output accepted")
