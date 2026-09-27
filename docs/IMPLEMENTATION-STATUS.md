@@ -57,10 +57,11 @@ Passed:
 
 ```text
 go test ./...
+go vet ./...
 ```
 
-`go vet ./...` and the cross-platform CI matrix have not yet been run. No paid
-provider calls were made.
+The local full test suite and static analysis pass. The cross-platform CI matrix
+has not yet been run. No paid provider calls were made.
 
 ## Remaining validation
 
