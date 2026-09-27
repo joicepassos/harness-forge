@@ -70,6 +70,9 @@ func (l ProjectLoader) Load(path string) (domain.Harness, error) {
 	if err != nil {
 		return domain.Harness{}, err
 	}
+	if project.Manifest != nil {
+		return domain.Harness{}, fmt.Errorf("legacy Harness consumers cannot load the Forge manifest; use the Forge-native command")
+	}
 	return project.Harness, nil
 }
 

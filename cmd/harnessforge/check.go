@@ -19,6 +19,11 @@ import (
 	harnessinfra "harnessforge/internal/harness/infrastructure"
 )
 
+type projectCheckError struct{}
+
+func (projectCheckError) Error() string     { return "project checks failed" }
+func (projectCheckError) CheckFailed() bool { return true }
+
 type checkDiagnostic struct {
 	Code       string `json:"code"`
 	Severity   string `json:"severity"`
@@ -252,7 +257,7 @@ func newCheckCommand() *cobra.Command {
 			return fmt.Errorf("unsupported format %q", format)
 		}
 		if !env.OK {
-			return fmt.Errorf("project checks failed")
+			return projectCheckError{}
 		}
 		return nil
 	}}

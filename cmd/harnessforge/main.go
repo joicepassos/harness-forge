@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -20,7 +21,20 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	cobra.CheckErr(newRootCommand().ExecuteContext(ctx))
+	if err := newRootCommand().ExecuteContext(ctx); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(cliExitCode(err))
+	}
+}
+
+type checkFailure interface{ CheckFailed() bool }
+
+func cliExitCode(err error) int {
+	var failed checkFailure
+	if errors.As(err, &failed) && failed.CheckFailed() {
+		return 1
+	}
+	return 2
 }
 
 func newOnboardCommand() *cobra.Command {
