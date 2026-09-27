@@ -128,6 +128,59 @@ func TestServeRejectsInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestServeListsAndReadsPromptScopedResourceTemplate(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".forge"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".forge", "forge.yaml"), []byte("layout_version: 1\nir_version: 2\nproject: {name: sample}\ntargets: [codex]\nreferences: {}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`,
+		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/templates/list"}`,
+		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"forge://context/task/Find%20JWT%20authentication%20in%20middleware?path=internal%2Fauth%2Fmiddleware.go"}}`,
+	}, "\n")
+	var out strings.Builder
+	if err := (Server{Repository: root, Budget: 1}).Serve(context.Background(), strings.NewReader(input), &out); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("responses=%d: %s", len(lines), out.String())
+	}
+	var templates struct {
+		Result struct {
+			ResourceTemplates []struct {
+				URITemplate string `json:"uriTemplate"`
+			} `json:"resourceTemplates"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(lines[1]), &templates); err != nil || len(templates.Result.ResourceTemplates) != 1 || templates.Result.ResourceTemplates[0].URITemplate != contextResourceTemplateURI {
+		t.Fatalf("resource template list = %#v, err=%v", templates, err)
+	}
+	var read struct {
+		Result struct {
+			Contents []struct {
+				Text string `json:"text"`
+			} `json:"contents"`
+		} `json:"result"`
+		Error *rpcError `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(lines[2]), &read); err != nil || read.Error != nil || len(read.Result.Contents) != 1 {
+		t.Fatalf("template resource read = %#v, err=%v", read, err)
+	}
+	var plan struct {
+		Excluded []struct {
+			Text string `json:"text"`
+		} `json:"excluded"`
+	}
+	if err := json.Unmarshal([]byte(read.Result.Contents[0].Text), &plan); err != nil || len(plan.Excluded) != 1 || plan.Excluded[0].Text != "Find JWT authentication in middleware" {
+		t.Fatalf("task prompt was not used to resolve context: plan=%#v err=%v", plan, err)
+	}
+}
+
 func TestServeRespondsToInvalidRequestWithoutID(t *testing.T) {
 	var out strings.Builder
 	err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(`{"method":"resources/list"}`), &out)

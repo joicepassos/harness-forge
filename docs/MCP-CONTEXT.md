@@ -8,11 +8,16 @@ and resources/read for protocol version `2025-06-18`. A client can launch it wit
 harnessforge mcp serve --repository . --budget 4000
 ```
 
-The resource URI is `forge://context/current`; its `application/json` body is the
-resolver's selection plan with source IDs, evidence paths, inclusion/exclusion
-reasons, estimated input size, and overflow information. For MCP stdio, each
-JSON-RPC message occupies one line. Embedders can use `mcp.Server.Serve` with
-their own reader/writer without adopting a client library.
+The static resource URI `forge://context/current` returns a general repository
+context plan. The server also lists the parameterized resource template
+`forge://context/task/{prompt}`. Clients can percent-encode the task prompt and
+append one or more `path` query parameters, such as
+`forge://context/task/Find%20JWT%20validation?path=internal%2Fauth%2Fmiddleware.go`.
+Task paths must be repository-relative. The `application/json` body contains
+source IDs, evidence paths, inclusion/exclusion reasons, estimated input size,
+and overflow information. For MCP stdio, each JSON-RPC message occupies one
+line. Embedders can use `mcp.Server.Serve` with their own reader/writer without
+adopting a client library.
 
 The service reads the checkout and approved Forge knowledge. It does not apply
 sync output, change review state, execute project commands, expose tools, or

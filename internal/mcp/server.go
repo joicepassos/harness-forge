@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
+	"path/filepath"
 	"strings"
 )
 
@@ -17,6 +19,7 @@ const MaxMessageBytes = 1 << 20
 const MaxResourceBytes = MaxMessageBytes - 4096
 
 const contextResourceURI = "forge://context/current"
+const contextResourceTemplateURI = "forge://context/task/{prompt}"
 
 type Server struct {
 	Resolver   Resolver
@@ -116,6 +119,12 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 			} else {
 				result = map[string]any{"resources": []any{map[string]any{"uri": contextResourceURI, "name": "Forge task context", "description": "Bounded, provenance-bearing context plan for the current repository.", "mimeType": "application/json"}}}
 			}
+		case "resources/templates/list":
+			if !initialized {
+				rpcErr = notInitialized()
+			} else {
+				result = map[string]any{"resourceTemplates": []any{map[string]any{"uriTemplate": contextResourceTemplateURI, "name": "Forge context for a task", "description": "Read a context plan for a URL-encoded task prompt; optional repeated path query parameters scope knowledge to repository-relative task files.", "mimeType": "application/json"}}}
+			}
 		case "resources/read":
 			if !initialized {
 				rpcErr = notInitialized()
@@ -128,11 +137,46 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 				rpcErr = &rpcError{Code: -32602, Message: "resources/read requires uri"}
 				break
 			}
+			prompt := "repository context"
+			var taskPaths []string
 			if p.URI != contextResourceURI {
-				rpcErr = &rpcError{Code: -32602, Message: "unknown resource URI"}
-				break
+				parsed, parseErr := url.Parse(p.URI)
+				if parseErr != nil || parsed.Scheme != "forge" || parsed.Host != "context" || parsed.Fragment != "" || parsed.User != nil {
+					rpcErr = &rpcError{Code: -32602, Message: "unknown resource URI"}
+					break
+				}
+				if !strings.HasPrefix(parsed.EscapedPath(), "/task/") {
+					rpcErr = &rpcError{Code: -32602, Message: "unknown resource URI"}
+					break
+				}
+				prompt, parseErr = url.PathUnescape(strings.TrimPrefix(parsed.EscapedPath(), "/task/"))
+				if parseErr != nil || strings.TrimSpace(prompt) == "" || len(prompt) > 64<<10 {
+					rpcErr = &rpcError{Code: -32602, Message: "task prompt is invalid or too large"}
+					break
+				}
+				query := parsed.Query()
+				for key := range query {
+					if key != "path" {
+						rpcErr = &rpcError{Code: -32602, Message: "unsupported context resource query parameter"}
+						break
+					}
+				}
+				if rpcErr != nil {
+					break
+				}
+				taskPaths = query["path"]
+				for _, taskPath := range taskPaths {
+					clean := filepath.ToSlash(filepath.Clean(filepath.FromSlash(taskPath)))
+					if taskPath == "" || filepath.IsAbs(taskPath) || strings.Contains(taskPath, "\\") || strings.Contains(taskPath, ":") || clean == ".." || strings.HasPrefix(clean, "../") {
+						rpcErr = &rpcError{Code: -32602, Message: "task paths must be repository-relative"}
+						break
+					}
+				}
+				if rpcErr != nil {
+					break
+				}
 			}
-			data, err := s.Resolver.ReadResource(ctx, s.Repository, "repository context", s.Model, s.Budget)
+			data, err := s.Resolver.ReadResource(ctx, s.Repository, prompt, s.Model, s.Budget, taskPaths...)
 			if err != nil {
 				rpcErr = &rpcError{Code: -32603, Message: "unable to resolve Forge context"}
 				break
