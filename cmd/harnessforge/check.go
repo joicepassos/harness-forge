@@ -191,9 +191,9 @@ func newCheckCommand() *cobra.Command {
 				}
 			}
 			for _, policy := range projectPolicies(project) {
-				if policy.Capability == "enforced" && policy.Executor == "text" {
+				if policy.Capability == "enforced" {
 					env.OK = false
-					env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "policy.unsupported_enforcement", Severity: "error", Message: policy.ID + " is marked enforced but only has a text executor."})
+					env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "policy.unsupported_enforcement", Severity: "error", Message: policy.ID + " is marked enforced, but its executor is not implemented."})
 				}
 			}
 			if runGates && valid {
@@ -213,9 +213,9 @@ func newCheckCommand() *cobra.Command {
 				}
 				if hasUnsupportedEnforcement(project) {
 					for _, policy := range projectPolicies(project) {
-						if policy.Capability == "enforced" && policy.Executor != "text" {
+						if policy.Capability == "enforced" {
 							env.OK = false
-							env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "policy.unsupported", Severity: "error", Message: policy.ID + " requests enforcement through an executor that check does not implement."})
+							env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "policy.unsupported_enforcement", Severity: "error", Message: policy.ID + " requests enforcement through an executor that check does not implement."})
 						}
 					}
 				}
@@ -273,7 +273,7 @@ func projectPolicies(project harnessinfra.ProjectConfig) []harnessdomain.Policy 
 
 func hasUnsupportedEnforcement(project harnessinfra.ProjectConfig) bool {
 	for _, p := range projectPolicies(project) {
-		if p.Capability == "enforced" && p.Executor != "text" {
+		if p.Capability == "enforced" {
 			return true
 		}
 	}

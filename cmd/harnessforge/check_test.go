@@ -161,6 +161,32 @@ func TestForgeCheckRunsDeclaredGatesOnlyWhenExplicit(t *testing.T) {
 	}
 }
 
+func TestForgeCheckRejectsEnforcedPoliciesWithoutImplementedExecutor(t *testing.T) {
+	for _, executor := range []string{"text", "os-sandbox", "custom"} {
+		t.Run(executor, func(t *testing.T) {
+			root := t.TempDir()
+			manifest := filepath.Join(root, ".forge", "forge.yaml")
+			if err := os.MkdirAll(filepath.Dir(manifest), 0700); err != nil {
+				t.Fatal(err)
+			}
+			content := "layout_version: 1\nir_version: 2\nproject: {name: sample, languages: [Go]}\ntargets: [codex]\nreferences: {}\npolicies:\n  - id: filesystem\n    description: Restrict filesystem writes\n    capability: enforced\n    executor: " + executor + "\n"
+			if err := os.WriteFile(manifest, []byte(content), 0600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := newRootCommand()
+			cmd.SetArgs([]string{"check", "--repository", root, "--format", "json"})
+			out := new(bytes.Buffer)
+			cmd.SetOut(out)
+			if err := cmd.Execute(); err == nil {
+				t.Fatalf("unsupported enforced policy accepted for executor %q", executor)
+			}
+			if !strings.Contains(out.String(), "enforced is unsupported") {
+				t.Fatalf("expected explicit unsupported enforcement diagnostic, got: %s", out)
+			}
+		})
+	}
+}
+
 func TestCheckDetectsApprovedKnowledgeChanges(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "evidence.go"), []byte("package example\nconst TokenLifetime = 15\n"), 0600); err != nil {

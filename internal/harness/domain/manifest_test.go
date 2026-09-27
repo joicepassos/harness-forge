@@ -50,13 +50,16 @@ func TestManifestPolicyCapabilitiesAreExplicit(t *testing.T) {
 	if err := m.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	m.Policies[0].Capability = "enforced"
-	if err := m.Validate(); err == nil || !strings.Contains(err.Error(), "text instructions cannot be enforced") {
-		t.Fatalf("text-only policy was reported enforceable: %v", err)
+	for _, executor := range []string{"text", "os-sandbox", "custom"} {
+		m.Policies[0].Capability = "enforced"
+		m.Policies[0].Executor = executor
+		if err := m.Validate(); err == nil || !strings.Contains(err.Error(), "enforced is unsupported") {
+			t.Errorf("policy with unimplemented executor %q was accepted as enforced: %v", executor, err)
+		}
 	}
-	m.Policies[0].Executor = "os-sandbox"
-	if err := m.Validate(); err != nil {
-		t.Fatalf("explicit enforcement executor rejected: %v", err)
+	m.Policies[0].Executor = ""
+	if err := m.Validate(); err == nil || !strings.Contains(err.Error(), "executor") {
+		t.Errorf("enforced policy without executor was accepted: %v", err)
 	}
 }
 

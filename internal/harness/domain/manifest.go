@@ -144,12 +144,17 @@ func (m Manifest) Validate() error {
 		if strings.TrimSpace(policy.Executor) == "" {
 			return fmt.Errorf("%s.executor: must identify the capability executor", field)
 		}
-		if policy.Capability == "enforced" && (policy.Executor == "text" || policy.Executor == "") {
-			return fmt.Errorf("%s: text instructions cannot be enforced", field)
+		if policy.Capability == "enforced" && !policyEnforcementExecutorImplemented(policy.Executor) {
+			return fmt.Errorf("%s.capability: enforced is unsupported because executor %q is not implemented", field, policy.Executor)
 		}
 	}
 	return nil
 }
+
+// No policy enforcement executor is currently wired into HarnessForge. Keep
+// this explicit allowlist fail-closed so adding an arbitrary executor name to
+// a manifest can never make a policy appear enforced.
+func policyEnforcementExecutorImplemented(string) bool { return false }
 
 func validateRelativePath(field, value string) error {
 	if strings.TrimSpace(value) == "" {
