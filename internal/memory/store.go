@@ -52,6 +52,7 @@ type Store struct {
 	repositoryRoot string
 	repositoryID   string
 	checkoutID     string
+	replaceFile    func(temporary, destination string) error
 }
 
 // Open uses the platform's persistent configuration directory, not a cache.
@@ -274,6 +275,10 @@ func (s *Store) ApplyGC(now time.Time, retention time.Duration, maximum ...int) 
 			kept = append(kept, item)
 		}
 	}
+	// GC is one atomic snapshot replacement. If the process stops before the
+	// rename, the previous snapshot remains authoritative; if it stops after,
+	// the complete new snapshot is authoritative. Calling ApplyGC again
+	// recomputes the plan from that snapshot, making recovery idempotent.
 	return plan, s.save(kept)
 }
 
@@ -322,7 +327,11 @@ func (s *Store) save(entries []Observation) error {
 	if err != nil {
 		return err
 	}
-	return safefile.Replace(name, filepath.Join(s.root, "observations.json"))
+	replace := s.replaceFile
+	if replace == nil {
+		replace = safefile.Replace
+	}
+	return replace(name, filepath.Join(s.root, "observations.json"))
 }
 func hashIdentity(value string) string {
 	sum := sha256.Sum256([]byte(filepath.Clean(value)))

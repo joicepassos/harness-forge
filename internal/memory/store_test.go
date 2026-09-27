@@ -1,12 +1,15 @@
 package memory
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"harnessforge/internal/safefile"
 )
 
 func testStore(path, repo, checkout string) *Store {
@@ -229,5 +232,64 @@ func TestGCQuotaRemovesOldestResolvedButNeverPending(t *testing.T) {
 	}
 	if !seen[pending.ID] || !seen[second.ID] {
 		t.Fatalf("wrong observations survived quota: %#v", remaining)
+	}
+}
+
+func TestGCInterruptedBeforeSnapshotReplaceCanResumeWithoutLosingPending(t *testing.T) {
+	store := testStore(filepath.Join(t.TempDir(), "state"), "repo", "checkout")
+	now := time.Now().UTC()
+	pending, err := store.Capture("Keep this candidate across a failed collection.", "manual", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := store.Capture("This old rejected note is collectable.", "manual", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := store.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range items {
+		if items[i].ID == resolved.ID {
+			items[i].State = Rejected
+			items[i].Reviewer = "alice"
+			items[i].CreatedAt = now.Add(-48 * time.Hour)
+		}
+	}
+	if err := store.save(items); err != nil {
+		t.Fatal(err)
+	}
+
+	interrupted := true
+	store.replaceFile = func(temporary, destination string) error {
+		if interrupted {
+			interrupted = false
+			return fmt.Errorf("injected interruption before atomic snapshot replacement")
+		}
+		return safefile.Replace(temporary, destination)
+	}
+	plan, err := store.ApplyGC(now, 24*time.Hour)
+	if err == nil || len(plan.Remove) != 1 || plan.Remove[0] != resolved.ID || plan.PreservePending != 1 {
+		t.Fatalf("interrupted GC plan=%#v err=%v", plan, err)
+	}
+	// The failed replacement must leave the old, integrity-checked snapshot in
+	// place. In particular, pending candidates are never part of the GC plan.
+	remaining, err := store.List()
+	if err != nil || len(remaining) != 2 {
+		t.Fatalf("snapshot changed after interrupted GC: %#v err=%v", remaining, err)
+	}
+
+	plan, err = store.ApplyGC(now, 24*time.Hour)
+	if err != nil || len(plan.Remove) != 1 || plan.Remove[0] != resolved.ID {
+		t.Fatalf("GC retry plan=%#v err=%v", plan, err)
+	}
+	remaining, err = store.List()
+	if err != nil || len(remaining) != 1 || remaining[0].ID != pending.ID {
+		t.Fatalf("GC retry lost or retained wrong observations: %#v err=%v", remaining, err)
+	}
+	plan, err = store.ApplyGC(now, 24*time.Hour)
+	if err != nil || len(plan.Remove) != 0 || plan.PreservePending != 1 {
+		t.Fatalf("repeated GC was not idempotent: %#v err=%v", plan, err)
 	}
 }
