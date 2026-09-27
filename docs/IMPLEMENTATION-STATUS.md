@@ -42,11 +42,17 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   missing/invalid/ambiguous layouts, candidate import, review-before-export
   steps, and safe sync guidance. It is command-driven rather than an interactive
   wizard; model-backed proposals remain optional.
-- T6.1–T6.4: approved knowledge context, scope/path selection, explicit budget
-  overflow, provenance, and comparison proxies are implemented. Quality remains
-  unmeasured; the metrics are deterministic proxies.
-- T7.1–T7.5: explicit local capture, review, candidate publication, retention,
-  quota, integrity, and checkout isolation are implemented.
+- T6.1: approved knowledge is selected with content/evidence hash validation,
+  freshness checks, provenance, and scope metadata. T6.2 is partial: scope and
+  content use lexical matching; explicit keywords, path/glob evaluation against
+  a task path, and backend/frontend build-level selection coverage are missing.
+  T6.3 reports budget overflow for selected knowledge, but early prompt-envelope
+  overflow lacks complete exclusion details. T6.4 exposes comparison proxies;
+  task-level quality and an independent baseline remain unmeasured.
+- T7.1–T7.3 and T7.5: local observation capture, review, candidate publication,
+  audit provenance, deduplication, and checkout isolation are implemented and
+  covered. T7.4 supports preview/apply, age and quota retention, and pending-item
+  preservation; interruption/recovery/resume behavior is not demonstrated.
 - T8.1/T8.2: official-doc behavior matrices exist; no Cursor/OpenCode binary
   runtime tests were performed, so release acceptance remains open. The
   snapshots separate documented behavior from exact-build runtime evidence.
@@ -88,5 +94,7 @@ has not yet been run. No paid provider calls were made.
   agent/model configurations, and human review. Mili's clean HEAD is available
   as one candidate; its modified working tree is excluded. The available Go
   fixture is only development data and is not treated as pilot evidence.
+- T6.2/T6.3 and T7.4 retain the specific coverage gaps above; T6.4 comparison
+  proxies must not be described as measured task quality.
 - This checkout contains pre-existing repository-context/retrieval changes;
   they remain outside the Forge plan task commits.
