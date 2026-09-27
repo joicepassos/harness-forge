@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Harness IR v1",
+  "title": "Harness IR v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,7 +9,7 @@
   ],
   "properties": {
     "version": {
-      "const": 1
+      "const": 2
     },
     "project": {
       "type": "object",
@@ -88,6 +88,12 @@
           },
           "command": {
             "$ref": "#/$defs/text"
+          },
+          "workspace": {
+            "$ref": "#/$defs/text"
+          },
+          "workspaces": {
+            "$ref": "#/$defs/texts"
           }
         }
       }
@@ -116,6 +122,9 @@
         },
         "kind": {
           "type": "string"
+        },
+        "workspace": {
+          "$ref": "#/$defs/text"
         },
         "symbol": {
           "type": "string"

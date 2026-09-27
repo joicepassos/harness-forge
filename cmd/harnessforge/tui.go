@@ -125,7 +125,7 @@ func runTUI(input io.Reader, output io.Writer, repository string) error {
 				continue
 			}
 			harnessPath := filepath.Join(root, ".harness", "harness.yaml")
-			if err := application.NewGenerate(harnessinfra.YAMLLoader{}, generationinfra.Markdown{Agent: agent}, generationinfra.FileWriter{}).Execute(context.Background(), harnessPath, root); err != nil {
+			if err := application.NewGenerate(harnessinfra.YAMLLoader{}, generationinfra.Markdown{Agent: agent}, generationinfra.FileWriter{}, harnessinfra.EvidenceRevalidator{Root: root}).Execute(context.Background(), harnessPath, root); err != nil {
 				fmt.Fprintln(output, style.status("error", fmt.Sprintf("Could not generate %s: %v", file, err)))
 				continue
 			}

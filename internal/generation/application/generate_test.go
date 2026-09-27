@@ -4,12 +4,19 @@ import (
 	"context"
 	"harnessforge/internal/generation/domain"
 	harnessdomain "harnessforge/internal/harness/domain"
+	"strings"
 	"testing"
 )
 
 type loader struct{ harness harnessdomain.Harness }
 
 func (l loader) Load(string) (harnessdomain.Harness, error) { return l.harness, nil }
+
+type evidenceFingerprinter string
+
+func (f evidenceFingerprinter) Fingerprint(string, string, []harnessdomain.Evidence) (string, error) {
+	return string(f), nil
+}
 
 type adapter struct{ input domain.Input }
 
@@ -33,5 +40,45 @@ func TestGeneratePreservesSkillsAndStructuredQualityGates(t *testing.T) {
 	gate := a.input.Gates[0]
 	if gate.Workspace != "services/api" || len(gate.Workspaces) != 2 || gate.Workspaces[1] != "libs/core" {
 		t.Fatalf("gate workspace lost: %#v", gate)
+	}
+}
+
+func TestGenerateRejectsReviewedRuleChangedAfterApproval(t *testing.T) {
+	rule := harnessdomain.Rule{ID: "reviewed", Description: "Keep this rule", Origin: "human", Status: "approved", Evidence: []harnessdomain.Evidence{{File: "architecture.md", Quote: "stable"}}}
+	contentHash, err := harnessdomain.RuleContentHash(rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const evidenceHash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	rule.Review = &harnessdomain.ReviewRecord{ContentSHA256: contentHash, EvidenceSHA256: evidenceHash}
+	rule.Description = "Changed after approval"
+	h := harnessdomain.Harness{Project: harnessdomain.Project{Name: "sample"}, Rules: []harnessdomain.Rule{rule}}
+	w := &writer{}
+	err = NewGenerate(loader{h}, &adapter{}, w, evidenceFingerprinter(evidenceHash)).Execute(context.Background(), "harness.yaml", "repository")
+	if err == nil || !strings.Contains(err.Error(), "changed after review") {
+		t.Fatalf("changed approved content was published: %v", err)
+	}
+	if w.called {
+		t.Fatal("writer ran for a rule whose review hash is stale")
+	}
+}
+
+func TestGenerateRejectsEvidenceChangedAfterApproval(t *testing.T) {
+	rule := harnessdomain.Rule{ID: "reviewed", Description: "Keep this rule", Origin: "human", Status: "approved", Evidence: []harnessdomain.Evidence{{File: "architecture.md", Quote: "stable"}}}
+	contentHash, err := harnessdomain.RuleContentHash(rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const reviewedEvidenceHash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	rule.Review = &harnessdomain.ReviewRecord{ContentSHA256: contentHash, EvidenceSHA256: reviewedEvidenceHash}
+	h := harnessdomain.Harness{Project: harnessdomain.Project{Name: "sample"}, Rules: []harnessdomain.Rule{rule}}
+	w := &writer{}
+	changedEvidenceHash := "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+	err = NewGenerate(loader{h}, &adapter{}, w, evidenceFingerprinter(changedEvidenceHash)).Execute(context.Background(), "harness.yaml", "repository")
+	if err == nil || !strings.Contains(err.Error(), "evidence changed after review") {
+		t.Fatalf("changed evidence was published: %v", err)
+	}
+	if w.called {
+		t.Fatal("writer ran for evidence that changed after review")
 	}
 }
