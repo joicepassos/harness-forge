@@ -8,7 +8,6 @@ import (
 	"go.yaml.in/yaml/v3"
 	"harnessforge/internal/harness/domain"
 	"harnessforge/schemas"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -284,30 +283,41 @@ func RollbackForgeMigration(root string) error {
 	}
 	actual := map[string]bool{}
 	actualDirs := map[string]bool{}
-	if err := filepath.WalkDir(destination, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("symlink found in migrated output")
-		}
-		if entry.IsDir() {
-			if path != destination {
-				relative, err := filepath.Rel(destination, path)
-				if err != nil {
-					return err
-				}
-				actualDirs[filepath.ToSlash(relative)] = true
-			}
-			return nil
-		}
-		relative, err := filepath.Rel(destination, path)
+	var inspect func(string) error
+	inspect = func(dir string) error {
+		entries, err := os.ReadDir(dir)
 		if err != nil {
 			return err
 		}
-		actual[filepath.ToSlash(relative)] = true
+		for _, entry := range entries {
+			path := filepath.Join(dir, entry.Name())
+			info, err := os.Lstat(path)
+			if err != nil {
+				return err
+			}
+			if info.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf("symlink found in migrated output")
+			}
+			relative, err := filepath.Rel(destination, path)
+			if err != nil {
+				return err
+			}
+			relative = filepath.ToSlash(relative)
+			if info.IsDir() {
+				actualDirs[relative] = true
+				if err := inspect(path); err != nil {
+					return err
+				}
+				continue
+			}
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("non-regular file found in migrated output")
+			}
+			actual[relative] = true
+		}
 		return nil
-	}); err != nil {
+	}
+	if err := inspect(destination); err != nil {
 		return err
 	}
 	if len(actual) != len(expected) {
