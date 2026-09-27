@@ -2,7 +2,11 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"go.yaml.in/yaml/v3"
+	generation "harnessforge/internal/generation/infrastructure"
 	harnessdomain "harnessforge/internal/harness/domain"
 	"os"
 	"path/filepath"
@@ -30,11 +34,16 @@ func TestCheckCommandValidatesForgeAndRequiresGeneratedFilesInSync(t *testing.T)
 	if !strings.Contains(out.String(), "generated.drift") || !strings.Contains(out.String(), `"version": 1`) {
 		t.Fatalf("missing versioned drift diagnostic: %s", out)
 	}
-
-	// Validate itself is read-only: the check never created the generated manifest.
-	if _, err := os.Stat(filepath.Join(root, ".forge", "generated-manifest.json")); !os.IsNotExist(err) {
-		t.Fatal("check mutated project")
+	if _, err := generation.SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
 	}
+	cmd = newRootCommand()
+	cmd.SetArgs([]string{"check", "--repository", root, "--format", "json"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("check failed after syncing generated outputs: %v", err)
+	}
+
+	// Check is read-only: it reports missing generated files and does not create them.
 }
 
 func TestCheckCommandRejectsAmbiguousLayoutsAndUnsupportedFormat(t *testing.T) {
@@ -125,10 +134,10 @@ func TestCheckRunsGatesOnlyWhenExplicitlyRequested(t *testing.T) {
 
 func TestCheckDetectsApprovedKnowledgeChanges(t *testing.T) {
 	root := t.TempDir()
-	createForgeKnowledgeFixture(t, root, "auth-policy", "approved", "reviewed", "Token lifetime is fifteen minutes.", "evidence.go")
 	if err := os.WriteFile(filepath.Join(root, "evidence.go"), []byte("package example\nconst TokenLifetime = 15\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	createForgeKnowledgeFixture(t, root, "auth-policy", "approved", "reviewed", "Token lifetime is fifteen minutes.", "evidence.go")
 	// The fixture is deliberately valid before a post-review edit.
 	cmd := newRootCommand()
 	cmd.SetArgs([]string{"check", "--repository", root, "--format", "json"})
@@ -167,7 +176,16 @@ func createForgeKnowledgeFixture(t *testing.T, root, id, state, reviewer, conten
 		item.Reviewer = reviewer
 		item.Health = harnessdomain.KnowledgeVerified
 		item.ContentSHA256 = harnessdomain.HashKnowledgeContent(content)
-		item.EvidenceSHA256 = harnessdomain.HashKnowledgeEvidence([]string{})
+		values := []string{}
+		if evidence != "" {
+			body, err := os.ReadFile(filepath.Join(root, evidence))
+			if err != nil {
+				t.Fatal(err)
+			}
+			sum := sha256.Sum256(body)
+			values = append(values, evidence+":"+hex.EncodeToString(sum[:]))
+		}
+		item.EvidenceSHA256 = harnessdomain.HashKnowledgeEvidence(values)
 	}
 	encoded, err := yaml.Marshal(item)
 	if err != nil {

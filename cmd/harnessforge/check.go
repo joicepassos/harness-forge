@@ -209,6 +209,12 @@ func newCheckCommand() *cobra.Command {
 				env.OK = false
 				env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "project.knowledge_invalid", Severity: "error", Message: err.Error(), Path: project.Layout.ManifestPath})
 			}
+			if project.Layout.Kind == harnessinfra.LayoutForge {
+				if _, err := generation.CheckForge(cmd.Context(), root); err != nil {
+					env.OK = false
+					env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "generated.drift", Severity: "error", Message: err.Error(), Path: filepath.Join(root, ".forge", "generated-manifest.json"), Suggestion: "Run harnessforge sync --apply after reviewing the planned output."})
+				}
+			}
 			if runGates && valid {
 				var quality []harnessdomain.QualityGate
 				if project.Manifest != nil {
@@ -230,12 +236,6 @@ func newCheckCommand() *cobra.Command {
 						env.OK = false
 						env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "gate.failed", Severity: "error", Message: result.ID + " failed in " + result.Workspace + ": " + result.Error, Suggestion: "Review the gate command, workspace, output, and timeout before retrying."})
 					}
-				}
-			}
-			if project.Layout.Kind == harnessinfra.LayoutForge {
-				if _, err := syncCheck(cmd.Context(), root); err != nil {
-					env.OK = false
-					env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "generated.drift", Severity: "error", Message: err.Error(), Path: filepath.Join(root, ".forge", "generated-manifest.json"), Suggestion: "Run harnessforge sync --apply after reviewing the planned output."})
 				}
 			}
 		}
@@ -267,8 +267,4 @@ func newCheckCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&runGates, "run-gates", false, "Explicitly execute declared quality gates")
 	cmd.Flags().DurationVar(&gateTimeout, "gate-timeout", gates.DefaultTimeout, "Maximum runtime per quality gate (requires --run-gates)")
 	return cmd
-}
-
-func syncCheck(ctx context.Context, root string) (generation.SyncResult, error) {
-	return generation.CheckForge(ctx, root)
 }
