@@ -88,8 +88,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   generated-manifest hashes, and symlinks/special files are rejected.
 - T8.5: the opt-in gate runner supports workspace, timeout, cancellation and
   bounded output. Cancellation terminates the shell process tree on supported
-  operating systems. Policies marked `enforced` fail closed because no policy
-  enforcement executor is implemented. T8.6 adds a dedicated CI workflow that
+  operating systems. Gates inherit the HarnessForge process environment and
+  may override named variables; the secret-handling limit is documented in
+  [quality-gate guidance](QUALITY-GATES.md). Policies marked `enforced` fail
+  closed because no policy enforcement executor is implemented. T8.6 adds a
+  dedicated CI workflow that
   verifies Forge sync and runs the repository's `go test ./...` gate; both
   commands passed locally. The workflow has not yet run on GitHub.
 - T9.1: the versioned inventory records Mili, PromptForge, and Toca as candidate
@@ -108,10 +111,13 @@ Passed:
 ```text
 go test ./...
 go vet ./...
+go run ./cmd/harnessforge sync --repository . --check
+go run ./cmd/harnessforge check --repository . --layout forge --run-gates --format json
 ```
 
-The local full test suite and static analysis pass. The cross-platform CI matrix
-has not yet been run. No paid provider calls were made.
+The local full test suite, static analysis, sync drift check, and declared Go
+gate pass on Windows. The cross-platform CI matrix has not yet been run. No
+paid provider calls were made.
 
 ## Remaining validation
 
