@@ -26,7 +26,12 @@
   "$defs": {
     "text": { "type": "string", "pattern": "\\S" },
     "texts": { "type": "array", "items": { "$ref": "#/$defs/text" } },
-    "relativePath": { "type": "string", "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$))\\S.*$" },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/\\\\:][^\\\\:]*$",
+      "not": { "pattern": "(^|/)\\.\\.(/|$)" }
+    },
     "qualityGate": {
       "type": "object", "additionalProperties": false, "required": ["id", "command"],
       "properties": {
