@@ -69,11 +69,14 @@ func TestDetectShowsAlignedDifferenceAndUnsupportedRule(t *testing.T) {
 		{ID: "unsupported", Status: "approved"},
 	}}
 	report, err := NewDetect(harnessLoader{h}, reader{found: true}).Execute(context.Background(), "harness.yaml")
-	if err != nil || report.Occurrences[0].Status != domain.StatusAligned || report.Occurrences[1].Status != domain.StatusNotEvaluated {
+	if err != nil || report.Occurrences[0].Status != domain.StatusAligned || report.Occurrences[0].EvidenceStatus != domain.EvidencePresent || report.Occurrences[0].Conformance != domain.StatusNotEvaluated || report.Occurrences[1].Status != domain.StatusNotEvaluated {
 		t.Fatalf("%#v %v", report, err)
 	}
+	if report.Coverage != (domain.Coverage{Total: 1, Evaluated: 1, RulesWithoutEvidence: 1}) {
+		t.Fatalf("unexpected evidence coverage: %#v", report.Coverage)
+	}
 	report, err = NewDetect(harnessLoader{harnessdomain.Harness{Rules: []harnessdomain.Rule{{ID: "changed", Status: "approved", Evidence: []harnessdomain.Evidence{{File: "a.go", Symbol: "Missing"}}}}}}, reader{}).Execute(context.Background(), "harness.yaml")
-	if err != nil || report.Occurrences[0].Status != domain.StatusDifference || report.Occurrences[0].CodeProposal == "" || report.Occurrences[0].HarnessProposal == "" {
+	if err != nil || report.Occurrences[0].Status != domain.StatusDifference || report.Occurrences[0].EvidenceStatus != domain.EvidenceMissing || report.Occurrences[0].Conformance != domain.StatusNotEvaluated || report.Occurrences[0].CodeProposal == "" || report.Occurrences[0].HarnessProposal == "" {
 		t.Fatalf("%#v %v", report, err)
 	}
 }
