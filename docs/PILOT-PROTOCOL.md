@@ -66,10 +66,12 @@ Store one JSON object per run with this shape (extend only with versioned fields
 Before the pilot, populate an independent validation set of repositories and
 executable tasks, pin clean commits and software versions, and validate
 condition isolation. The current inventory contains one synthetic Go
-development fixture and the HarnessForge development repository; it contains no
-validation repositories or frozen pilot tasks. Their commits are not yet a
-valid pilot freeze, and the fixture has no behavioral acceptance task. At the
-inventory audit, Go was available as `go1.26.2 windows/amd64` and Codex CLI was
+development fixture, the HarnessForge development repository, and Mili as a
+user-selected validation candidate. Mili's recorded HEAD is not a pilot freeze:
+its working tree had 12 modified tracked files and 14 untracked paths, and no
+pilot tasks or agent/model configuration have been frozen. The development
+fixture has no behavioral acceptance task. At the inventory audit, Go was
+available as `go1.26.2 windows/amd64` and Codex CLI was
 available as `codex-cli 0.158.0-alpha.2.1`. Claude Code, Cursor CLI, and
 OpenCode CLI were not discoverable on PATH. These are environment observations,
 not claims about product availability elsewhere. No run has been performed by

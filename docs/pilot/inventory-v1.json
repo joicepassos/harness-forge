@@ -36,7 +36,20 @@
       "reason_excluded_from_validation": "One empty Go main module is useful for deterministic development tests but has no meaningful behavior or executable pilot task and no repository commit history."
     }
   ],
-  "validation_repositories": [],
+  "validation_repositories": [
+    {
+      "repository_id": "mili",
+      "role": "candidate_not_frozen",
+      "local_path": "../mili",
+      "commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+      "commit_is_pilot_freeze": false,
+      "working_tree_modified_at_audit": true,
+      "modified_tracked_file_count_at_audit": 12,
+      "untracked_path_count_at_audit": 14,
+      "tasks": [],
+      "reason_excluded_from_validation": "The user identified Mili as a pilot candidate. Its HEAD is recorded, but the checkout has local modifications and untracked files, and no pilot tasks, agent/model configuration, or evaluation rubric have been frozen."
+    }
+  ],
   "tasks": [],
   "conditions": ["baseline", "team", "forge"],
   "agent_products": [
@@ -63,7 +76,7 @@
   },
   "runs": [],
   "limitations": [
-    "No independent validation repository has been selected or frozen.",
+    "Mili was selected as a candidate repository, but no clean repository/task/configuration freeze has been completed.",
     "No pilot task with executable acceptance criteria has been selected.",
     "Codex CLI was found and its version recorded, but no exact agent/model configuration or condition-isolation setup has been frozen and no pilot run was performed.",
     "Command-line executables named claude, cursor, and opencode were not discoverable on PATH; this does not establish whether their products are available through other interfaces or machines.",
