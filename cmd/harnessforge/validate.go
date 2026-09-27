@@ -7,30 +7,49 @@ import (
 )
 
 func newValidateCommand() *cobra.Command {
-	var repository string
+	var repository, layout string
 	command := &cobra.Command{Use: "validate [file]", Short: "Validate a manually edited Harness IR YAML file", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		l, err := localizerFor(cmd)
 		if err != nil {
 			return err
 		}
-		path := ".harness/harness.yaml"
+		root := repository
+		if root == "" {
+			root = "."
+		}
+		path := ""
+		harnessConfig := len(args) > 0
 		if len(args) > 0 {
 			path = args[0]
+		} else {
+			project, err := infrastructure.LoadProject(root, layout)
+			if err != nil {
+				return err
+			}
+			if project.Layout.Kind == infrastructure.LayoutHarness {
+				path = project.Layout.HarnessPath
+				harnessConfig = true
+			} else {
+				path = project.Layout.ManifestPath
+			}
 		}
-		if err := application.NewValidate(infrastructure.YAMLLoader{}).Execute(path); err != nil {
-			return err
+		if harnessConfig {
+			if err := application.NewValidate(infrastructure.YAMLLoader{}).Execute(path); err != nil {
+				return err
+			}
 		}
-		if repository != "" {
+		if repository != "" && harnessConfig {
 			h, err := (infrastructure.YAMLLoader{}).Load(path)
 			if err != nil {
 				return err
 			}
-			if err := infrastructure.CheckEvidence(cmd.Context(), repository, h); err != nil {
+			if err := infrastructure.CheckEvidence(cmd.Context(), root, h); err != nil {
 				return err
 			}
 		}
 		return l.printf(cmd, "output.valid", path)
 	}}
 	command.Flags().StringVar(&repository, "repository", "", "Verify evidence files and literal symbols in this repository")
+	command.Flags().StringVar(&layout, "layout", "", "Select harness or forge when both project layouts exist")
 	return command
 }
