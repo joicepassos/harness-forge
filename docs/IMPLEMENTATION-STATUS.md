@@ -73,8 +73,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T8.1/T8.2: official-doc behavior matrices exist; no Cursor/OpenCode binary
   runtime tests were performed, so release acceptance remains open. The
   snapshots separate documented behavior from exact-build runtime evidence.
-- T8.3: transport-neutral read-only context resolver is implemented. JSON-RPC,
-  session, authentication, and client tests remain out of scope.
+- T8.3: the read-only context resolver is exposed through MCP JSON-RPC stdio
+  for protocol `2025-06-18`, with initialize, resources/list, resources/read,
+  bounded messages, and no tools or write operations. Protocol behavior is
+  covered locally; remote transport, authentication, and client-specific
+  discovery remain out of scope.
 - T8.4: sync validates and publishes portable Agent Skills bundles under
   `.agents/skills/` and `.claude/skills/`; generated instruction files link to
   skills without duplicating their bodies. Updates and stale-file cleanup use
