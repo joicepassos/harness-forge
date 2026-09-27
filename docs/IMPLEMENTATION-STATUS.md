@@ -20,31 +20,38 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T2.1: a shared layout resolver discovers `.harness` or `.forge`, rejects
   ambiguous coexistence unless selection is explicit, and resolves safe
   repository-relative paths.
-- T2.2: `.forge/forge.yaml` has a versioned contract whose `layout_version` is
-  independent from Harness IR v1/v2.
+- T2.2–T2.6: `.forge/forge.yaml` has a versioned contract independent from
+  Harness IR v1/v2; offline loading, reference validation, and v1/v2 round-trip
+  compatibility are covered.
+- T3.1–T3.4: migration preview reports unmapped choices, apply preserves the
+  legacy source, rollback protects modified/unowned output, and v1 migration
+  remains compatible.
+- T4.1–T4.6: deterministic Codex/Claude compile adapters, shared ownership
+  manifest, dry-run/check/apply, collision and edit protection, staging, clone
+  ownership, idempotence, and symlink checks are implemented.
+- T5.1/T5.6 scope delivered: `validate` discovers the selected project layout;
+  static clone fixtures prove generated instructions are consumable without
+  Forge configuration. Aggregate `check`, project onboarding/import and CI
+  drift facade remain follow-up work.
 
 ## Verification
 
 Passed:
 
 ```text
-go test ./internal/generation/... ./internal/harness/... ./internal/discovery/... ./internal/drift/... ./cmd/harnessforge
-go test ./internal/harness/infrastructure ./internal/harness/domain
-git diff --check
+go test ./...
 ```
 
-The full `go test ./...`, `go vet ./...`, and cross-platform CI matrix have not
-yet been run for this implementation branch. No paid provider calls were made.
+`go vet ./...` and the cross-platform CI matrix have not yet been run. No paid
+provider calls were made.
 
 ## Remaining MVP work
 
-- T2.3–T2.6: load `.forge` offline, validate references, and cover round-trip and
-  source conflicts.
-- T3: reversible migration preview/application and compatibility acceptance.
-- T4: reproducible compile plan, versioned manifest, Codex/Claude adapters, and
-  safe `sync --dry-run`, `sync --check`, and apply.
-- T5: aggregated `check`, candidate import/review, onboarding, and CI drift
-  verification. These close the P0–P3 MVP.
+- T5.2–T5.5: explicit candidate import/review and onboarding; broader aggregate
+  diagnostics and drift integration.
+- T5.6 remainder: wire the static sync check into CI and verify the complete
+  maintenance workflow in an external clone.
 
-P4–P8 remain later work as the plan specifies. The current layout resolver is an
-internal API; CLI commands do not yet use it for automatic source selection.
+P4–P8 remain later work as the plan specifies. The repository-context edits that
+pre-dated this implementation remain uncommitted and are excluded from these
+task commits.
