@@ -79,18 +79,34 @@ func validateForgeKnowledgeHealth(ctx context.Context, root string, manifest har
 
 func parseForgeKnowledgeDocument(data []byte) (harnessdomain.KnowledgeItem, error) {
 	var item harnessdomain.KnowledgeItem
-	text := strings.TrimSpace(string(data))
+	text := string(data)
 	if !strings.HasPrefix(text, "---") {
 		return item, fmt.Errorf("expected YAML front matter")
 	}
-	parts := strings.SplitN(strings.TrimPrefix(text, "---"), "---", 2)
-	if len(parts) != 2 {
+	contentStart := len("---")
+	if contentStart < len(text) && text[contentStart] == '\r' {
+		contentStart++
+	}
+	if contentStart >= len(text) || text[contentStart] != '\n' {
+		return item, fmt.Errorf("invalid YAML front matter opening delimiter")
+	}
+	contentStart++
+	closingOffset := strings.Index(text[contentStart:], "\n---")
+	if closingOffset < 0 {
 		return item, fmt.Errorf("unterminated YAML front matter")
 	}
-	dec := yaml.NewDecoder(bytes.NewBufferString(strings.TrimSpace(parts[0])))
+	closingStart := contentStart + closingOffset + 1
+	closingEnd := closingStart + len("---")
+	if closingEnd < len(text) && text[closingEnd] != '\n' && text[closingEnd] != '\r' {
+		return item, fmt.Errorf("invalid YAML front matter closing delimiter")
+	}
+	dec := yaml.NewDecoder(bytes.NewBufferString(strings.TrimSpace(text[contentStart:closingStart])))
 	dec.KnownFields(true)
 	if err := dec.Decode(&item); err != nil {
 		return item, err
+	}
+	if err := dec.Decode(new(any)); err != io.EOF {
+		return item, fmt.Errorf("expected one YAML document")
 	}
 	if err := item.Validate(); err != nil {
 		return item, err

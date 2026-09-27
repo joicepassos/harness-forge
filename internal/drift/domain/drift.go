@@ -11,9 +11,11 @@ const (
 const (
 	EvidencePresent Status = "present"
 	EvidenceMissing Status = "missing"
+	EvidenceChanged Status = "changed"
 )
 
 type Occurrence struct {
+	SubjectType     string   `json:"subject_type,omitempty"`
 	RuleID          string   `json:"rule_id"`
 	Status          Status   `json:"status"`
 	EvidenceStatus  Status   `json:"evidence_status"`
