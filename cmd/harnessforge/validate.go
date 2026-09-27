@@ -19,6 +19,7 @@ func newValidateCommand() *cobra.Command {
 		}
 		path := ""
 		harnessConfig := len(args) > 0
+		var projectConfig *infrastructure.ProjectConfig
 		if len(args) > 0 {
 			path = args[0]
 		} else {
@@ -26,6 +27,7 @@ func newValidateCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			projectConfig = &project
 			if project.Layout.Kind == infrastructure.LayoutHarness {
 				path = project.Layout.HarnessPath
 				harnessConfig = true
@@ -35,6 +37,11 @@ func newValidateCommand() *cobra.Command {
 		}
 		if harnessConfig {
 			if err := application.NewValidate(infrastructure.YAMLLoader{}).Execute(path); err != nil {
+				return err
+			}
+		}
+		if projectConfig != nil && projectConfig.Manifest != nil {
+			if err := infrastructure.ValidateManifestReferences(projectConfig.Layout, *projectConfig.Manifest); err != nil {
 				return err
 			}
 		}
