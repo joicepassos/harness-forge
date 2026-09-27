@@ -10,7 +10,7 @@
         "policy": "unsupported",
         "quality_gates": "advisory",
         "scope": "textual",
-        "skills": "reference"
+        "skills": "native"
       }
     }
   ]

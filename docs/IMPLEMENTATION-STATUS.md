@@ -46,12 +46,15 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   runtime tests were performed, so release acceptance remains open.
 - T8.3: transport-neutral read-only context resolver is implemented. JSON-RPC,
   session, authentication, and client tests remain out of scope.
-- T8.4: portable skill publication contract is documented; sync keeps
-  references rather than duplicating skill bodies.
-- T8.5: opt-in runner supports workspace, timeout, cancellation and bounded
-  output. T8.6 adds a dedicated CI workflow that verifies Forge sync and runs
-  the repository's `go test ./...` gate; both commands passed locally. The
-  workflow has not yet run on GitHub.
+- T8.4: sync validates and publishes portable Agent Skills bundles under
+  `.agents/skills/` and `.claude/skills/`; generated instruction files link to
+  skills without duplicating their bodies. Updates and stale-file cleanup use
+  generated-manifest hashes, and symlinks/special files are rejected.
+- T8.5: the opt-in gate runner supports workspace, timeout, cancellation and
+  bounded output. Policies marked `enforced` fail closed because no policy
+  enforcement executor is implemented. T8.6 adds a dedicated CI workflow that
+  verifies Forge sync and runs the repository's `go test ./...` gate; both
+  commands passed locally. The workflow has not yet run on GitHub.
 - T9.1: pilot protocol and a versioned inventory separate development material
   from validation data. No independent validation repositories or frozen
   tasks are currently available. T0.4 baseline execution and T9.2–T9.5 runs
