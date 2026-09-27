@@ -20,12 +20,18 @@ type Manifest struct {
 
 type ManifestReferences struct {
 	Knowledge []KnowledgeReference `json:"knowledge,omitempty" yaml:"knowledge,omitempty"`
-	Skills    []string             `json:"skills,omitempty" yaml:"skills,omitempty"`
+	Skills    []SkillReference     `json:"skills,omitempty" yaml:"skills,omitempty"`
 }
 
 type KnowledgeReference struct {
 	ID   string `json:"id" yaml:"id"`
 	Path string `json:"path" yaml:"path"`
+}
+
+type SkillReference struct {
+	ID          string `json:"id" yaml:"id"`
+	Description string `json:"description" yaml:"description"`
+	Path        string `json:"path" yaml:"path"`
 }
 
 // Validate checks the offline manifest contract. It never resolves or reads
@@ -70,8 +76,20 @@ func (m Manifest) Validate() error {
 			return err
 		}
 	}
+	seen = map[string]bool{}
 	for i, skill := range m.References.Skills {
-		if err := validateRelativePath(fmt.Sprintf("references.skills[%d]", i), skill); err != nil {
+		field := fmt.Sprintf("references.skills[%d]", i)
+		if strings.TrimSpace(skill.ID) == "" {
+			return fmt.Errorf("%s.id: must not be empty", field)
+		}
+		if seen[skill.ID] {
+			return fmt.Errorf("%s.id: duplicate %q", field, skill.ID)
+		}
+		seen[skill.ID] = true
+		if strings.TrimSpace(skill.Description) == "" {
+			return fmt.Errorf("%s.description: must not be empty", field)
+		}
+		if err := validateRelativePath(field+".path", skill.Path); err != nil {
 			return err
 		}
 	}

@@ -12,7 +12,7 @@ func validManifest() Manifest {
 		Targets: []string{"codex", "claude"},
 		References: ManifestReferences{
 			Knowledge: []KnowledgeReference{{ID: "architecture", Path: "knowledge/architecture.md"}},
-			Skills:    []string{"skills/review/SKILL.md"},
+			Skills:    []SkillReference{{ID: "review", Description: "Review skill", Path: "skills/review/SKILL.md"}},
 		},
 		QualityGates: []QualityGate{{ID: "unit", Command: "go test ./...", Workspace: "services/api", Workspaces: []string{"services/api"}}},
 	}

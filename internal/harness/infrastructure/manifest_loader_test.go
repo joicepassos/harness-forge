@@ -17,7 +17,10 @@ references:
   knowledge:
     - id: architecture
       path: .forge/knowledge/architecture.md
-  skills: [.forge/skills/review/SKILL.md]
+  skills:
+    - id: review
+      description: Review skill
+      path: .forge/skills/review/SKILL.md
 quality_gates:
   - id: tests
     command: go test ./...

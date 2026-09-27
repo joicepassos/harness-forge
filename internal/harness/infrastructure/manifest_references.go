@@ -21,7 +21,7 @@ func ValidateManifestReferences(layout ProjectLayout, manifest domain.Manifest) 
 		}
 	}
 	for index, reference := range manifest.References.Skills {
-		path, err := layout.ResolveReference(reference)
+		path, err := layout.ResolveReference(reference.Path)
 		if err != nil {
 			return fmt.Errorf("references.skills[%d]: %w", index, err)
 		}

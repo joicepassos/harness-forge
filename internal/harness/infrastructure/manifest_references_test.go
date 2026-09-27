@@ -24,7 +24,7 @@ func TestValidateManifestReferencesChecksFilesAndWorkspacesWithoutRunningCommand
 	manifest := domain.Manifest{
 		References: domain.ManifestReferences{
 			Knowledge: []domain.KnowledgeReference{{ID: "architecture", Path: ".forge/knowledge/architecture.md"}},
-			Skills:    []string{".forge/skills/review/SKILL.md"},
+			Skills:    []domain.SkillReference{{ID: "review", Description: "Review skill", Path: ".forge/skills/review/SKILL.md"}},
 		},
 		QualityGates: []domain.QualityGate{{ID: "test", Command: "this command must not run", Workspace: ".", Workspaces: []string{"."}}},
 	}

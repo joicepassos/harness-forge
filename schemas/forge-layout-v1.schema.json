@@ -18,7 +18,17 @@
       "type": "object", "additionalProperties": false,
       "properties": {
         "knowledge": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "path"], "properties": { "id": { "$ref": "#/$defs/text" }, "path": { "$ref": "#/$defs/relativePath" } } } },
-        "skills": { "type": "array", "items": { "$ref": "#/$defs/relativePath" } }
+        "skills": {
+          "type": "array", "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "description", "path"],
+            "properties": {
+              "id": { "$ref": "#/$defs/text" },
+              "description": { "$ref": "#/$defs/text" },
+              "path": { "$ref": "#/$defs/relativePath" }
+            }
+          }
+        }
       }
     },
     "quality_gates": { "type": "array", "items": { "$ref": "#/$defs/qualityGate" } }
