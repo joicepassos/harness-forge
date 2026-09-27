@@ -63,6 +63,9 @@ func validateForgeKnowledgeHealth(ctx context.Context, root string, manifest har
 		if item.ContentSHA256 != harnessdomain.HashKnowledgeContent(item.Content) {
 			return fmt.Errorf("knowledge %q content changed since review", ref.ID)
 		}
+		if item.ReviewMetadataSHA256 != harnessdomain.HashKnowledgeReviewMetadata(item) {
+			return fmt.Errorf("knowledge %q review metadata changed since review", ref.ID)
+		}
 		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing {
 			continue
 		}

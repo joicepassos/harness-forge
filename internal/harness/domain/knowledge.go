@@ -41,21 +41,22 @@ const (
 
 // KnowledgeItem is a stable, reviewable unit of project knowledge.
 type KnowledgeItem struct {
-	ID                 string               `json:"id" yaml:"id"`
-	Kind               KnowledgeKind        `json:"kind" yaml:"kind"`
-	Scope              Scope                `json:"scope,omitempty" yaml:"scope,omitempty"`
-	Keywords           []string             `json:"keywords,omitempty" yaml:"keywords,omitempty"`
-	Content            string               `json:"content" yaml:"content"`
-	Origin             string               `json:"origin" yaml:"origin"`
-	Review             KnowledgeReviewState `json:"review" yaml:"review"`
-	Health             KnowledgeHealth      `json:"health" yaml:"health"`
-	Evidence           []KnowledgeEvidence  `json:"evidence,omitempty" yaml:"evidence,omitempty"`
-	Reviewer           string               `json:"reviewer,omitempty" yaml:"reviewer,omitempty"`
-	ReviewDiff         string               `json:"review_diff,omitempty" yaml:"review_diff,omitempty"`
-	ContentSHA256      string               `json:"content_sha256,omitempty" yaml:"content_sha256,omitempty"`
-	EvidenceSHA256     string               `json:"evidence_sha256,omitempty" yaml:"evidence_sha256,omitempty"`
-	LegacyReviewStatus string               `json:"legacy_review_status,omitempty" yaml:"legacy_review_status,omitempty"`
-	LegacyReview       *ReviewRecord        `json:"legacy_review,omitempty" yaml:"legacy_review,omitempty"`
+	ID                   string               `json:"id" yaml:"id"`
+	Kind                 KnowledgeKind        `json:"kind" yaml:"kind"`
+	Scope                Scope                `json:"scope,omitempty" yaml:"scope,omitempty"`
+	Keywords             []string             `json:"keywords,omitempty" yaml:"keywords,omitempty"`
+	Content              string               `json:"content" yaml:"content"`
+	Origin               string               `json:"origin" yaml:"origin"`
+	Review               KnowledgeReviewState `json:"review" yaml:"review"`
+	Health               KnowledgeHealth      `json:"health" yaml:"health"`
+	Evidence             []KnowledgeEvidence  `json:"evidence,omitempty" yaml:"evidence,omitempty"`
+	Reviewer             string               `json:"reviewer,omitempty" yaml:"reviewer,omitempty"`
+	ReviewDiff           string               `json:"review_diff,omitempty" yaml:"review_diff,omitempty"`
+	ContentSHA256        string               `json:"content_sha256,omitempty" yaml:"content_sha256,omitempty"`
+	EvidenceSHA256       string               `json:"evidence_sha256,omitempty" yaml:"evidence_sha256,omitempty"`
+	ReviewMetadataSHA256 string               `json:"review_metadata_sha256,omitempty" yaml:"review_metadata_sha256,omitempty"`
+	LegacyReviewStatus   string               `json:"legacy_review_status,omitempty" yaml:"legacy_review_status,omitempty"`
+	LegacyReview         *ReviewRecord        `json:"legacy_review,omitempty" yaml:"legacy_review,omitempty"`
 }
 
 // KnowledgeEvidence records a source location and the exact observed material.
@@ -122,6 +123,9 @@ func (k KnowledgeItem) Validate() error {
 	if k.EvidenceSHA256 != "" && !validSHA256(k.EvidenceSHA256) {
 		return fmt.Errorf("evidence_sha256: expected 64 hexadecimal characters")
 	}
+	if k.ReviewMetadataSHA256 != "" && !validSHA256(k.ReviewMetadataSHA256) {
+		return fmt.Errorf("review_metadata_sha256: expected 64 hexadecimal characters")
+	}
 	if k.LegacyReviewStatus != "" && k.LegacyReviewStatus != "candidate" && k.LegacyReviewStatus != "approved" && k.LegacyReviewStatus != "rejected" {
 		return fmt.Errorf("legacy_review_status: unsupported value %q", k.LegacyReviewStatus)
 	}
@@ -134,6 +138,9 @@ func (k KnowledgeItem) Validate() error {
 		}
 		if k.EvidenceSHA256 == "" {
 			return fmt.Errorf("evidence_sha256: required after candidate review")
+		}
+		if k.ReviewMetadataSHA256 == "" {
+			return fmt.Errorf("review_metadata_sha256: required after candidate review; legacy approvals require re-review")
 		}
 	}
 	for i, evidence := range k.Evidence {
@@ -152,6 +159,23 @@ func (k KnowledgeItem) Validate() error {
 		}
 	}
 	return nil
+}
+
+// HashKnowledgeReviewMetadata binds approval to semantic fields other than
+// content and evidence file contents. Legacy approvals without this digest
+// must be explicitly re-reviewed before they can be published.
+func HashKnowledgeReviewMetadata(item KnowledgeItem) string {
+	metadata := struct {
+		ID       string              `json:"id"`
+		Kind     KnowledgeKind       `json:"kind"`
+		Scope    Scope               `json:"scope"`
+		Keywords []string            `json:"keywords"`
+		Origin   string              `json:"origin"`
+		Evidence []KnowledgeEvidence `json:"evidence"`
+	}{item.ID, item.Kind, item.Scope, item.Keywords, item.Origin, item.Evidence}
+	encoded, _ := json.Marshal(metadata)
+	sum := sha256.Sum256(encoded)
+	return hex.EncodeToString(sum[:])
 }
 
 // ValidateKnowledge checks item validity and uniqueness of stable IDs.

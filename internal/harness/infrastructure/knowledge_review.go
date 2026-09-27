@@ -117,6 +117,7 @@ func ReviewKnowledge(root, selection, id, state, reviewer string) error {
 		item.ReviewDiff = ""
 		item.ContentSHA256 = ""
 		item.EvidenceSHA256 = ""
+		item.ReviewMetadataSHA256 = ""
 		item.Health = harnessdomain.KnowledgeUnknown
 	} else {
 		item.Review = harnessdomain.KnowledgeReviewState(state)
@@ -133,6 +134,7 @@ func ReviewKnowledge(root, selection, id, state, reviewer string) error {
 		} else {
 			item.Health = harnessdomain.KnowledgeUnknown
 		}
+		item.ReviewMetadataSHA256 = harnessdomain.HashKnowledgeReviewMetadata(item)
 	}
 	if err := item.Validate(); err != nil {
 		return err

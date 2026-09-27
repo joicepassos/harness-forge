@@ -40,6 +40,7 @@ func forgeSyncFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	item := domain.KnowledgeItem{ID: "rule-a", Kind: domain.KnowledgeConvention, Content: "Use explicit errors.", Origin: "human", Review: domain.KnowledgeApproved, Health: domain.KnowledgeUnknown, Reviewer: "alice", ContentSHA256: domain.HashKnowledgeContent("Use explicit errors."), ReviewDiff: "--- candidate\n+++ reviewed\n+Use explicit errors.\n", EvidenceSHA256: domain.HashKnowledgeEvidence(nil)}
+	item.ReviewMetadataSHA256 = domain.HashKnowledgeReviewMetadata(item)
 	data, err := yaml.Marshal(item)
 	if err != nil {
 		t.Fatal(err)
@@ -265,6 +266,7 @@ func TestSyncForgeRejectsEvidenceChangedAfterApproval(t *testing.T) {
 		t.Fatal(err)
 	}
 	item.EvidenceSHA256 = fingerprint
+	item.ReviewMetadataSHA256 = domain.HashKnowledgeReviewMetadata(item)
 	encoded, err := yaml.Marshal(item)
 	if err != nil {
 		t.Fatal(err)
@@ -280,6 +282,50 @@ func TestSyncForgeRejectsEvidenceChangedAfterApproval(t *testing.T) {
 	}
 	if _, err := CompileForge(root); err == nil || !strings.Contains(err.Error(), "evidence") {
 		t.Fatalf("stale evidence published: %v", err)
+	}
+}
+
+func TestCompileForgeRejectsSemanticMetadataChangedAfterApproval(t *testing.T) {
+	for _, mutate := range []struct {
+		name  string
+		apply func(*domain.KnowledgeItem)
+	}{
+		{name: "scope", apply: func(item *domain.KnowledgeItem) { item.Scope.Paths = []string{"private/**"} }},
+		{name: "keywords", apply: func(item *domain.KnowledgeItem) { item.Keywords = []string{"secret"} }},
+		{name: "kind", apply: func(item *domain.KnowledgeItem) { item.Kind = domain.KnowledgeConstraint }},
+		{name: "origin", apply: func(item *domain.KnowledgeItem) { item.Origin = "different-source" }},
+		{name: "evidence reference", apply: func(item *domain.KnowledgeItem) {
+			item.Evidence = []domain.KnowledgeEvidence{{Path: "docs/new-source.md", Quote: "new assertion"}}
+		}},
+	} {
+		t.Run(mutate.name, func(t *testing.T) {
+			root := forgeSyncFixture(t)
+			path := filepath.Join(root, ".forge", "knowledge", "items", "rule.md")
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			text := string(data)
+			end := strings.Index(text, "\n---\n")
+			if end < 0 {
+				t.Fatal("fixture front matter is unterminated")
+			}
+			var item domain.KnowledgeItem
+			if err := yaml.Unmarshal([]byte(text[len("---\n"):end]), &item); err != nil {
+				t.Fatal(err)
+			}
+			mutate.apply(&item)
+			encoded, err := yaml.Marshal(item)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, append(append([]byte("---\n"), encoded...), []byte("---\n")...), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := CompileForge(root); err == nil || !strings.Contains(err.Error(), "metadata changed after review") {
+				t.Fatalf("changed %s was published: %v", mutate.name, err)
+			}
+		})
 	}
 }
 
@@ -337,6 +383,7 @@ func TestCompileForgePreservesGlobScopeTextAndWindowsPathsAreRejected(t *testing
 	root := forgeSyncFixture(t)
 	itemPath := filepath.Join(root, ".forge", "knowledge", "items", "rule.md")
 	item := domain.KnowledgeItem{ID: "rule-a", Kind: domain.KnowledgeConvention, Scope: domain.Scope{Paths: []string{"services/api/**/*.go", "libs/shared/*_test.go"}}, Content: "Use explicit errors.", Origin: "human", Review: domain.KnowledgeApproved, Health: domain.KnowledgeUnknown, Reviewer: "alice", ContentSHA256: domain.HashKnowledgeContent("Use explicit errors."), ReviewDiff: "--- candidate\n+++ reviewed\n+Use explicit errors.\n", EvidenceSHA256: domain.HashKnowledgeEvidence(nil)}
+	item.ReviewMetadataSHA256 = domain.HashKnowledgeReviewMetadata(item)
 	encoded, err := yaml.Marshal(item)
 	if err != nil {
 		t.Fatal(err)

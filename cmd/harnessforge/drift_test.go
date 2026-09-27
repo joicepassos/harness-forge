@@ -88,6 +88,7 @@ func writeDriftKnowledgeFixture(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 	item := harnessdomain.KnowledgeItem{ID: "auth-policy", Kind: harnessdomain.KnowledgeFact, Content: "Token lifetime is fifteen minutes.", Origin: "test", Review: harnessdomain.KnowledgeApproved, Health: harnessdomain.KnowledgeVerified, Evidence: evidence, Reviewer: "reviewed", ReviewDiff: "--- candidate\n+++ reviewed\n+Token lifetime is fifteen minutes.\n", ContentSHA256: harnessdomain.HashKnowledgeContent("Token lifetime is fifteen minutes."), EvidenceSHA256: fingerprint}
+	item.ReviewMetadataSHA256 = harnessdomain.HashKnowledgeReviewMetadata(item)
 	encoded, err := yaml.Marshal(item)
 	if err != nil {
 		t.Fatal(err)

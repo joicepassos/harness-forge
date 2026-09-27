@@ -39,7 +39,7 @@ func TestReviewKnowledgePromotesWithReviewerHashAndPreservesMarkdown(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parsed.Review != harnessdomain.KnowledgeApproved || parsed.Reviewer != "alice" || parsed.Health != harnessdomain.KnowledgeVerified || parsed.ContentSHA256 != harnessdomain.HashKnowledgeContent(item.Content) {
+	if parsed.Review != harnessdomain.KnowledgeApproved || parsed.Reviewer != "alice" || parsed.Health != harnessdomain.KnowledgeVerified || parsed.ContentSHA256 != harnessdomain.HashKnowledgeContent(item.Content) || parsed.ReviewMetadataSHA256 != harnessdomain.HashKnowledgeReviewMetadata(parsed) {
 		t.Fatalf("review record incomplete: %#v", parsed)
 	}
 }

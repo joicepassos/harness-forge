@@ -242,6 +242,7 @@ func createForgeKnowledgeFixture(t *testing.T, root, id, state, reviewer, conten
 			values = append(values, evidence+":"+hex.EncodeToString(sum[:]))
 		}
 		item.EvidenceSHA256 = harnessdomain.HashKnowledgeEvidence(values)
+		item.ReviewMetadataSHA256 = harnessdomain.HashKnowledgeReviewMetadata(item)
 		item.ReviewDiff = "--- candidate\n+++ reviewed\n+" + content + "\n"
 	}
 	encoded, err := yaml.Marshal(item)

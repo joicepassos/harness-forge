@@ -82,6 +82,9 @@ func forgeKnowledgeCandidates(root, selection, prompt string, taskPaths []string
 		if got := harnessdomain.HashKnowledgeContent(item.Content); !strings.EqualFold(got, item.ContentSHA256) {
 			return nil, fmt.Errorf("knowledge %q content hash mismatch; review is no longer valid", item.ID)
 		}
+		if got := harnessdomain.HashKnowledgeReviewMetadata(item); !strings.EqualFold(got, item.ReviewMetadataSHA256) {
+			return nil, fmt.Errorf("knowledge %q review metadata hash mismatch; review is no longer valid", item.ID)
+		}
 		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing {
 			continue
 		}

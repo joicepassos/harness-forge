@@ -104,7 +104,7 @@ func TestReviewKnowledgeRoundTripsEvidenceReviewDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reviewed.EvidenceSHA256 != domain.HashKnowledgeEvidence(nil) || reviewed.ContentSHA256 != domain.HashKnowledgeContent(item.Content) {
+	if reviewed.EvidenceSHA256 != domain.HashKnowledgeEvidence(nil) || reviewed.ContentSHA256 != domain.HashKnowledgeContent(item.Content) || reviewed.ReviewMetadataSHA256 != domain.HashKnowledgeReviewMetadata(reviewed) {
 		t.Fatalf("review digest not recorded: %#v", reviewed)
 	}
 }

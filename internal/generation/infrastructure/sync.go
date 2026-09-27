@@ -306,6 +306,9 @@ func CompileForge(root string) (SyncResult, error) {
 		if item.ContentSHA256 != harnessdomain.HashKnowledgeContent(item.Content) {
 			return SyncResult{}, fmt.Errorf("approved knowledge %q changed after review", item.ID)
 		}
+		if item.ReviewMetadataSHA256 != harnessdomain.HashKnowledgeReviewMetadata(item) {
+			return SyncResult{}, fmt.Errorf("approved knowledge %q review metadata changed after review", item.ID)
+		}
 		fingerprint, err := harnessinfra.KnowledgeFingerprint(root, ref.Path, ref.ID, item.Evidence)
 		if err != nil {
 			return SyncResult{}, fmt.Errorf("approved knowledge %q evidence: %w", item.ID, err)

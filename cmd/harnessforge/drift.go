@@ -111,7 +111,7 @@ func appendForgeKnowledgeDrift(root string, layout infrastructure.ProjectLayout,
 		if len(item.Evidence) > 0 {
 			occurrence.EvidenceStatus = domain.EvidencePresent
 		}
-		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing || item.ContentSHA256 != harnessdomain.HashKnowledgeContent(item.Content) {
+		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing || item.ContentSHA256 != harnessdomain.HashKnowledgeContent(item.Content) || item.ReviewMetadataSHA256 != harnessdomain.HashKnowledgeReviewMetadata(item) {
 			occurrence.Status = domain.StatusDifference
 			occurrence.Explanations = append(occurrence.Explanations, "Approved knowledge content or recorded health differs from its reviewed state.")
 		}

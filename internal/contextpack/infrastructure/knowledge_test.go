@@ -137,6 +137,8 @@ func TestForgeKnowledgeCandidatesRejectChangedContentOrEvidenceHashes(t *testing
 		wantError string
 	}{
 		{name: "content edited after approval", before: "Original auth policy.", after: "Edited auth policy.", wantError: "content hash mismatch"},
+		{name: "scope edited after approval", before: "Original auth policy.", after: "Original auth policy.", wantError: "review metadata hash mismatch"},
+		{name: "keywords edited after approval", before: "Original auth policy.", after: "Original auth policy.", wantError: "review metadata hash mismatch"},
 		{name: "evidence changed", before: "Approved auth policy.", evidence: "evidence hash mismatch", wantError: "evidence"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -150,6 +152,29 @@ func TestForgeKnowledgeCandidatesRejectChangedContentOrEvidenceHashes(t *testing
 				evidence = []harnessdomain.KnowledgeEvidence{{Path: "docs/policy.md", SHA256: strings.Repeat("0", 64)}}
 			}
 			writeKnowledgeFixture(t, root, "rule", harnessdomain.KnowledgeApproved, "reviewer", test.before, evidence)
+			if strings.Contains(test.name, "scope edited") || strings.Contains(test.name, "keywords edited") {
+				path := filepath.Join(root, ".forge", "knowledge", "rule.md")
+				data, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				item, err := parseKnowledgeDocument(data)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if strings.Contains(test.name, "scope edited") {
+					item.Scope.Paths = []string{"services/private/**"}
+				} else {
+					item.Keywords = []string{"secret"}
+				}
+				encoded, err := yaml.Marshal(item)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, append(append([]byte("---\n"), encoded...), []byte("---\n")...), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
 			if test.after != "" {
 				path := filepath.Join(root, ".forge", "knowledge", "rule.md")
 				data, err := os.ReadFile(path)
@@ -289,6 +314,7 @@ func writeKnowledgeFixtureWithMetadata(t *testing.T, root, id string, review har
 			values = append(values, e.Path+":"+hex.EncodeToString(sum[:]))
 		}
 		item.EvidenceSHA256 = harnessdomain.HashKnowledgeEvidence(values)
+		item.ReviewMetadataSHA256 = harnessdomain.HashKnowledgeReviewMetadata(item)
 		item.ReviewDiff = "--- candidate\n+++ reviewed\n+" + content + "\n"
 	}
 	data, err := yamlMarshalFixture(item)
