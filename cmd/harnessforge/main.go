@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/config"
 	"harnessforge/internal/harness"
+	"harnessforge/internal/onboarding"
 
 	"github.com/spf13/cobra"
 )
@@ -41,7 +43,7 @@ func newRootCommand() *cobra.Command {
 		},
 	})
 
-	rootCmd.AddCommand(&cobra.Command{
+	initCmd := &cobra.Command{
 		Use:   "init",
 		Short: "Create the initial harness configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,7 +64,28 @@ func newRootCommand() *cobra.Command {
 			}
 			return l.printf(cmd, "output.next_steps")
 		},
-	})
+	}
+	var setupBudget int
+	var setupModel string
+	var setupNotes string
+	var setupBM25 bool
+	var setupMMR bool
+	setupContext := &cobra.Command{Use: "context [repository] [goal]", Short: "Preview the shared onboarding context", Args: cobra.ExactArgs(2), RunE: func(cmd *cobra.Command, args []string) error {
+		plan, err := onboarding.BuildSetupContext(cmd.Context(), args[0], onboarding.SetupContextRequest{Goal: args[1], Notes: setupNotes, Model: setupModel, BudgetTokens: setupBudget, UseBM25: setupBM25, UseMMR: setupMMR})
+		if err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(cmd.OutOrStdout())
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(plan)
+	}}
+	setupContext.Flags().IntVar(&setupBudget, "budget", 0, "Maximum context budget")
+	setupContext.Flags().StringVar(&setupModel, "model", "", "Model used for default budget selection")
+	setupContext.Flags().StringVar(&setupNotes, "notes", "", "Additional setup notes")
+	setupContext.Flags().BoolVar(&setupBM25, "bm25", false, "Use the experimental BM25 ranking baseline")
+	setupContext.Flags().BoolVar(&setupMMR, "mmr", false, "Use deterministic diversity-aware excerpt selection")
+	initCmd.AddCommand(setupContext)
+	rootCmd.AddCommand(initCmd)
 
 	analyzeCmd := &cobra.Command{
 		Use:   "analyze [path]",
@@ -118,7 +141,7 @@ func newRootCommand() *cobra.Command {
 	analyzeCmd.Flags().String("format", "text", "Output format: text or json")
 	rootCmd.AddCommand(analyzeCmd)
 
-	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand(), newDoctorCommand(), newGitHubCommand(), newDriftCommand(), newEmbeddingCommand(), newSymbolsCommand(), newGenerateCommand(), newDiscoverCommand(), newIndexCommand(), newSearchCommand(), newRAGCommand(), newPluginCommand(), newTUICommand())
+	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newMigrateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand(), newDoctorCommand(), newGitHubCommand(), newDriftCommand(), newEmbeddingCommand(), newSymbolsCommand(), newGenerateCommand(), newSyncCommand(), newDiscoverCommand(), newIndexCommand(), newSearchCommand(), newRAGCommand(), newPluginCommand(), newTUICommand())
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		l, err := newLocalizer(string(language))
 		if err != nil {
