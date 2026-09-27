@@ -1,7 +1,11 @@
 # HarnessForge pilot protocol (T9.1–T9.5)
 
-Status: protocol and data format only; no external agent runs or paid provider
-calls are represented here. Results must be added only after a run is completed.
+Status: protocol plus an initial inventory; no external agent runs or paid
+provider calls are represented here. Results must be added only after a run is
+completed. The versioned inventory is
+[`pilot/inventory-v1.json`](pilot/inventory-v1.json); it deliberately records
+the current corpus gaps rather than treating development fixtures as validation
+data.
 
 ## Design
 
@@ -59,9 +63,18 @@ Store one JSON object per run with this shape (extend only with versioned fields
 
 ## Release gate and current status
 
-Before the pilot, populate the task and repository inventory, pin software
-versions, and validate condition isolation. No run has been performed by this
-implementation; metric targets must be set after the baseline is collected and
-before comparing Forge results. T9.6 (runtime decision) remains deferred until
-P5–P7 and the pilot evidence exist. No runtime recommendation can be inferred
-from an empty dataset.
+Before the pilot, populate an independent validation set of repositories and
+executable tasks, pin clean commits and software versions, and validate
+condition isolation. The current inventory contains one synthetic Go
+development fixture and the HarnessForge development repository; it contains no
+validation repositories or frozen pilot tasks. Their commits are not yet a
+valid pilot freeze, and the fixture has no behavioral acceptance task. At the
+inventory audit, Go was available as `go1.26.2 windows/amd64` and Codex CLI was
+available as `codex-cli 0.158.0-alpha.2.1`. Claude Code, Cursor CLI, and
+OpenCode CLI were not discoverable on PATH. These are environment observations,
+not claims about product availability elsewhere. No run has been performed by
+this implementation; metric targets must be set after a baseline is collected
+and before comparing Forge results.
+T0.4 baseline execution and T9.2–T9.5 therefore remain pending. T9.6 (runtime
+decision) remains deferred until P5–P7 and pilot evidence exist. No runtime
+recommendation or measured result can be inferred from an empty dataset.

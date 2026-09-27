@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "inventory_id": "harnessforge-evolution-pilot-v1",
+  "recorded_on": "2026-09-27",
+  "status": "not_ready_for_pilot",
+  "purpose": "Versioned inventory for separating implementation fixtures from independent validation data. Null or empty fields mean unavailable, not zero or a successful run.",
+  "development_repositories": [
+    {
+      "repository_id": "harnessforge",
+      "role": "product_development_only",
+      "local_path": ".",
+      "commit": "4fc7711933eaa15ffee4f54db7d4946ede10f48e",
+      "commit_is_pilot_freeze": false,
+      "working_tree_modified_at_audit": true,
+      "modified_tracked_file_count_at_audit": 42,
+      "tasks": [],
+      "reason_excluded_from_validation": "The implementation repository had local tracked modifications when inventoried. Its HEAD identifies a development base only and does not freeze the evaluated source tree or a task/configuration set."
+    },
+    {
+      "repository_id": "go-single-fixture",
+      "role": "synthetic_development_fixture_only",
+      "local_path": "testdata/repos/go-single",
+      "snapshot_manifest": {
+        "path": "testdata/repos/go-single.snapshot.json",
+        "sha256": "6ac4791f4bf3e1f6b5a546ff04a7035ac66356ec66c08468be8b968d45e94e32"
+      },
+      "git_commit": null,
+      "tasks": [],
+      "contents_at_audit": [
+        {"path": ".gitignore", "sha256": "7d8bf54db0e090506421e6057a4020f598538b9ecc134a87376e4596309634b8"},
+        {"path": "README.md", "sha256": "d7c9018ef24ea7c8d7dfadf49638eb8f384a73e3d36632e985ad5065dd75a5bce"},
+        {"path": "go.mod", "sha256": "35ea7f898b29b3480c0cefde5faf75602fb795deafe8465753f362a948533752"},
+        {"path": "ignored.txt", "sha256": "d5bac5ae58d44a74a2fd9bc1c6876a1aea0958bfc13b5450a52d3670dac4703"},
+        {"path": "main.go", "sha256": "55a60bb97151b2b4b680462447ce60ec34511b14fa10d77440c97b9777101566"}
+      ],
+      "reason_excluded_from_validation": "One empty Go main module is useful for deterministic development tests but has no meaningful behavior or executable pilot task and no repository commit history."
+    }
+  ],
+  "validation_repositories": [],
+  "tasks": [],
+  "conditions": ["baseline", "team", "forge"],
+  "agent_products": [
+    {
+      "product": "Codex CLI",
+      "executable": "codex",
+      "version": "codex-cli 0.158.0-alpha.2.1",
+      "discovery": "found_on_PATH",
+      "pilot_agent_configuration_frozen": false,
+      "pilot_run_performed": false
+    },
+    {"product": "Claude Code", "executable": "claude", "discovery": "not_found_on_PATH"},
+    {"product": "Cursor CLI", "executable": "cursor", "discovery": "not_found_on_PATH"},
+    {"product": "OpenCode CLI", "executable": "opencode", "discovery": "not_found_on_PATH"}
+  ],
+  "software_versions": {
+    "go_observed_during_inventory": "go1.26.2 windows/amd64",
+    "agent_product_versions": {
+      "codex_cli": "codex-cli 0.158.0-alpha.2.1",
+      "claude_code": null,
+      "cursor_cli": null,
+      "opencode_cli": null
+    }
+  },
+  "runs": [],
+  "limitations": [
+    "No independent validation repository has been selected or frozen.",
+    "No pilot task with executable acceptance criteria has been selected.",
+    "Codex CLI was found and its version recorded, but no exact agent/model configuration or condition-isolation setup has been frozen and no pilot run was performed.",
+    "Command-line executables named claude, cursor, and opencode were not discoverable on PATH; this does not establish whether their products are available through other interfaces or machines.",
+    "No baseline or comparative run was performed. Metrics, costs, and outcomes are unavailable, not zero."
+  ]
+}
