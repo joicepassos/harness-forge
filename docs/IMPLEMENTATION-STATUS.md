@@ -224,16 +224,17 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 Passed:
 
 ```text
-go test ./...
+go test -count=1 ./...
 go vet ./...
 go run ./cmd/harnessforge sync --repository . --check
 go run ./cmd/harnessforge check --repository . --layout forge --run-gates --format json
 ```
 
-The local full test suite, static analysis, sync drift check, and declared Go
-gate pass on Windows. The cross-platform CI matrix has not yet been run. No
-direct provider API calls were made; the approved Codex CLI was used for the
-Mili pilot attempts recorded above.
+All four commands passed on 2026-09-28 in a fresh Windows checkout using Go
+1.26.2 and an isolated build cache. This also confirmed that generated-file
+ownership hashes survive Git's Windows checkout behavior. The cross-platform CI
+matrix has not yet been run. No direct provider API calls were made; the
+approved Codex CLI was used for the Mili pilot attempts recorded above.
 
 ## Remaining validation
 
