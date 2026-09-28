@@ -84,6 +84,19 @@ func (l ProjectLayout) ResolveReference(reference string) (string, error) {
 }
 
 func regularConfig(path string) (bool, error) {
+	// The configuration's parent directory is part of the trust boundary too:
+	// Lstat on the leaf alone follows a symlinked .forge/.harness directory.
+	parent := filepath.Dir(path)
+	parentInfo, err := os.Lstat(parent)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if parentInfo.Mode()&os.ModeSymlink != 0 || !parentInfo.IsDir() {
+		return false, fmt.Errorf("configuration directory must be a regular non-symlink directory: %s", parent)
+	}
 	info, err := os.Lstat(path)
 	if os.IsNotExist(err) {
 		return false, nil

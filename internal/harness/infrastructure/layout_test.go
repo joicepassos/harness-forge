@@ -62,6 +62,42 @@ func TestResolveLayoutRejectsSymlinkAndInvalidSelection(t *testing.T) {
 	}
 }
 
+func TestResolveLayoutRejectsSymlinkedLayoutDirectories(t *testing.T) {
+	for _, layout := range []struct {
+		name      string
+		selection string
+		dir       string
+		config    string
+		content   string
+	}{
+		{name: "forge", selection: "forge", dir: ".forge", config: "forge.yaml", content: "layout_version: 1\n"},
+		{name: "harness", selection: "harness", dir: ".harness", config: "harness.yaml", content: "version: 1\n"},
+	} {
+		for _, targetLocation := range []string{"inside-project", "outside-project"} {
+			t.Run(layout.name+"/"+targetLocation, func(t *testing.T) {
+				root := t.TempDir()
+				targetRoot := filepath.Join(root, "target")
+				if targetLocation == "outside-project" {
+					targetRoot = t.TempDir()
+				}
+				targetDir := filepath.Join(targetRoot, "actual-layout")
+				if err := os.MkdirAll(targetDir, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(targetDir, layout.config), []byte(layout.content), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(targetDir, filepath.Join(root, layout.dir)); err != nil {
+					t.Skipf("directory symlinks unavailable: %v", err)
+				}
+				if _, err := ResolveLayout(root, layout.selection); err == nil || !strings.Contains(err.Error(), "non-symlink directory") {
+					t.Fatalf("ResolveLayout accepted %s directory symlink: %v", targetLocation, err)
+				}
+			})
+		}
+	}
+}
+
 func TestResolveReferenceRejectsTraversalAndPreservesProjectRelativePaths(t *testing.T) {
 	layout := ProjectLayout{Root: filepath.Clean("C:/repo")}
 	rootPath, err := layout.ResolveReference(".")
