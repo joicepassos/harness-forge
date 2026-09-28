@@ -70,7 +70,7 @@ does not prove that OpenCode loaded a file.
 | G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Pass on V2 2.0.18 |
 | H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Required V1 test |
 | I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | All three negative cases pass on V2 2.0.18 |
-| J | Workspace outside project root with global AGENTS and nearby project AGENTS | V2 is expected to load global only; parent sentinel must be absent from instruction entries | Inconclusive: the sentinel was included in the user query, so this capture cannot establish whether the parent file was loaded |
+| J | Workspace outside project root with global AGENTS and parent AGENTS above an inner Git root | The V2 docs say global only; parent sentinel must be absent from instruction entries | Required V2 test; see observed runtime result below |
 
 ## Runtime validation: OpenCode V2 2.0.18
 
@@ -83,6 +83,14 @@ The mock recorded each request body as JSONL, so the assertions inspect the
 actual messages sent by OpenCode, not filesystem presence or the mock response.
 The fixture was a temporary Git repository with distinct sentinels
 in the global, root, and `packages/api` instruction files.
+
+Case J used a separate inner Git repository at
+`%LOCALAPPDATA%/Temp/opencode/forge-v2-boundary/workspace`, with a parent
+`AGENTS.md` one directory above that Git root. Its SHA-256 was
+`46b46225a2e289da876cd86d97d2bd380ae5eee0319eeb014851a47e7a53b1a2`.
+The first capture was invalid for asserting the sentinel because the query
+contained it. Case J was then rerun with a neutral query and evaluated by the
+role and instruction-entry content in the captured request JSONL.
 
 The instruction-file SHA-256 values were global
 `68eca69381c6d1c7d5d7cdddcf4b225755f37ed0675b50cfcca65208a19870c8`, project
@@ -112,16 +120,18 @@ provided no evidence about model instruction-following.
 | E | Project with conflicting `AGENTS.md` and `CLAUDE.md` | AGENTS sentinel present; CLAUDE sentinel absent | Pass |
 | G | Project root with `OPENCODE_DISABLE_PROJECT_CONFIG=1` | Global only | Pass |
 | I | Global config `instructions` points to a local file, glob, and loopback URL, each with a unique sentinel | All three sentinels are absent from captured request messages; the loopback URL was not fetched | Pass |
-| J | Inner Git workspace beneath an external directory containing a parent `AGENTS.md`; isolated global config | The parent sentinel check was included verbatim in the user query | Inconclusive; rerun with a neutral query and inspect only instruction entries |
+| J | Inner Git workspace beneath an external directory containing a parent `AGENTS.md`; isolated global config; neutral query | Parent `AGENTS.md` sentinel appears in the system instruction message, despite being outside the inner Git root | Fail against documented “global only” behavior |
 
 For case C, the recorded first request did not contain the nested sentinel. The
 mock then issued a controlled `read` call for `packages/api/probe.txt`; after
 that successful read, the next request contained an instruction entry sourced
 from `packages/api/AGENTS.md`. This confirms dynamic discovery for this exact
 build and read path. Case I's local path, glob and URL cases all pass as
-negative tests for this exact V2 build. Case J is inconclusive because the
-query itself contained the parent sentinel; it does not establish outside-root
-behavior. The result does not establish V1 behavior or cross-version `CLAUDE.md` fallback parity,
+negative tests for this exact V2 build. Case J's initial capture was invalid,
+but the neutral-query rerun shows the parent `AGENTS.md` is included in system
+instructions outside the inner Git root. This conflicts with the current V2
+documentation statement that only global instructions load in this setup.
+The result does not establish V1 behavior or cross-version `CLAUDE.md` fallback parity,
 conflict resolution, or any Forge adapter publication behavior. The mock
 returned a fixed local response; this validates effective request context only,
 not model compliance or task quality.

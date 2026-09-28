@@ -138,11 +138,11 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   a local path in config `instructions` is also absent from captured requests.
   A separate root-started `read` call confirms nested rules are appended to
   the next request after the agent reads inside `packages/api`. V1 behavior,
-  outside-root traversal, and actual Forge adapter publication remain unverified.
+  actual Forge adapter publication remain unverified. An external-root probe
+  with a neutral query found the parent `AGENTS.md` in system instructions
+  outside an inner Git root, contrary to the V2 docs' “global only” statement.
   V2 local-file, glob, and loopback URL entries in config `instructions` were
-  all absent from captured requests. An external-root boundary probe was
-  inconclusive because its sentinel appeared in the user query, not in an
-  instruction entry. See
+  all absent from captured requests. See
   [OpenCode adapter validation](OPENCODE-ADAPTER-VALIDATION.md).
 - T8.3: the read-only context resolver is exposed through MCP JSON-RPC stdio
   using the legacy initialize lifecycle. It negotiates `2025-11-25` and
