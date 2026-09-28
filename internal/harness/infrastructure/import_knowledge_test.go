@@ -60,6 +60,13 @@ func TestImportKnowledgeCandidatePreservesManifestAndNeverApproves(t *testing.T)
 	if _, err := ImportKnowledgeCandidate(root, conflicting); err == nil {
 		t.Fatal("conflicting stable ID was accepted")
 	}
+	differentSource := item
+	differentSource.ID = "observation-456"
+	differentSource.Origin = "another-explicit-source"
+	otherPath, err := ImportKnowledgeCandidate(root, differentSource)
+	if err != nil || otherPath == path {
+		t.Fatalf("explicit import with distinct provenance was collapsed: path=%q err=%v", otherPath, err)
+	}
 }
 
 func TestImportKnowledgeCandidateDeduplicatesEquivalentPublicationWithoutEditingAuditTrail(t *testing.T) {
@@ -78,7 +85,7 @@ func TestImportKnowledgeCandidateDeduplicatesEquivalentPublicationWithoutEditing
 		Review: domain.KnowledgeCandidate, Health: domain.KnowledgeUnknown,
 		Evidence: []domain.KnowledgeEvidence{{Path: "docs/api.md", Quote: "cursor pagination", SHA256: strings.Repeat("a", 64)}},
 	}
-	ref, err := ImportKnowledgeCandidate(root, first)
+	ref, err := ImportKnowledgeCandidateDeduplicatingEquivalent(root, first)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +101,7 @@ func TestImportKnowledgeCandidateDeduplicatesEquivalentPublicationWithoutEditing
 	second := first
 	second.ID = "observation-second"
 	second.Origin = "local-observation:second; reviewer:bob; revision:later"
-	got, err := ImportKnowledgeCandidate(root, second)
+	got, err := ImportKnowledgeCandidateDeduplicatingEquivalent(root, second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +138,7 @@ func TestImportKnowledgeCandidateDedupPreservesExistingApproval(t *testing.T) {
 		t.Fatal(err)
 	}
 	first := domain.KnowledgeItem{ID: "approved-first", Kind: domain.KnowledgeFact, Content: "The service uses cursor pagination.", Origin: "first-reviewed-observation", Review: domain.KnowledgeCandidate, Health: domain.KnowledgeUnknown}
-	ref, err := ImportKnowledgeCandidate(root, first)
+	ref, err := ImportKnowledgeCandidateDeduplicatingEquivalent(root, first)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +153,7 @@ func TestImportKnowledgeCandidateDedupPreservesExistingApproval(t *testing.T) {
 	second := first
 	second.ID = "approved-second"
 	second.Origin = "second-reviewed-observation"
-	got, err := ImportKnowledgeCandidate(root, second)
+	got, err := ImportKnowledgeCandidateDeduplicatingEquivalent(root, second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,14 +196,14 @@ func TestImportKnowledgeCandidateDoesNotDeduplicateDifferentEvidenceOrScope(t *t
 				t.Fatal(err)
 			}
 			first := domain.KnowledgeItem{ID: "first", Kind: domain.KnowledgeConvention, Scope: domain.Scope{Paths: []string{"services/api/**"}}, Content: "Use cursor pagination.", Origin: "first", Review: domain.KnowledgeCandidate, Health: domain.KnowledgeUnknown, Evidence: []domain.KnowledgeEvidence{{Path: "docs/api.md", Quote: "cursor pagination"}}}
-			if _, err := ImportKnowledgeCandidate(root, first); err != nil {
+			if _, err := ImportKnowledgeCandidateDeduplicatingEquivalent(root, first); err != nil {
 				t.Fatal(err)
 			}
 			second := first
 			second.ID = "second"
 			second.Origin = "second"
 			mutate.edit(&second)
-			if _, err := ImportKnowledgeCandidate(root, second); err != nil {
+			if _, err := ImportKnowledgeCandidateDeduplicatingEquivalent(root, second); err != nil {
 				t.Fatalf("non-equivalent publication was incorrectly treated as a duplicate: %v", err)
 			}
 			project, err := LoadProject(root, "forge")

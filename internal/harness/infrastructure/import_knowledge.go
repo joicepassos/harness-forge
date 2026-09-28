@@ -17,6 +17,17 @@ import (
 // ImportKnowledgeCandidate adds explicit material as a candidate document.
 // It preserves the Forge manifest's YAML nodes and never executes imported text.
 func ImportKnowledgeCandidate(root string, item harnessdomain.KnowledgeItem) (string, error) {
+	return importKnowledgeCandidate(root, item, false)
+}
+
+// ImportKnowledgeCandidateDeduplicatingEquivalent is used when publishing a
+// reviewed local observation. It reuses an existing candidate/approved claim
+// with identical semantic content while preserving its original audit record.
+func ImportKnowledgeCandidateDeduplicatingEquivalent(root string, item harnessdomain.KnowledgeItem) (string, error) {
+	return importKnowledgeCandidate(root, item, true)
+}
+
+func importKnowledgeCandidate(root string, item harnessdomain.KnowledgeItem, deduplicateEquivalent bool) (string, error) {
 	if item.Review != harnessdomain.KnowledgeCandidate {
 		return "", fmt.Errorf("imported knowledge must remain candidate")
 	}
@@ -31,6 +42,9 @@ func ImportKnowledgeCandidate(root string, item harnessdomain.KnowledgeItem) (st
 		return "", err
 	}
 	for _, ref := range project.Manifest.References.Knowledge {
+		if ref.ID != item.ID && !deduplicateEquivalent {
+			continue
+		}
 		path, _ := project.Layout.ResolveReference(ref.Path)
 		existing, err := os.ReadFile(path)
 		if err != nil {
@@ -49,7 +63,7 @@ func ImportKnowledgeCandidate(root string, item harnessdomain.KnowledgeItem) (st
 		// A repeated observation can have a different local ID and audit
 		// origin while representing the same reviewed claim. Reuse its
 		// existing reference without touching the source document or manifest.
-		if equivalentKnowledgePublication(current, item) {
+		if deduplicateEquivalent && equivalentKnowledgePublication(current, item) {
 			return ref.Path, nil
 		}
 	}

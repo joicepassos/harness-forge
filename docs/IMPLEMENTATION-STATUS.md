@@ -91,7 +91,7 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   task-level quality remains unmeasured.
 - T7.1–T7.5: local observation capture, review, candidate publication,
   audit provenance, and checkout isolation are implemented and covered. T7.3
-  reuses an existing candidate/approved item when content, kind, scope,
+  memory publication reuses an existing candidate/approved item when content, kind, scope,
   keywords, and evidence match, without changing its provenance or review;
   rejected/deprecated items do not block a new candidate. T7.4 supports
   preview/apply, age and quota retention, pending-item

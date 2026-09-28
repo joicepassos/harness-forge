@@ -203,7 +203,7 @@ func newMemoryCommand() *cobra.Command {
 		for _, e := range observation.Evidence {
 			item.Evidence = append(item.Evidence, harnessdomain.KnowledgeEvidence{Path: e.Path, SHA256: e.SHA256, Quote: e.Quote})
 		}
-		path, err := harnessinfra.ImportKnowledgeCandidate(repository, item)
+		path, err := harnessinfra.ImportKnowledgeCandidateDeduplicatingEquivalent(repository, item)
 		if err != nil {
 			return err
 		}
