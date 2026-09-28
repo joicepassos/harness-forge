@@ -21,8 +21,11 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   fixtures are inventoried separately from the selected Mili validation commit.
   A focused clean-commit smoke baseline records 8 passing tests. A PostgreSQL
   18.3 probe found the MLI-02 cursor precision defect; comparative agent-task
-  baselines remain part of T9.2. Comparative baseline metrics are partial, so
-  T0.4's validation-corpus metrics acceptance remains open.
+  baselines remain part of T9.2. An offline paired context-selection baseline
+  now covers the five approved Mili task prompts on the pinned validation
+  commit, but it is a retrieval proxy rather than agent-task outcomes.
+  Comparative baseline metrics are partial, so T0.4's validation-corpus
+  metrics acceptance remains open.
 - T1.1–T1.5: generation preserves skills and structured workspaces; generated
   files use ownership hashes; approval records bind rule/evidence fingerprints;
   discovery rejects conflicting IDs; drift reports evidence presence and
@@ -131,7 +134,12 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   the same prompt, model, estimator, budget, ranking options, and task paths,
   with and without approved knowledge. It reports selected knowledge IDs and
   estimated token delta while labeling the result as a retrieval proxy;
-  task-level quality remains unmeasured.
+  task-level quality remains unmeasured. A provider-free paired capture for
+  MLI-01–05 on the pinned Mili commit records selected source paths and
+  estimated tokens at a fixed 131,072-token budget; the mean delta is +1,799
+  estimated tokens. Source relevance labels are not adjudicated, so this is
+  not ground-truth recall or task-quality evidence. See the
+  [Mili context-selection report](pilot/mili-context-selection-v1.json).
 - T7.1–T7.5: local observation capture, review, candidate publication,
   audit provenance, and checkout isolation are implemented and covered. Generated
   indexes use the OS user cache keyed by canonical checkout/worktree path;
@@ -302,8 +310,9 @@ mock provider; no paid model provider was contacted.
   context API and `context explain --task-path`; glob matching is segment-aware
   with `**`, and backend/frontend scope fixtures pass. T6.3 reports early
   prompt-envelope overflow with the same configured estimator and an explicit
-  excluded-prompt reason. T6.4's paired token/selection report is a retrieval
-  proxy and must not be described as measured task quality.
+  excluded-prompt reason. T6.4 now has a paired five-task Mili capture, but its
+  token and selection metrics are retrieval proxies without adjudicated source
+  relevance or measured task quality.
 - T1.7/T2/T3/T4/T5 also retain acceptance gaps listed in their status entries;
   static fixtures and repository-level tests are not external runtime evidence.
 - This checkout contains pre-existing repository-context/retrieval changes;
