@@ -224,15 +224,21 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   unmeasured, never zero. T9.5
   publishes descriptive partial outcomes only. T9.6 provisionally defers a
   custom runtime pending the complete pilot and T7/T8 runtime evidence; see
-  [ADR 0002](adr/0002-runtime-executor-decision.md). The remaining 41 planned
-  condition runs are outstanding, so neither T9.5 nor T9.6 has final acceptance.
-  A 2026-09-28 reconciliation recovered the historical partial-approval bytes
-  from commit `df787e2a` into a byte-identical snapshot with a reproducible
-  SHA-256. The original freeze pointer still does not match that approval, and
-  the MLI-01 rubric changed after its recorded digest. The v3 evaluator also
-  does not establish either rubric fully. No new comparison runs may use the
-  old freeze until the detail and reprocess criteria are reviewed and a new
-  evaluator/freeze pair is committed. See the
+  [ADR 0002](adr/0002-runtime-executor-decision.md). The revised matrix has 45
+  condition runs outstanding: none has completed as a valid agent run. MLI-01
+  repetition 1 was attempted on fresh clones, but the nested Codex CLI could
+  not execute repository commands under the frozen workspace-write environment
+  policy. Evaluator-only checks confirmed all three MLI-01 failures on the
+  untouched baseline, Team overlay, and Forge overlay; these are baseline
+  characterization results, not agent outcomes. T9.2 remains incomplete, so
+  neither T9.5 nor T9.6 has final acceptance. See [the MLI-01 repetition 1
+  attempt record](pilot/mili-mli01-r1-attempt-v2.md).
+  The 2026-09-28 v1 freeze audit recovered the historical partial-approval
+  bytes from commit `df787e2a` into a byte-identical snapshot and found the old
+  approval pointer and MLI-01 evaluator incomplete. The user then confirmed the
+  approved task-draft requirement; freeze v2 records that decision and pins a
+  reviewed rubric/evaluator pair. Freeze v1 and its outcomes remain historical;
+  v2 governs future scored runs. See the
   [freeze integrity audit](pilot/freeze-integrity-audit-2026-09-28.md) and
   [reconciliation record](pilot/mili-freeze-reconciliation-2026-09-28.md).
 
@@ -264,13 +270,13 @@ approved Codex CLI was used for the Mili pilot attempts recorded above.
   decision require exact agent builds and representative repositories; the
   narrowly scoped OpenCode V2.0.18 local-mock evidence is recorded separately
   and is not generalized to other builds or adapter behavior.
-- T9.2–T9.5 need completion of the frozen run matrix and outcome measurements.
-  Mili's clean HEAD, approved tasks, run configuration, instruction bundles,
-  immutable historical approval snapshot, and PostgreSQL keyset finding are
-  versioned; the original modified working
-  tree is excluded. Only one complete task/repetition exists so far, plus one
-  valid Team condition attempt. Synthetic Go
-  and Windows fixtures remain development data, not pilot evidence.
+- T9.2–T9.5 need completion of the v2 frozen run matrix and outcome
+  measurements. Mili's clean HEAD, approved tasks, run configuration,
+  instruction bundles, immutable approval snapshot, and PostgreSQL keyset
+  finding are versioned; the original modified working tree is excluded. The
+  v1 ledger's historical outcomes do not count toward v2: the v2 matrix is
+  currently 0/45 valid agent runs. Synthetic Go and Windows fixtures remain
+  development data, not pilot evidence.
 - T6.2 now supports explicit knowledge keywords and task paths through the
   context API and `context explain --task-path`; glob matching is segment-aware
   with `**`, and backend/frontend scope fixtures pass. T6.3 reports early
