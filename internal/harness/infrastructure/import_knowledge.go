@@ -8,6 +8,7 @@ import (
 	"go.yaml.in/yaml/v3"
 	harnessdomain "harnessforge/internal/harness/domain"
 	"harnessforge/internal/safefile"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -198,18 +199,34 @@ func sameKnowledgeImport(existing, candidate harnessdomain.KnowledgeItem) bool {
 
 func parseKnowledgeFrontMatter(data []byte) (harnessdomain.KnowledgeItem, error) {
 	text := strings.TrimSpace(string(data))
-	if !strings.HasPrefix(text, "---") {
+	lines := strings.SplitAfter(text, "\n")
+	if len(lines) == 0 || strings.TrimSpace(strings.TrimSuffix(lines[0], "\n")) != "---" {
 		return harnessdomain.KnowledgeItem{}, fmt.Errorf("expected YAML front matter")
 	}
-	parts := strings.SplitN(strings.TrimPrefix(text, "---"), "---", 2)
-	if len(parts) != 2 {
+	var offset int
+	end := -1
+	for i, line := range lines {
+		if i == 0 {
+			offset += len(line)
+			continue
+		}
+		if strings.TrimSpace(strings.TrimSuffix(line, "\n")) == "---" {
+			end = offset
+			break
+		}
+		offset += len(line)
+	}
+	if end < 0 {
 		return harnessdomain.KnowledgeItem{}, fmt.Errorf("unterminated front matter")
 	}
 	var item harnessdomain.KnowledgeItem
-	decoder := yaml.NewDecoder(strings.NewReader(strings.TrimSpace(parts[0])))
+	decoder := yaml.NewDecoder(strings.NewReader(strings.TrimSpace(text[len(lines[0]):end])))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&item); err != nil {
 		return item, err
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return item, fmt.Errorf("expected one YAML document")
 	}
 	if err := item.Validate(); err != nil {
 		return item, err

@@ -54,6 +54,9 @@ type ProjectConfig struct {
 	// IR. Forge-only knowledge, targets, and policies remain in Manifest.
 	Harness  domain.Harness
 	Manifest *domain.Manifest
+	// Knowledge contains the validated typed Forge documents referenced by the
+	// manifest. It remains separate from Harness.Rules to avoid lossy flattening.
+	Knowledge []domain.KnowledgeItem
 }
 
 // ProjectLoader adapts the discovered layout to the existing Harness loader
@@ -97,8 +100,12 @@ func LoadProject(root, selection string) (ProjectConfig, error) {
 	if err != nil {
 		return ProjectConfig{}, err
 	}
+	knowledge, err := loadManifestKnowledge(layout, manifest)
+	if err != nil {
+		return ProjectConfig{}, err
+	}
 	h := manifestCompatibilityProjection(manifest)
-	return ProjectConfig{Layout: layout, Harness: h, Manifest: &manifest}, nil
+	return ProjectConfig{Layout: layout, Harness: h, Manifest: &manifest, Knowledge: knowledge}, nil
 }
 
 func manifestCompatibilityProjection(manifest domain.Manifest) domain.Harness {

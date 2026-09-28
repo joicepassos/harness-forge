@@ -4,9 +4,39 @@ import (
 	"fmt"
 	"harnessforge/internal/agentskills"
 	"harnessforge/internal/harness/domain"
+	"harnessforge/internal/inputlimits"
 	"os"
 	"path/filepath"
 )
+
+// loadManifestKnowledge reads and validates only the referenced knowledge
+// documents. Evidence paths in those documents remain inert metadata here.
+func loadManifestKnowledge(layout ProjectLayout, manifest domain.Manifest) ([]domain.KnowledgeItem, error) {
+	if len(manifest.References.Knowledge) == 0 {
+		return nil, nil
+	}
+	root, err := os.OpenRoot(layout.Root)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	items := make([]domain.KnowledgeItem, 0, len(manifest.References.Knowledge))
+	for _, reference := range manifest.References.Knowledge {
+		data, err := ReadProjectFile(root, reference.Path, inputlimits.HarnessYAMLBytes)
+		if err != nil {
+			return nil, fmt.Errorf("references.knowledge[%s].path: %w", reference.ID, err)
+		}
+		item, err := parseKnowledgeFrontMatter(data)
+		if err != nil {
+			return nil, fmt.Errorf("references.knowledge[%s]: %w", reference.ID, err)
+		}
+		if item.ID != reference.ID {
+			return nil, fmt.Errorf("knowledge reference %q points to item %q", reference.ID, item.ID)
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
 
 // ValidateManifestReferences checks that referenced documents, skills, and
 // gate workspaces exist under the selected project root. It does not parse or
