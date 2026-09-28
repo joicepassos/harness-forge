@@ -122,9 +122,14 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   interruption; pending items survive and repeated collection is idempotent.
   Capture, review, and GC serialize cross-process read-modify-write operations
   with OS file locks so concurrent mutations do not lose observations or reviews.
-- T8.1/T8.2: official-doc behavior matrices exist; no Cursor/OpenCode binary
-  runtime tests were performed, so release acceptance remains open. The
-  snapshots separate documented behavior from exact-build runtime evidence.
+- T8.1: the official-doc behavior matrix exists; Cursor release/runtime
+  acceptance remains open. T8.2: a local-mock runtime check on Windows with
+  `@opencode/cli@2.0.18` confirms the effective system context for global and
+  project-root `AGENTS.md`, ancestor inclusion from `packages/api`, and
+  `OPENCODE_DISABLE_PROJECT_CONFIG=1` retaining only global instructions.
+  Dynamic nested discovery after starting at root, V1 behavior, other boundary
+  cases, and actual Forge adapter publication remain unverified. See
+  [OpenCode adapter validation](OPENCODE-ADAPTER-VALIDATION.md).
 - T8.3: the read-only context resolver is exposed through MCP JSON-RPC stdio
   using the legacy initialize lifecycle. It negotiates `2025-11-25` and
   `2025-06-18`, counter-offers `2025-11-25` for unsupported versions, and
@@ -202,9 +207,11 @@ Mili pilot attempts recorded above.
 
 ## Remaining validation
 
-- External Cursor/OpenCode/Codex/Claude runtime validation, end-to-end clone
-  agent runs, pilot measurements, and the runtime decision require pinned agent
-  builds and representative repositories; none are fabricated here.
+- Cursor, broad OpenCode compatibility, and external Codex/Claude runtime
+  validation, end-to-end clone agent runs, pilot measurements, and the runtime
+  decision require exact agent builds and representative repositories; the
+  narrowly scoped OpenCode V2.0.18 local-mock evidence is recorded separately
+  and is not generalized to other builds or adapter behavior.
 - T9.2–T9.5 need completion of the frozen run matrix and outcome measurements.
   Mili's clean HEAD, approved tasks, run configuration, instruction bundles,
   and PostgreSQL keyset finding are versioned; the original modified working
