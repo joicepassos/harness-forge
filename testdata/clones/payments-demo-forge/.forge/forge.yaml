@@ -1,0 +1,23 @@
+layout_version: 1
+ir_version: 2
+project:
+  name: payments-demo
+  languages: [Go]
+targets: [codex, claude]
+references:
+  knowledge:
+    - id: PAY-001
+      path: .forge/knowledge/items/PAY-001.md
+    - id: PAY-002
+      path: .forge/knowledge/items/PAY-002.md
+    - id: PAY-003
+      path: .forge/knowledge/items/PAY-003.md
+  skills:
+    - id: SKILL-001
+      description: Follow the payment-provider change procedure.
+      path: .forge/skills/payment-provider-change/SKILL.md
+quality_gates:
+  - id: GATE-001
+    command: go test ./...
+    workspace: .
+    workspaces: [.]

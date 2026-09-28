@@ -28,11 +28,14 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   discovery rejects conflicting IDs; drift reports evidence presence and
   coverage separately from conformance.
 - T1.6: `testdata/clones/without-forge/` contains Codex and Claude Code clones
-  with static native instructions and no HarnessForge configuration.
+  with static native instructions and no HarnessForge configuration. Their
+  canonical Forge source is `testdata/clones/payments-demo-forge/`.
 - T1.7: deterministic repository-level tests for generation, ownership, review,
   discovery, and drift pass. `TestWithoutForgeClonesPreserveExportedContract`
-  now checks both static consumer clones for absence of Forge state and verifies
-  exported rules, skill references/content, gates, and project manifests.
+  compiles and syncs a temporary copy of the canonical Forge source, compares
+  every generated instruction and skill byte-for-byte with the consumer clones,
+  checks for extra or stale native outputs, and verifies the clones contain no
+  Forge configuration or ownership manifest.
   `go test -count=1 ./internal/generation/... ./internal/harness/... ./internal/discovery/... ./internal/drift/... ./cmd/harnessforge` passed after this change. Codex CLI prompt-input verified discovery in the static clone for version `0.158.0-alpha.2.1`; no task/model compliance was tested. Claude runtime discovery remains unverified. See [P0–T1 acceptance](acceptance/p0-t1.md).
 - T2.1: a shared layout resolver discovers `.harness` or `.forge`, rejects
   ambiguous coexistence unless selection is explicit, rejects symlinked
@@ -98,7 +101,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   Harness diagnostics remain supported.
   CLI exit codes follow ADR 0001: success 0, failed checks 1, and usage,
   configuration, or execution errors 2. The cross-platform workflow runs both
-  no-Forge clone gates and verifies generated drift. It does not launch an
+  no-Forge clone gates, verifies exact Forge-to-clone export parity, and checks
+  generated drift. It does not launch an
   external agent against the clone, so runtime discovery remains unverified.
   Its GitHub OS matrix has not run; external CI acceptance remains pending.
 - T5.2–T5.4: explicit candidate import, reviewer-bound approval bound to rule,
@@ -258,6 +262,9 @@ All four commands passed on 2026-09-28 in a fresh Windows checkout using Go
 ownership hashes survive Git's Windows checkout behavior. The cross-platform CI
 matrix has not yet been run. No direct provider API calls were made; the
 approved Codex CLI was used for the Mili pilot attempts recorded above.
+After the T5.6 clone-parity update, `go test ./...` also passed on the active
+checkout. The same command passed independently in both no-Forge consumer
+clones; those small fixtures currently have no dedicated Go test files.
 
 ## Remaining validation
 

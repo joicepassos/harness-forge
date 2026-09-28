@@ -8,12 +8,14 @@ dependência da CLI HarnessForge.
 - `codex/AGENTS.md` é descoberto pelo Codex como instrução do repositório.
 - `claude/CLAUDE.md` é o perfil nativo do Claude Code.
 
-Os exports são versionados junto com o código do consumidor. Para demonstrar o
-uso, peça ao agente no diretório `codex` ou `claude` para implementar a nova
-opção de pagamento descrita em `README.md`. As instruções requerem preservar a
-regra de idempotência e validar os workspaces Go indicados. Assim, o agente
-obtém as convenções do próprio clone, sem buscar ou executar o Forge.
+Os exports são versionados junto com o código do consumidor. A fonte Forge
+revisável fica em `../payments-demo-forge`; o teste de aceitação compila essa
+fonte, sincroniza uma cópia temporária e compara todos os arquivos nativos com
+estes clones. Para demonstrar o uso, peça ao agente no diretório `codex` ou
+`claude` para implementar a nova opção de pagamento descrita em `README.md`.
+As instruções apontam para a skill nativa versionada em cada clone; assim, o
+agente obtém as convenções do próprio clone, sem buscar ou executar o Forge.
 
-Os dois arquivos de instrução seguem o formato produzido atualmente pelo
-renderizador (`AGENTS.md` e `CLAUDE.md`); seu conteúdo é igual salvo pelo nome do
-agente no cabeçalho.
+`docs/payment-provider-change.md` é uma cópia documental mantida para leitura
+humana. Os agentes consomem as skills nativas em `.agents/skills/` (Codex) e
+`.claude/skills/` (Claude Code), que são as saídas verificadas pelo teste.
