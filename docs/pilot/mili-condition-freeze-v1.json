@@ -189,8 +189,10 @@
         "baseline_result": "3 acceptance tests pass on clean baseline; old and tenant-scoped repository API signatures supported"
       }
     ],
-    "run_status": "One valid task/repetition across three conditions: MLI-01 repetition 1. Independent v3 evaluator: 3/3 per condition. Agent focused suites were not run per retained CLI reports. Repetition 2 excluded. 42 valid agent runs remain; three attempted runs excluded.",
+    "run_status": "One valid task/repetition across three conditions: MLI-01 repetition 1. Independent v3 evaluator: 3/3 per condition. Agent focused suites were not run per retained CLI reports. Repetition 2 excluded. 42 valid agent runs remain; three attempted runs excluded. Partial results and provisional runtime deferral are documented; pilot incomplete.",
     "mli01_repetition_1_measurements": "See mli01-repetition-1.md: condition diff sizes recorded; duration, tokens, review scores, rule violations and discovery not captured.",
+    "partial_results_file": "mili-results-v1.md",
+    "runtime_decision_file": "../adr/0002-runtime-executor-decision.md",
     "mli01_repetition_2_exclusion": "Excluded from scoring. Intended rotation was team, Forge, baseline. The supposed baseline clone's production files and tests were modified with the MLI-01 task patch; the team clone's agent-authored focused tests had 1 failure of 8; and Forge had a compile error in InboundEventRepository.java (missing return). A duplicate Forge agent process also ran. These runs are retained only as local audit artifacts in ignored .pilot-runs/ and do not count toward the 45-run matrix. No repetition-2 acceptance outcomes are claimed.",
     "evaluator_compilation": "MLI-01, MLI-02, MLI-03, and MLI-04 sources compiled in disposable clean pinned clones. The MLI-02 evaluator ran three characterization tests successfully and captured the malformed-cursor baseline defects. These are evaluator baselines, not coding-agent outcome runs.",
     "mli02_probe": "Independent controller evaluator passes on strict parser patch and fails against pinned baseline malformed cursors; no coding-agent run.",
