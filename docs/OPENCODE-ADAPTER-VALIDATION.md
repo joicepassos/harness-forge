@@ -68,7 +68,7 @@ does not prove that OpenCode loaded a file.
 | E | Project `AGENTS.md` and `CLAUDE.md`, contradictory sentinels | V1 chooses AGENTS over CLAUDE; V2 AGENTS-only contract | V1 precedence passes on 1.18.33; V2 case passes on 2.0.18 |
 | F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | V1 precedence and fallback pass on 1.18.33; V2 global Claude comparison pending |
 | G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Pass on V2 2.0.18 |
-| H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Path, glob, and URL inclusion pass on 1.18.33; timeout duration unmeasured |
+| H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Path, glob, and URL inclusion pass on 1.18.33; slow URL probe reached the task request 5.145 sec after fetch start |
 | I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | All three negative cases pass on V2 2.0.18 |
 | J | Workspace outside project root with global AGENTS and parent AGENTS above an inner Git root | The V2 docs say global only; parent sentinel must be absent from instruction entries | Required V2 test; see observed runtime result below |
 
@@ -96,7 +96,7 @@ The mock returned only `LOCAL_MOCK_OK`; no external model provider was called.
 | D | Project `CLAUDE.md` loads when that project has no `AGENTS.md` | Pass |
 | E | Project `AGENTS.md` loads; conflicting project `CLAUDE.md` is absent | Pass |
 | F | With both global files, OpenCode global `AGENTS.md` loads and global Claude `CLAUDE.md` does not; after removing only the OpenCode file, global Claude fallback loads | Pass |
-| H | Local `instructions` path, glob, and loopback URL each add their unique sentinel; the URL mock records `GET /instructions.md` | Pass for inclusion; timeout duration not measured |
+| H | Local `instructions` path, glob, and loopback URL each add their unique sentinel; the slow loopback URL delays its response for 12 sec | Inclusion passes; slow fetch times out before the task request |
 
 Evidence fingerprints: request bodies
 `9e3f6db1eaa32680ba0a644a0e1339e1e74b4b2ba87cb4c652af9f40e981d7bc`;
@@ -110,10 +110,18 @@ Claude-only project file
 isolated global Claude file
 `89e9da62c06537dc3bffb72c0ce77980c6e835c0dc391cd967c8d40ec82141bb`.
 
-This evidence applies only to V1 `1.18.33` and the listed cases. The documented
-five-second timeout was not measured; V1 disable controls and actual
-HarnessForge-published outputs remain unverified. The captured files and mock
-were kept under ignored `.pilot-runs/` and were not committed.
+The slow-URL probe used a separate local mock on `127.0.0.1:8766`; it logged
+fetch start at Unix ms `1790632181350`, fetch completion at `1790632193352`,
+and the first task request at `1790632186495`. The task request therefore began
+5,145 ms after fetch start, before the 12,002 ms response completed. The
+`V1_SLOW_URL_SENTINEL` was absent from captured requests. The JSONL request
+fingerprint for this probe is
+`493ddd79af0f9028715654f53cb530f41a3caffae61c484c12cbf6cc0329e471`.
+
+This evidence applies only to V1 `1.18.33` and the listed cases. V1 disable
+controls and actual HarnessForge-published outputs remain unverified. Captured
+files and mock binaries were kept under ignored `.pilot-runs/` and were not
+committed.
 
 ## Runtime validation: OpenCode V2 2.0.18
 
