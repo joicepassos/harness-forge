@@ -169,7 +169,8 @@ go run ./cmd/harnessforge check --repository . --layout forge --run-gates --form
 
 The local full test suite, static analysis, sync drift check, and declared Go
 gate pass on Windows. The cross-platform CI matrix has not yet been run. No
-paid provider calls were made.
+direct provider API calls were made; the approved Codex CLI was used for the
+Mili pilot attempts recorded above.
 
 ## Remaining validation
 
