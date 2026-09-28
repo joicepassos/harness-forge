@@ -37,6 +37,38 @@ type syncJournalFile struct {
 	Entries []syncJournalEntry `json:"entries"`
 }
 
+type syncFileSnapshot struct {
+	exists bool
+	data   []byte
+}
+
+func checkSyncSnapshot(path, relative string, expected syncFileSnapshot) error {
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		if !expected.exists {
+			return nil
+		}
+		return fmt.Errorf("generated file changed during sync: %s", relative)
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return fmt.Errorf("refusing to overwrite unsafe generated file %s", relative)
+	}
+	if !expected.exists {
+		return fmt.Errorf("generated file appeared during sync: %s", relative)
+	}
+	current, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(current, expected.data) {
+		return fmt.Errorf("generated file changed during sync: %s", relative)
+	}
+	return nil
+}
+
 var errSyncInterrupted = errors.New("simulated sync interruption")
 
 type GeneratedFile struct {
@@ -195,6 +227,7 @@ func recoverSyncJournal(root string) error {
 		return fmt.Errorf("invalid sync recovery journal")
 	}
 	seen := map[string]bool{}
+	var conflicts []error
 	for i := len(journal.Entries) - 1; i >= 0; i-- {
 		entry := journal.Entries[i]
 		if seen[entry.Path] || (entry.Path != filepath.ToSlash(generatedManifest) && !isSupportedGeneratedPath(entry.Path)) {
@@ -202,7 +235,8 @@ func recoverSyncJournal(root string) error {
 		}
 		seen[entry.Path] = true
 		if err := validateOutputParents(root, entry.Path); err != nil {
-			return err
+			conflicts = append(conflicts, fmt.Errorf("cannot recover %s: %w", entry.Path, err))
+			continue
 		}
 		dest := filepath.Join(root, filepath.FromSlash(entry.Path))
 		currentInfo, statErr := os.Lstat(dest)
@@ -222,7 +256,8 @@ func recoverSyncJournal(root string) error {
 			return statErr
 		}
 		if currentInfo.Mode()&os.ModeSymlink != 0 || !currentInfo.Mode().IsRegular() {
-			return fmt.Errorf("refusing to recover unsafe generated file %s", entry.Path)
+			conflicts = append(conflicts, fmt.Errorf("refusing to recover unsafe generated file %s", entry.Path))
+			continue
 		}
 		current, err := os.ReadFile(dest)
 		if err != nil {
@@ -232,11 +267,13 @@ func recoverSyncJournal(root string) error {
 			continue
 		}
 		if entry.NewSHA256 == "" {
-			return fmt.Errorf("refusing to recover changed file %s", entry.Path)
+			conflicts = append(conflicts, fmt.Errorf("refusing to recover changed file %s", entry.Path))
+			continue
 		}
 		sum := sha256.Sum256(current)
 		if hex.EncodeToString(sum[:]) != entry.NewSHA256 {
-			return fmt.Errorf("refusing to overwrite post-interruption edit %s", entry.Path)
+			conflicts = append(conflicts, fmt.Errorf("refusing to overwrite post-interruption edit %s", entry.Path))
+			continue
 		}
 		if entry.HadOriginal {
 			if err := writeDurableFile(dest, entry.Original, 0644); err != nil {
@@ -263,6 +300,9 @@ func recoverSyncJournal(root string) error {
 		} else if !os.IsNotExist(err) {
 			return err
 		}
+	}
+	if len(conflicts) > 0 {
+		return errors.Join(conflicts...)
 	}
 	if err := os.Remove(path); err != nil {
 		return err
@@ -624,7 +664,9 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 	}
 	manifestPath := filepath.Join(abs, filepath.FromSlash(generatedManifest))
 	prior := GeneratedManifest{}
+	expectedFiles := map[string]syncFileSnapshot{}
 	if raw, e := os.ReadFile(manifestPath); e == nil {
+		expectedFiles[generatedManifest] = syncFileSnapshot{exists: true, data: append([]byte(nil), raw...)}
 		if err := json.Unmarshal(raw, &prior); err != nil {
 			return result, err
 		}
@@ -636,6 +678,8 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 		}
 	} else if !os.IsNotExist(e) {
 		return result, e
+	} else {
+		expectedFiles[generatedManifest] = syncFileSnapshot{}
 	}
 	owned := map[string]string{}
 	seenOwned := map[string]bool{}
@@ -674,6 +718,7 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 		if hex.EncodeToString(sum[:]) != previous.SHA256 {
 			return result, fmt.Errorf("refusing to remove manually edited generated file %s", previous.Path)
 		}
+		expectedFiles[previous.Path] = syncFileSnapshot{exists: true, data: append([]byte(nil), content...)}
 		staleOwned = append(staleOwned, previous.Path)
 		delete(owned, previous.Path)
 	}
@@ -692,8 +737,11 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 			if owned[f.Path] == "" || owned[f.Path] != hex.EncodeToString(sum[:]) {
 				return result, fmt.Errorf("refusing to overwrite edited or unowned %s", f.Path)
 			}
+			expectedFiles[f.Path] = syncFileSnapshot{exists: true, data: append([]byte(nil), old...)}
 		} else if !os.IsNotExist(e) {
 			return result, e
+		} else {
+			expectedFiles[f.Path] = syncFileSnapshot{}
 		}
 	}
 	stage, err := os.MkdirTemp(abs, ".forge-sync-stage-")
@@ -720,30 +768,12 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 		return result, err
 	}
 	backups := map[string][]byte{}
-	for _, old := range staleOwned {
-		path := filepath.Join(abs, filepath.FromSlash(old))
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return result, err
-		}
-		backups[path] = content
-	}
-	for _, f := range result.Files {
-		dest := filepath.Join(abs, filepath.FromSlash(f.Path))
-		if err := validateOutputParents(abs, f.Path); err != nil {
-			return result, err
-		}
-		if info, e := os.Lstat(dest); e == nil && (info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular()) {
-			return result, fmt.Errorf("refusing to back up unsafe generated file %s", f.Path)
-		}
-		if old, e := os.ReadFile(dest); e == nil {
-			backups[dest] = old
+	for relative, snapshot := range expectedFiles {
+		if snapshot.exists {
+			backups[filepath.Join(abs, filepath.FromSlash(relative))] = append([]byte(nil), snapshot.data...)
 		}
 	}
 	manifestDest := manifestPath
-	if old, e := os.ReadFile(manifestDest); e == nil {
-		backups[manifestDest] = old
-	}
 	journal := syncJournalFile{Version: 1, Stage: filepath.Base(stage)}
 	newHashes := map[string]string{}
 	for _, f := range result.Files {
@@ -792,6 +822,9 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 			return result, rollbackOnError(err)
 		}
 		path := filepath.Join(abs, filepath.FromSlash(old))
+		if err := checkSyncSnapshot(path, old, expectedFiles[old]); err != nil {
+			return result, rollbackOnError(err)
+		}
 		if err := os.Remove(path); err != nil {
 			return result, rollbackOnError(err)
 		}
@@ -816,6 +849,9 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 		if err := validateOutputParents(abs, f.Path); err != nil {
 			return result, rollbackOnError(err)
 		}
+		if err := checkSyncSnapshot(dest, f.Path, expectedFiles[f.Path]); err != nil {
+			return result, rollbackOnError(err)
+		}
 		if err := os.Rename(filepath.Join(stage, filepath.FromSlash(f.Path)), dest); err != nil {
 			return result, rollbackOnError(err)
 		}
@@ -832,6 +868,9 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 	if err := os.MkdirAll(filepath.Dir(manifestDest), 0755); err != nil {
 		return result, rollbackOnError(err)
 	}
+	if err := checkSyncSnapshot(manifestDest, generatedManifest, expectedFiles[generatedManifest]); err != nil {
+		return result, rollbackOnError(err)
+	}
 	if err := os.Rename(filepath.Join(stage, "generated-manifest.json"), manifestDest); err != nil {
 		return result, rollbackOnError(err)
 	}
@@ -843,6 +882,36 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 			return result, err
 		}
 		return result, rollbackOnError(err)
+	}
+	// Catch edits made while the transaction was publishing earlier files.
+	// If one appeared, journal recovery rolls back our other outputs while
+	// preserving the changed file because its bytes no longer match NewSHA256.
+	for _, entry := range journal.Entries {
+		path := filepath.Join(abs, filepath.FromSlash(entry.Path))
+		info, err := os.Lstat(path)
+		if entry.NewSHA256 == "" {
+			if os.IsNotExist(err) {
+				continue
+			}
+			if err != nil {
+				return result, rollbackOnError(err)
+			}
+			return result, rollbackOnError(fmt.Errorf("generated file appeared during sync: %s", entry.Path))
+		}
+		if err != nil {
+			return result, rollbackOnError(fmt.Errorf("generated file missing after publish: %s", entry.Path))
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return result, rollbackOnError(fmt.Errorf("refusing to keep unsafe generated file %s", entry.Path))
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return result, rollbackOnError(err)
+		}
+		sum := sha256.Sum256(data)
+		if hex.EncodeToString(sum[:]) != entry.NewSHA256 {
+			return result, rollbackOnError(fmt.Errorf("generated file changed during sync: %s", entry.Path))
+		}
 	}
 	if err := os.Remove(journalPath); err != nil {
 		return result, fmt.Errorf("sync completed but recovery journal could not be removed: %w", err)

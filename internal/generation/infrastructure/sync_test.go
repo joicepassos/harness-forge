@@ -147,6 +147,50 @@ func TestSyncForgePreviewApplyCheckAndCloneOwnership(t *testing.T) {
 	}
 }
 
+func TestSyncForgePreservesEditMadeAfterPreflightBeforePublish(t *testing.T) {
+	root := forgeSyncFixture(t)
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	originalOutput, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = []byte(strings.Replace(string(manifest), "targets: [codex]", "targets: [codex, claude]", 1))
+	if err := os.WriteFile(manifestPath, manifest, 0644); err != nil {
+		t.Fatal(err)
+	}
+	preview, err := SyncForge(context.Background(), root, "dry-run")
+	if err != nil || len(preview.Files) != 2 {
+		t.Fatalf("expected two outputs in preview, files=%#v err=%v", preview.Files, err)
+	}
+	firstOutput := filepath.Join(root, filepath.FromSlash(preview.Files[0].Path))
+	concurrentOutput := filepath.Join(root, filepath.FromSlash(preview.Files[1].Path))
+	humanEdit := []byte("created by a concurrent editor after sync preflight\n")
+	_, syncErr := syncForge(context.Background(), root, "apply", func(mutation int) error {
+		if mutation == 1 {
+			if err := os.WriteFile(concurrentOutput, humanEdit, 0644); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if syncErr == nil || !strings.Contains(syncErr.Error(), "appeared during sync") {
+		t.Fatalf("concurrent output creation was not reported: %v", syncErr)
+	}
+	if got, err := os.ReadFile(concurrentOutput); err != nil || string(got) != string(humanEdit) {
+		t.Fatalf("concurrent edit was not preserved: content=%q err=%v", got, err)
+	}
+	if got, err := os.ReadFile(firstOutput); err != nil || string(got) != string(originalOutput) {
+		t.Fatalf("earlier output %s was not restored: content matches original=%v err=%v (sync err=%v, concurrent=%s)", firstOutput, string(got) == string(originalOutput), err, syncErr, concurrentOutput)
+	}
+}
+
 func TestConcurrentSyncAppliesSerializeAndLeaveCheckableOutput(t *testing.T) {
 	root := forgeSyncFixture(t)
 	enteredMutation := make(chan struct{})
