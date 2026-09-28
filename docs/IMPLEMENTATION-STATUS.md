@@ -48,8 +48,10 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   Forge-to-legacy generation now fails closed with directions to native sync,
   rather than emitting a partial Harness. Versioned migration round-trip
   fixtures preserve `architecture.styles` and the legacy skill approval status
-  in the Forge manifest; broader field-level parity beyond explicitly mapped
-  fields remains open.
+  in the Forge manifest. `TestPreviewToForgePreservesEveryMappedLegacyField`
+  compares all current legacy fields with their manifest/knowledge mappings;
+  semantic review changes (legacy approved rules become Forge candidates) are
+  explicit and retain the original review metadata.
 - T3.1–T3.4: migration preview reports unmapped choices, apply preserves the
   legacy source, rollback protects modified/unowned output, and v1 migration
   remains compatible. Applying a Forge migration now requires the SHA-256
