@@ -69,6 +69,34 @@ references:
 	return root
 }
 
+func addForgeSyncKnowledge(t *testing.T, root, id, content string, paths []string) {
+	t.Helper()
+	item := domain.KnowledgeItem{
+		ID: id, Kind: domain.KnowledgeConvention, Scope: domain.Scope{Paths: append([]string(nil), paths...)},
+		Content: content, Origin: "human", Review: domain.KnowledgeApproved, Health: domain.KnowledgeUnknown,
+		Reviewer: "alice", ContentSHA256: domain.HashKnowledgeContent(content),
+		ReviewDiff: "--- candidate\n+++ reviewed\n+" + content + "\n", EvidenceSHA256: domain.HashKnowledgeEvidence(nil),
+	}
+	item.ReviewMetadataSHA256 = domain.HashKnowledgeReviewMetadata(item)
+	encoded, err := yaml.Marshal(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	itemPath := filepath.Join(root, ".forge", "knowledge", "items", id+".md")
+	if err := os.WriteFile(itemPath, append(append([]byte("---\n"), encoded...), []byte("---\n")...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = append(manifest, []byte("    - id: "+id+"\n      path: .forge/knowledge/items/"+id+".md\n")...)
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSyncForgePreviewApplyCheckAndCloneOwnership(t *testing.T) {
 	root := forgeSyncFixture(t)
 	preview, err := SyncForge(context.Background(), root, "dry-run")
@@ -144,6 +172,161 @@ func TestSyncForgePreviewApplyCheckAndCloneOwnership(t *testing.T) {
 	}
 	if _, err := SyncForge(context.Background(), clone, "apply"); err != nil {
 		t.Fatalf("clone ownership was not recognized: %v", err)
+	}
+}
+
+func TestCompileAndSyncForgePublishNestedCodexScopesWithOwnership(t *testing.T) {
+	root := forgeSyncFixture(t)
+	addForgeSyncKnowledge(t, root, "service-rule", "Use service conventions.", []string{"services/**"})
+	addForgeSyncKnowledge(t, root, "api-rule", "Use API conventions.", []string{"services/api/**"})
+	addForgeSyncKnowledge(t, root, "go-rule", "Keep Go handlers explicit.", []string{"services/api/**/*.go"})
+
+	plan, err := CompileForge(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPaths := []string{"AGENTS.md", "services/AGENTS.md", "services/api/AGENTS.md"}
+	if len(plan.Files) != len(wantPaths) {
+		t.Fatalf("compiled files = %#v, want %v", plan.Files, wantPaths)
+	}
+	for i, path := range wantPaths {
+		if plan.Files[i].Path != path {
+			t.Errorf("files[%d].Path = %q, want %q", i, plan.Files[i].Path, path)
+		}
+	}
+	rootDoc := plan.Diff["AGENTS.md"]
+	if !strings.Contains(rootDoc, "[rule-a] Use explicit errors. (global)") || !strings.Contains(rootDoc, "[go-rule] Keep Go handlers explicit. (advisory; applies only to paths matching: `services/api/**/*.go`)") {
+		t.Fatalf("root output lost global or advisory file-glob rules:\n%s", rootDoc)
+	}
+	if strings.Contains(rootDoc, "[service-rule]") || strings.Contains(rootDoc, "[api-rule]") {
+		t.Fatalf("native nested rules leaked into the root output:\n%s", rootDoc)
+	}
+	if !strings.Contains(plan.Diff["services/AGENTS.md"], "[service-rule] Use service conventions. (native Codex directory scope: `services/**`)") {
+		t.Fatalf("service scope was not compiled natively:\n%s", plan.Diff["services/AGENTS.md"])
+	}
+	if !strings.Contains(plan.Diff["services/api/AGENTS.md"], "[api-rule] Use API conventions. (native Codex directory scope: `services/api/**`)") {
+		t.Fatalf("API scope was not compiled natively:\n%s", plan.Diff["services/api/AGENTS.md"])
+	}
+	for _, file := range plan.Files {
+		if file.Target != "codex" || file.AdapterVersion != "2" {
+			t.Errorf("nested-capable Codex adapter metadata = %#v", file)
+		}
+		if strings.Contains(file.Path, "/") && file.Capabilities["scope"] != "native-directory-cwd" {
+			t.Errorf("nested capability = %q, want native-directory-cwd", file.Capabilities["scope"])
+		}
+	}
+
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "check"); err != nil {
+		t.Fatalf("generated nested files are not owned/in sync: %v", err)
+	}
+	manifestData, err := os.ReadFile(filepath.Join(root, generatedManifest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest GeneratedManifest
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range wantPaths {
+		if !containsGeneratedPath(manifest.Files, path) {
+			t.Errorf("manifest does not own %s: %#v", path, manifest.Files)
+		}
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatalf("second nested apply failed: %v", err)
+	}
+}
+
+func TestSyncForgeProtectsNestedCodexOwnershipAndOverrides(t *testing.T) {
+	t.Run("unowned nested file", func(t *testing.T) {
+		root := forgeSyncFixture(t)
+		addForgeSyncKnowledge(t, root, "service-rule", "Use service conventions.", []string{"services/**"})
+		nested := filepath.Join(root, "services", "AGENTS.md")
+		if err := os.MkdirAll(filepath.Dir(nested), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(nested, []byte("Human instructions.\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := SyncForge(context.Background(), root, "apply"); err == nil || !strings.Contains(err.Error(), "unowned") {
+			t.Fatalf("unowned nested AGENTS.md was overwritten: %v", err)
+		}
+		content, err := os.ReadFile(nested)
+		if err != nil || string(content) != "Human instructions.\n" {
+			t.Fatalf("human instructions changed: %q, err=%v", content, err)
+		}
+	})
+
+	t.Run("override shadows generated file", func(t *testing.T) {
+		root := forgeSyncFixture(t)
+		addForgeSyncKnowledge(t, root, "service-rule", "Use service conventions.", []string{"services/**"})
+		dir := filepath.Join(root, "services")
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "AGENTS.override.md"), []byte("Local override.\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := SyncForge(context.Background(), root, "dry-run"); err == nil || !strings.Contains(err.Error(), "shadowed by services/AGENTS.override.md") {
+			t.Fatalf("shadowed generated instructions were accepted: %v", err)
+		}
+	})
+
+	t.Run("edited stale nested output is preserved", func(t *testing.T) {
+		root := forgeSyncFixture(t)
+		addForgeSyncKnowledge(t, root, "service-rule", "Use service conventions.", []string{"services/**"})
+		if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+			t.Fatal(err)
+		}
+		nested := filepath.Join(root, "services", "AGENTS.md")
+		if err := os.WriteFile(nested, []byte("human edit\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+		manifest, err := os.ReadFile(manifestPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifest = []byte(strings.Replace(string(manifest), "    - id: service-rule\n      path: .forge/knowledge/items/service-rule.md\n", "", 1))
+		if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := SyncForge(context.Background(), root, "apply"); err == nil || !strings.Contains(err.Error(), "manually edited generated file services/AGENTS.md") {
+			t.Fatalf("edited stale nested file was removed: %v", err)
+		}
+		content, err := os.ReadFile(nested)
+		if err != nil || string(content) != "human edit\n" {
+			t.Fatalf("edited stale output changed: %q, err=%v", content, err)
+		}
+	})
+}
+
+func TestNestedCodexInstructionPathsAreWhitelistedAndRejectSymlinkParents(t *testing.T) {
+	for _, path := range []string{"services/AGENTS.md", "services/api/AGENTS.md"} {
+		if !isSupportedGeneratedPath(path) {
+			t.Errorf("nested instruction path %q should be supported", path)
+		}
+	}
+	for _, path := range []string{
+		"../AGENTS.md", "services/../AGENTS.md", ".forge/AGENTS.md", ".agents/AGENTS.md", ".git/AGENTS.md",
+		"services\\AGENTS.md", "services/CLAUDE.md", "services/AGENTS.override.md", "services:stream/AGENTS.md",
+	} {
+		if isSupportedGeneratedPath(path) {
+			t.Errorf("unsafe or non-generated path %q was supported", path)
+		}
+	}
+
+	root := forgeSyncFixture(t)
+	addForgeSyncKnowledge(t, root, "service-rule", "Use service conventions.", []string{"services/**"})
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, "services")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := SyncForge(context.Background(), root, "dry-run"); err == nil || !strings.Contains(err.Error(), "generated path parent") {
+		t.Fatalf("nested instruction path followed a symlink parent: %v", err)
 	}
 }
 

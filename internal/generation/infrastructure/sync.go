@@ -109,7 +109,42 @@ func isSupportedGeneratedPath(value string) bool {
 			return len(parts) >= 2 && parts[0] != "" && parts[0] != "." && parts[0] != ".." && parts[len(parts)-1] != "" && parts[len(parts)-1] != "." && parts[len(parts)-1] != ".."
 		}
 	}
+	if strings.HasSuffix(value, "/AGENTS.md") && clean == value && !strings.Contains(value, "\\") {
+		parts := strings.Split(value, "/")
+		for _, part := range parts {
+			if part == "" || part == "." || part == ".." || strings.ContainsAny(part, ":*?\"<>|") {
+				return false
+			}
+			switch strings.ToLower(part) {
+			case ".git", ".hg", ".svn", ".forge", ".agents", ".claude":
+				return false
+			}
+		}
+		return len(parts) >= 2
+	}
 	return false
+}
+
+func validateCodexInstructionTargets(root string, files []GeneratedFile) error {
+	for _, file := range files {
+		if file.Target != "codex" || filepath.Base(filepath.FromSlash(file.Path)) != "AGENTS.md" {
+			continue
+		}
+		if err := validateOutputParents(root, file.Path); err != nil {
+			return err
+		}
+		override := filepath.Join(root, filepath.Dir(filepath.FromSlash(file.Path)), "AGENTS.override.md")
+		overrideRelative := filepath.ToSlash(filepath.Join(filepath.Dir(filepath.FromSlash(file.Path)), "AGENTS.override.md"))
+		if info, err := os.Lstat(override); err == nil {
+			if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+				return fmt.Errorf("refusing Codex instruction override at %s", overrideRelative)
+			}
+			return fmt.Errorf("generated Codex instructions are shadowed by %s", overrideRelative)
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateOutputParents(root, relative string) error {
@@ -387,26 +422,43 @@ func CompileForge(root string) (SyncResult, error) {
 			}
 			targetInput.Skills[i].Path = filepath.ToSlash(filepath.Join(prefix, skillBundles[i].Name, "SKILL.md"))
 		}
-		var doc domain.Document
+		var docs []domain.Document
 		switch target {
 		case "codex":
-			doc, err = (CodexAdapter{}).Render(targetInput)
+			docs, err = (CodexAdapter{}).RenderDocuments(targetInput)
 		case "claude":
+			var doc domain.Document
 			doc, err = (ClaudeAdapter{}).Render(targetInput)
+			if err == nil {
+				docs = []domain.Document{doc}
+			}
 		default:
 			return SyncResult{}, fmt.Errorf("unsupported target %q", target)
 		}
 		if err != nil {
 			return SyncResult{}, err
 		}
-		sum := sha256.Sum256(doc.Content)
 		policyCapability := "unsupported"
 		if len(input.Policies) > 0 {
 			policyCapability = "declared per policy"
 		}
-		entry := GeneratedFile{Path: doc.Path, SHA256: hex.EncodeToString(sum[:]), Target: target, AdapterVersion: "1", Capabilities: map[string]string{"scope": "textual", "skills": "native", "quality_gates": "advisory", "policy": policyCapability}}
-		result.Files = append(result.Files, entry)
-		result.Diff[doc.Path] = string(doc.Content)
+		for _, doc := range docs {
+			sum := sha256.Sum256(doc.Content)
+			scopeCapability := "textual"
+			adapterVersion := "1"
+			if target == "codex" && doc.Path != "AGENTS.md" {
+				adapterVersion = "2"
+				scopeCapability = "native-directory-cwd"
+			} else if target == "codex" {
+				adapterVersion = "2"
+				if strings.Contains(string(doc.Content), "(native Codex directory scope:") {
+					scopeCapability = "native-directory-cwd-and-textual"
+				}
+			}
+			entry := GeneratedFile{Path: doc.Path, SHA256: hex.EncodeToString(sum[:]), Target: target, AdapterVersion: adapterVersion, Capabilities: map[string]string{"scope": scopeCapability, "skills": "native", "quality_gates": "advisory", "policy": policyCapability}}
+			result.Files = append(result.Files, entry)
+			result.Diff[doc.Path] = string(doc.Content)
+		}
 		for _, bundle := range skillBundles {
 			prefix := ".agents/skills/"
 			if target == "claude" {
@@ -557,8 +609,14 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 	if err != nil {
 		return result, err
 	}
+	if err := validateCodexInstructionTargets(abs, result.Files); err != nil {
+		return result, err
+	}
 	for i := range result.Files {
 		entry := &result.Files[i]
+		if err := validateOutputParents(abs, entry.Path); err != nil {
+			return result, err
+		}
 		path := filepath.Join(abs, filepath.FromSlash(entry.Path))
 		if info, e := os.Lstat(path); e == nil && info.Mode()&os.ModeSymlink != 0 {
 			return result, fmt.Errorf("refusing generated symlink %s", entry.Path)
@@ -697,6 +755,9 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 	for _, previous := range prior.Files {
 		if containsGeneratedPath(result.Files, previous.Path) {
 			continue
+		}
+		if err := validateOutputParents(abs, previous.Path); err != nil {
+			return result, err
 		}
 		path := filepath.Join(abs, filepath.FromSlash(previous.Path))
 		info, err := os.Lstat(path)

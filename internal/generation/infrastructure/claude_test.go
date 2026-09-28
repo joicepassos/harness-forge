@@ -46,7 +46,7 @@ func TestClaudeAdapterRendersProjectInstructionsDeterministically(t *testing.T) 
 	}
 }
 
-func TestClaudeAdapterUsesSameNonWideningStaticScopeContract(t *testing.T) {
+func TestClaudeAdapterKeepsNonWideningStaticScopeContract(t *testing.T) {
 	input := domain.Input{
 		Project: "sample",
 		Rules: []domain.Rule{
@@ -59,15 +59,8 @@ func TestClaudeAdapterUsesSameNonWideningStaticScopeContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	codex, err := (CodexAdapter{}).Render(input)
-	if err != nil {
-		t.Fatal(err)
-	}
 	if claude.Path != "CLAUDE.md" {
 		t.Fatalf("Claude output path = %q, want CLAUDE.md", claude.Path)
-	}
-	if !bytes.Equal(claude.Content, codex.Content) {
-		t.Fatalf("Claude scope contract differs from Codex:\nClaude:\n%s\nCodex:\n%s", claude.Content, codex.Content)
 	}
 	content := string(claude.Content)
 	for _, expected := range []string{

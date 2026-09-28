@@ -9,6 +9,7 @@ import (
 	"harnessforge/internal/generation/domain"
 	"harnessforge/internal/safefile"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -26,6 +27,10 @@ func (m Markdown) Render(input domain.Input) (domain.Document, error) {
 	} else if m.Agent != "codex" {
 		return domain.Document{}, fmt.Errorf("unsupported agent %q", m.Agent)
 	}
+	return m.renderAt(input, path, nil)
+}
+
+func (m Markdown) renderAt(input domain.Input, outputPath string, nativeScopes map[string]string) (domain.Document, error) {
 	rules := append([]domain.Rule(nil), input.Rules...)
 	sort.Slice(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
 	var out bytes.Buffer
@@ -41,14 +46,23 @@ func (m Markdown) Render(input domain.Input) (domain.Document, error) {
 	}
 	if len(rules) > 0 {
 		out.WriteString("## Scope and precedence\n\n")
-		out.WriteString("- Rules without path scopes apply globally.\n")
-		out.WriteString("- Path scopes retain their exact authored globs and are advisory in this static export; the agent does not enforce glob matching.\n")
-		out.WriteString("- Matching global and scoped rules coexist with no implicit precedence; conflicting rules require explicit reconciliation.\n\n")
+		if m.Agent == "codex" {
+			out.WriteString("- Rules without path scopes apply globally.\n")
+			out.WriteString("- Directory subtree scopes are emitted as nested `AGENTS.md` files and are loaded when Codex runs with its current directory in that subtree. Codex combines ancestor instructions; HarnessForge does not resolve conflicts between them.\n")
+			out.WriteString("- Other path globs retain their exact authored text and are advisory; Codex does not enforce file-glob matching from this export.\n")
+			out.WriteString("- Global and directory-scoped rules coexist; conflicting rules require explicit reconciliation.\n\n")
+		} else {
+			out.WriteString("- Rules without path scopes apply globally.\n")
+			out.WriteString("- Path scopes retain their exact authored globs and are advisory in this static export; the agent does not enforce glob matching.\n")
+			out.WriteString("- Matching global and scoped rules coexist with no implicit precedence; conflicting rules require explicit reconciliation.\n\n")
+		}
 		out.WriteString("## Approved rules\n\n")
 		for _, r := range rules {
 			fmt.Fprintf(&out, "- [%s] %s", r.ID, r.Description)
 			if len(r.Paths) == 0 {
 				out.WriteString(" (global)")
+			} else if scope, ok := nativeScopes[r.ID]; ok {
+				fmt.Fprintf(&out, " (native Codex directory scope: `%s`)", scope)
 			} else {
 				fmt.Fprintf(&out, " (advisory; applies only to paths matching: %s)", formatScopeGlobs(r.Paths))
 			}
@@ -88,7 +102,139 @@ func (m Markdown) Render(input domain.Input) (domain.Document, error) {
 			fmt.Fprintf(&out, "- [%s] %s — capability: **%s**; executor: %s. This instruction text does not enforce system permissions.\n", policy.ID, policy.Description, policy.Capability, policy.Executor)
 		}
 	}
-	return domain.Document{Path: path, Content: out.Bytes()}, nil
+	return domain.Document{Path: outputPath, Content: out.Bytes()}, nil
+}
+
+// codexDirectoryScope recognizes only a literal directory subtree glob. Codex
+// discovers instructions by walking AGENTS.md files from project root to CWD;
+// it does not implement arbitrary path-glob matching.
+func codexDirectoryScope(scope string) (string, bool) {
+	if scope == "**" {
+		return "", true
+	}
+	if strings.Contains(scope, `\`) || !strings.HasSuffix(scope, "/**") {
+		return "", false
+	}
+	directory := strings.TrimSuffix(scope, "/**")
+	if directory == "" || path.IsAbs(directory) || path.Clean(directory) != directory {
+		return "", false
+	}
+	for _, segment := range strings.Split(directory, "/") {
+		if segment == "" || segment == "." || segment == ".." || strings.ContainsAny(segment, ":*?[]\"<>|") {
+			return "", false
+		}
+		switch strings.ToLower(segment) {
+		case ".git", ".hg", ".svn", ".forge", ".agents", ".claude":
+			return "", false
+		}
+	}
+	return directory, true
+}
+
+// RenderCodexDocuments returns the root instructions and native nested files
+// for rules whose entire scope is representable as literal directory subtrees.
+// A mixed or file-glob scope stays in the root document as explicitly advisory
+// text; it is never broadened into a directory instruction.
+func (CodexAdapter) RenderDocuments(input domain.Input) ([]domain.Document, error) {
+	rootInput := input
+	rootInput.Rules = nil
+	nativeRoot := map[string]string{}
+	nestedInputs := map[string][]domain.Rule{}
+	nestedScopes := map[string]map[string]string{}
+
+	for _, rule := range input.Rules {
+		if len(rule.Paths) == 0 {
+			rootInput.Rules = append(rootInput.Rules, rule)
+			continue
+		}
+		directories := make([]string, 0, len(rule.Paths))
+		fullyNative := true
+		for _, scope := range rule.Paths {
+			directory, ok := codexDirectoryScope(scope)
+			if !ok {
+				fullyNative = false
+				break
+			}
+			directories = append(directories, directory)
+		}
+		if !fullyNative {
+			rootInput.Rules = append(rootInput.Rules, rule)
+			continue
+		}
+		directories = minimalScopeDirectories(directories)
+		for _, directory := range directories {
+			scope := "**"
+			output := "AGENTS.md"
+			if directory != "" {
+				scope = directory + "/**"
+				output = filepath.ToSlash(filepath.Join(directory, "AGENTS.md"))
+			}
+			if directory == "" {
+				rootInput.Rules = append(rootInput.Rules, rule)
+				nativeRoot[rule.ID] = scope
+				continue
+			}
+			copy := rule
+			copy.Paths = []string{scope}
+			nestedInputs[output] = append(nestedInputs[output], copy)
+			if nestedScopes[output] == nil {
+				nestedScopes[output] = map[string]string{}
+			}
+			nestedScopes[output][rule.ID] = scope
+		}
+	}
+
+	markdown := Markdown{Agent: "codex"}
+	rootDoc, err := markdown.renderAt(rootInput, "AGENTS.md", nativeRoot)
+	if err != nil {
+		return nil, err
+	}
+	documents := []domain.Document{rootDoc}
+	paths := make([]string, 0, len(nestedInputs))
+	for path := range nestedInputs {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	for _, output := range paths {
+		nestedInput := domain.Input{Project: input.Project, Rules: nestedInputs[output]}
+		doc, err := markdown.renderAt(nestedInput, output, nestedScopes[output])
+		if err != nil {
+			return nil, err
+		}
+		documents = append(documents, doc)
+	}
+	return documents, nil
+}
+
+func minimalScopeDirectories(directories []string) []string {
+	sort.Strings(directories)
+	unique := make([]string, 0, len(directories))
+	for _, directory := range directories {
+		if len(unique) > 0 && unique[len(unique)-1] == directory {
+			continue
+		}
+		unique = append(unique, directory)
+	}
+	minimal := make([]string, 0, len(unique))
+	for _, candidate := range unique {
+		covered := false
+		for _, parent := range unique {
+			if parent == candidate || parent == "" {
+				if parent == "" && candidate != "" {
+					covered = true
+				}
+				continue
+			}
+			if strings.HasPrefix(candidate, parent+"/") {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			minimal = append(minimal, candidate)
+		}
+	}
+	return minimal
 }
 
 func formatScopeGlobs(paths []string) string {
