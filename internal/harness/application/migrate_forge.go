@@ -92,6 +92,7 @@ func PreviewToForge(loader Loader, root, source string, targets []string, defaul
 		LayoutVersion: 1,
 		IRVersion:     h.Version,
 		Project:       h.Project,
+		Architecture:  h.Architecture,
 		Targets:       append([]string(nil), targets...),
 		References: domain.ManifestReferences{
 			Knowledge: make([]domain.KnowledgeReference, 0, len(h.Rules)),

@@ -40,7 +40,8 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   Harness IR v1/v2; offline loading and reference validation are covered.
   Forge-to-legacy generation now fails closed with directions to native sync,
   rather than emitting a partial Harness. Versioned migration round-trip
-  fixtures pass; broader field-level parity beyond mapped fields remains open.
+  fixtures preserve `architecture.styles` in the Forge manifest; broader
+  field-level parity beyond explicitly mapped fields remains open.
 - T3.1–T3.4: migration preview reports unmapped choices, apply preserves the
   legacy source, rollback protects modified/unowned output, and v1 migration
   remains compatible. Skill evidence now survives conversion through the

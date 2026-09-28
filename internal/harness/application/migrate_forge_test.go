@@ -17,6 +17,8 @@ const legacyHarnessForForgeMigration = `version: 1
 project:
   name: payment-service
   languages: [Go]
+architecture:
+  styles: [hexagonal, domain-driven]
 rules:
   - id: idempotent-payment
     description: Payment creation is idempotent by request key.
@@ -110,6 +112,9 @@ func TestPreviewToForgePreservesFieldsAndProducesDeterministicPlan(t *testing.T)
 	}
 	if manifest.Project.Name != "payment-service" || manifest.Targets[1] != "claude" || manifest.References.Skills[0].ID != "payment-review" || manifest.References.Skills[0].Description != "Review payment provider changes" || manifest.References.Skills[0].Path != ".harness/skills/payment/SKILL.md" {
 		t.Fatalf("manifest lost legacy fields: %#v", manifest)
+	}
+	if len(manifest.Architecture.Styles) != 2 || manifest.Architecture.Styles[0] != "hexagonal" || manifest.Architecture.Styles[1] != "domain-driven" {
+		t.Fatalf("manifest lost architecture styles: %#v", manifest.Architecture)
 	}
 	if len(manifest.References.Skills[0].Evidence) != 1 || manifest.References.Skills[0].Evidence[0].File != "internal/payment/service.go" || manifest.References.Skills[0].Evidence[0].Quote != "same request key returns the original payment" {
 		t.Fatalf("skill evidence was lost: %#v", manifest.References.Skills[0].Evidence)

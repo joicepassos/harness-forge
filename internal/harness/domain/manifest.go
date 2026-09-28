@@ -13,6 +13,7 @@ type Manifest struct {
 	LayoutVersion int                `json:"layout_version" yaml:"layout_version"`
 	IRVersion     int                `json:"ir_version" yaml:"ir_version"`
 	Project       Project            `json:"project" yaml:"project"`
+	Architecture  Architecture       `json:"architecture,omitempty" yaml:"architecture,omitempty"`
 	Targets       []string           `json:"targets" yaml:"targets"`
 	References    ManifestReferences `json:"references" yaml:"references"`
 	QualityGates  []QualityGate      `json:"quality_gates,omitempty" yaml:"quality_gates,omitempty"`
@@ -56,6 +57,9 @@ func (m Manifest) Validate() error {
 		return fmt.Errorf("project.name: must not be empty")
 	}
 	if err := nonemptyList("project.languages", m.Project.Languages); err != nil {
+		return err
+	}
+	if err := nonemptyList("architecture.styles", m.Architecture.Styles); err != nil {
 		return err
 	}
 	if len(m.Targets) == 0 {
