@@ -39,7 +39,10 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T2.2–T2.6: `.forge/forge.yaml` has a versioned contract independent from
   Harness IR v1/v2; offline loading preserves the complete manifest, and the
   legacy compatibility projection carries project, architecture, skills, and
-  gates without aliasing mutable fields.
+  gates without aliasing mutable fields. `LoadProject` also loads the referenced
+  typed knowledge documents with bounded safe reads, validates their schemas
+  and IDs, and preserves review, health, evidence, and provenance separately
+  from legacy rules.
   Forge-to-legacy generation now fails closed with directions to native sync,
   rather than emitting a partial Harness. Versioned migration round-trip
   fixtures preserve `architecture.styles` and the legacy skill approval status
@@ -47,10 +50,13 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   fields remains open.
 - T3.1–T3.4: migration preview reports unmapped choices, apply preserves the
   legacy source, rollback protects modified/unowned output, and v1 migration
-  remains compatible. Skill status and evidence now survive conversion through
-  the versioned manifest and schema. Cross-layout legacy command compatibility
-  is explicit: legacy `generate` directs Forge projects to native `sync` rather
-  than emitting a partial document.
+  remains compatible. Applying a Forge migration now requires the SHA-256
+  digest printed by the reviewed preview; changed sources or choices invalidate
+  it. Skill status and evidence now survive conversion through the versioned
+  manifest and schema. Cross-layout legacy command compatibility is explicit:
+  legacy `generate` directs Forge projects to native `sync` rather than emitting
+  a partial document. Explicit `review --layout forge` also fails closed when
+  Forge is missing and cannot fall through to mutate a Harness file.
 - T4.1–T4.6: deterministic Codex/Claude compile adapters, shared ownership
   manifest, architecture metadata in both native exports, dry-run/check/apply,
   collision and edit protection, staging, clone
@@ -86,6 +92,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   frontend `Build` integration coverage verifies both selection and explicit
   out-of-scope exclusions. T6.3 reports selected-item and early prompt-envelope
   overflow with the configured estimator and an explicit excluded-prompt reason.
+  Counter failures and negative values declare the byte-estimator fallback in
+  the result instead of silently reporting the requested counter.
   T6.4 adds `context explain --compare-knowledge`, which emits paired plans for
   the same prompt, model, estimator, budget, ranking options, and task paths,
   with and without approved knowledge. It reports selected knowledge IDs and
@@ -99,6 +107,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   preview/apply, age and quota retention, pending-item
   preservation, atomic snapshot replacement, and safe retry after an injected
   interruption; pending items survive and repeated collection is idempotent.
+  Capture, review, and GC serialize cross-process read-modify-write operations
+  with OS file locks so concurrent mutations do not lose observations or reviews.
 - T8.1/T8.2: official-doc behavior matrices exist; no Cursor/OpenCode binary
   runtime tests were performed, so release acceptance remains open. The
   snapshots separate documented behavior from exact-build runtime evidence.
