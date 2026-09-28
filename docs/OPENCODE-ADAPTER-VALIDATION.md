@@ -66,7 +66,7 @@ does not prove that OpenCode loaded a file.
 | C | Root `AGENTS.md` plus `packages/api/AGENTS.md`; start at root, then read/list `packages/api` | V2 nested rule is discovered as area is explored | Pass on V2 2.0.18 |
 | D | Only project `CLAUDE.md` | V1 fallback loads; V2 does not use this fallback | V1 fallback passes on 1.18.33; V2 negative case passes on 2.0.18 |
 | E | Project `AGENTS.md` and `CLAUDE.md`, contradictory sentinels | V1 chooses AGENTS over CLAUDE; V2 AGENTS-only contract | V1 precedence passes on 1.18.33; V2 case passes on 2.0.18 |
-| F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | V1 precedence and fallback pass on 1.18.33; V2 global Claude comparison pending |
+| F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | V1 precedence and fallback pass on 1.18.33; V2 Claude-only negative case passes on 2.0.18; combined precedence pending |
 | G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Pass on V2 2.0.18 |
 | H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Path, glob, and URL inclusion pass on 1.18.33; slow URL probe reached the task request 5.145 sec after fetch start |
 | I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | All three negative cases pass on V2 2.0.18 |
@@ -97,6 +97,23 @@ The mock returned only `LOCAL_MOCK_OK`; no external model provider was called.
 | E | Project `AGENTS.md` loads; conflicting project `CLAUDE.md` is absent | Pass |
 | F | With both global files, OpenCode global `AGENTS.md` loads and global Claude `CLAUDE.md` does not; after removing only the OpenCode file, global Claude fallback loads | Pass |
 | H | Local `instructions` path, glob, and loopback URL each add their unique sentinel; the slow loopback URL delays its response for 12 sec | Inclusion passes; slow fetch times out before the task request |
+
+## Runtime validation: OpenCode V2 global Claude-only negative case
+
+The isolated V2 run used `@opencode/cli@2.0.18` on Windows with a temporary
+global `~/.claude/CLAUDE.md` containing a unique sentinel, no global OpenCode
+`AGENTS.md`, no project instruction files, and a local mock model provider.
+The neutral prompt asked for a summary of top-level project files. Both captured
+model requests (including title generation) omitted the Claude sentinel. The
+mock returned a fixed response; no external provider was called. The capture and
+fixture hashes are recorded in
+[`opencode-v2-global-claude-negative-2026-09-28.json`](acceptance/evidence/opencode-v2-global-claude-negative-2026-09-28.json)
+and its request body capture.
+
+This establishes only that the global Claude file was absent from requests in
+this exact Claude-only V2 configuration. Precedence when both global files are
+present remains pending; the V1 precedence case above does not establish V2
+behavior.
 
 Evidence fingerprints: request bodies
 `9e3f6db1eaa32680ba0a644a0e1339e1e74b4b2ba87cb4c652af9f40e981d7bc`;

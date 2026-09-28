@@ -174,8 +174,10 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   temporary no-Forge clone confirmed that OpenCode receives the current
   Forge-synced Codex `AGENTS.md` rule and native skill reference; this verifies
   cross-consumption for `@opencode/cli@2.0.18`, not model compliance or skill
-  body loading. V1 disable controls and the V2 global Claude fallback
-  comparison remain unverified. An external-root probe
+  body loading. A separate neutral V2 run with only a global Claude file
+  confirmed its sentinel is absent from both captured model requests; global
+  precedence when both files coexist remains unverified. V1 disable controls
+  are also unverified. An external-root probe
   with a neutral query found the parent `AGENTS.md` in system instructions
   outside an inner Git root, contrary to the V2 docs' “global only” statement.
   V2 local-file, glob, and loopback URL entries in config `instructions` were
