@@ -213,6 +213,11 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   custom runtime pending the complete pilot and T7/T8 runtime evidence; see
   [ADR 0002](adr/0002-runtime-executor-decision.md). The remaining 41 planned
   condition runs are outstanding, so neither T9.5 nor T9.6 has final acceptance.
+  A 2026-09-28 integrity audit found the MLI-01 rubric was changed after its
+  recorded freeze digest and the approval-record digest cannot be reproduced
+  from tracked history; no further comparison run should use this freeze until
+  the immutable approval and reviewed rubric are reconciled. See the
+  [freeze integrity audit](pilot/freeze-integrity-audit-2026-09-28.md).
 
 ## Verification
 

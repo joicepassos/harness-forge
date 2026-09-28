@@ -105,6 +105,12 @@ failed, and a fresh retry could not proceed because the CLI executor was
 read-only. These excluded attempts are not counted as valid results. Forty-one
 planned condition runs remain, so T9.2 is partial and the matrix is incomplete.
 
+An integrity audit on 2026-09-28 found that the tracked MLI-01 rubric changed
+after the digest in the freeze was recorded, and the approval-record digest
+cannot be reproduced from its tracked history. No further comparison run should
+use this freeze until the immutable approval snapshot and rubric are reconciled
+and reviewed. See the [freeze integrity audit](pilot/freeze-integrity-audit-2026-09-28.md).
+
 Agent-authored focused tests were not run in repetition 1. Duration, tokens,
 review quality, rule violations, and instruction-source discovery were not
 captured for the valid runs; these values are missing, not zero. The pilot is
