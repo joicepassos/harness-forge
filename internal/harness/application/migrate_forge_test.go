@@ -153,7 +153,7 @@ func TestApplyAndRollbackForgeMigrationProtectEditsAndPreserveSource(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := application.ApplyForgeMigration(root, plan); err != nil {
+	if err := application.ApplyForgeMigration(root, plan, plan.PlanSHA256); err != nil {
 		t.Fatal(err)
 	}
 	after, err := os.ReadFile(source)
@@ -198,7 +198,7 @@ func TestApplyForgeMigrationRejectsChangedSourceAndRollbackRejectsUnownedDirecto
 	if err := os.WriteFile(source, []byte(strings.Replace(legacyHarnessForForgeMigration, "payment-service", "changed-service", 1)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := application.ApplyForgeMigration(root, plan); err == nil || !strings.Contains(err.Error(), "changed after preview") {
+	if err := application.ApplyForgeMigration(root, plan, plan.PlanSHA256); err == nil || !strings.Contains(err.Error(), "changed after preview") {
 		t.Fatalf("changed source was migrated: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".forge")); !os.IsNotExist(err) {
@@ -211,7 +211,7 @@ func TestApplyForgeMigrationRejectsChangedSourceAndRollbackRejectsUnownedDirecto
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := application.ApplyForgeMigration(root, plan); err != nil {
+	if err := application.ApplyForgeMigration(root, plan, plan.PlanSHA256); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Mkdir(filepath.Join(root, ".forge", "manual-empty"), 0700); err != nil {

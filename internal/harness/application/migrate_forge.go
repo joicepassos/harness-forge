@@ -21,6 +21,7 @@ type MigrationFile struct {
 }
 
 type ForgeMigrationPlan struct {
+	PlanSHA256 string          `json:"plan_sha256"`
 	SourcePath string          `json:"source_path"`
 	SourceHash string          `json:"source_sha256"`
 	FromIR     int             `json:"from_ir_version"`
@@ -86,6 +87,10 @@ func PreviewToForge(loader Loader, root, source string, targets []string, defaul
 		plan.Unmapped = append(plan.Unmapped, "rules[*].kind (supply --rule-kind because the legacy IR does not classify rules)")
 	}
 	if len(plan.Unmapped) > 0 {
+		plan.PlanSHA256, err = ForgeMigrationPlanSHA256(plan)
+		if err != nil {
+			return plan, err
+		}
 		return plan, nil
 	}
 	manifest := domain.Manifest{
@@ -150,7 +155,23 @@ func PreviewToForge(loader Loader, root, source string, targets []string, defaul
 	}
 	plan.Files = append(plan.Files, migrationFile(".forge/forge.yaml", string(manifestYAML)))
 	sort.Slice(plan.Files, func(i, j int) bool { return plan.Files[i].Path < plan.Files[j].Path })
+	plan.PlanSHA256, err = ForgeMigrationPlanSHA256(plan)
+	if err != nil {
+		return plan, err
+	}
 	return plan, nil
+}
+
+// ForgeMigrationPlanSHA256 hashes the complete deterministic plan, excluding
+// its own digest field to avoid a self-referential value.
+func ForgeMigrationPlanSHA256(plan ForgeMigrationPlan) (string, error) {
+	plan.PlanSHA256 = ""
+	encoded, err := json.Marshal(plan)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(encoded)
+	return hex.EncodeToString(sum[:]), nil
 }
 
 func validKnowledgeKind(kind domain.KnowledgeKind) bool {
@@ -165,11 +186,21 @@ func migrationFile(path, content string) MigrationFile {
 // ApplyForgeMigration stages all planned files, rechecks the source hash, then
 // publishes the complete .forge directory with one same-volume rename. The
 // original Harness layout remains untouched for rollback.
-func ApplyForgeMigration(root string, plan ForgeMigrationPlan) error {
+func ApplyForgeMigration(root string, plan ForgeMigrationPlan, expectedPlanSHA256 string) error {
+	if expectedPlanSHA256 == "" {
+		return fmt.Errorf("migration plan digest is required; create a preview and pass --plan-sha256")
+	}
+	actualPlanSHA256, err := ForgeMigrationPlanSHA256(plan)
+	if err != nil {
+		return err
+	}
+	if actualPlanSHA256 != expectedPlanSHA256 || plan.PlanSHA256 != actualPlanSHA256 {
+		return fmt.Errorf("migration plan digest mismatch; create a new preview")
+	}
 	if len(plan.Unmapped) > 0 {
 		return fmt.Errorf("migration has unmapped choices: %s", strings.Join(plan.Unmapped, "; "))
 	}
-	root, err := filepath.Abs(root)
+	root, err = filepath.Abs(root)
 	if err != nil {
 		return err
 	}

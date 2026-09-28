@@ -11,7 +11,7 @@ import (
 )
 
 func newMigrateCommand() *cobra.Command {
-	var output, toLayout, repository, layout, ruleKind string
+	var output, toLayout, repository, layout, ruleKind, planSHA256 string
 	var targets []string
 	var dryRun, apply, rollback bool
 	command := &cobra.Command{Use: "migrate [file]", Short: "Preview or apply a reversible project-layout migration", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
@@ -52,7 +52,13 @@ func newMigrateCommand() *cobra.Command {
 				encoder.SetIndent("", "  ")
 				return encoder.Encode(plan)
 			}
-			if err := application.ApplyForgeMigration(root, plan); err != nil {
+			if planSHA256 == "" {
+				return fmt.Errorf("--plan-sha256 is required; run --dry-run and pass its plan_sha256 value")
+			}
+			if planSHA256 != plan.PlanSHA256 {
+				return fmt.Errorf("migration plan digest mismatch; create a new preview")
+			}
+			if err := application.ApplyForgeMigration(root, plan, planSHA256); err != nil {
 				return err
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Migrated to .forge; original %s was preserved. Use --rollback to reverse this migration.\n", plan.SourcePath)
@@ -72,6 +78,7 @@ func newMigrateCommand() *cobra.Command {
 	command.Flags().StringVar(&layout, "layout", "", "Select harness when both layouts exist")
 	command.Flags().StringSliceVar(&targets, "target", nil, "Target agent for the migrated layout (repeatable)")
 	command.Flags().StringVar(&ruleKind, "rule-kind", "", "Knowledge type to assign to legacy rules when their type is unknown")
+	command.Flags().StringVar(&planSHA256, "plan-sha256", "", "Required digest from the reviewed --dry-run plan")
 	command.Flags().BoolVar(&dryRun, "dry-run", false, "Show a deterministic migration preview without writing")
 	command.Flags().BoolVar(&apply, "apply", false, "Apply the reviewed migration plan")
 	command.Flags().BoolVar(&rollback, "rollback", false, "Remove a migration-created layout only when all owned files remain intact")
