@@ -37,7 +37,9 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   ambiguous coexistence unless selection is explicit, and resolves safe
   repository-relative paths.
 - T2.2–T2.6: `.forge/forge.yaml` has a versioned contract independent from
-  Harness IR v1/v2; offline loading and reference validation are covered.
+  Harness IR v1/v2; offline loading preserves the complete manifest, and the
+  legacy compatibility projection carries project, architecture, skills, and
+  gates without aliasing mutable fields.
   Forge-to-legacy generation now fails closed with directions to native sync,
   rather than emitting a partial Harness. Versioned migration round-trip
   fixtures preserve `architecture.styles` and the legacy skill approval status

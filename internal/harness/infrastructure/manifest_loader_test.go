@@ -12,6 +12,8 @@ ir_version: 2
 project:
   name: sample
   languages: [Go]
+architecture:
+  styles: [hexagonal]
 targets: [codex, claude]
 references:
   knowledge:
@@ -21,11 +23,21 @@ references:
     - id: review
       description: Review skill
       path: .forge/skills/review/SKILL.md
+      status: approved
+      evidence:
+        - file: docs/architecture.md
+          quote: ports and adapters
 quality_gates:
   - id: tests
     command: go test ./...
     workspace: .
     workspaces: [.]
+    env: {GOFLAGS: -count=1}
+policies:
+  - id: no-network
+    description: Do not access external networks
+    capability: advisory
+    executor: instruction-text
 `
 
 func TestManifestLoaderValidatesOfflineAndPreservesRelativeReferences(t *testing.T) {
@@ -55,6 +67,19 @@ func TestManifestLoaderValidatesOfflineAndPreservesRelativeReferences(t *testing
 	project, err := LoadProject(root, "forge")
 	if err != nil || project.Manifest == nil || project.Harness.Version != 2 || project.Harness.Project.Name != "sample" {
 		t.Fatalf("project load=%#v err=%v", project, err)
+	}
+	if len(project.Harness.Architecture.Styles) != 1 || project.Harness.Architecture.Styles[0] != "hexagonal" || len(project.Harness.Skills) != 1 || project.Harness.Skills[0].Status != "approved" || project.Harness.Skills[0].Evidence[0].Quote != "ports and adapters" || project.Harness.QualityGates[0].Env["GOFLAGS"] != "-count=1" {
+		t.Fatalf("compatibility projection lost shared fields: %#v", project.Harness)
+	}
+	if project.Manifest.LayoutVersion != 1 || len(project.Manifest.Targets) != 2 || len(project.Manifest.Policies) != 1 || project.Manifest.Policies[0].ID != "no-network" || len(project.Manifest.References.Knowledge) != 1 {
+		t.Fatalf("Forge-only fields were not retained in the manifest: %#v", project.Manifest)
+	}
+	project.Harness.Architecture.Styles[0] = "mutated"
+	project.Harness.Skills[0].Evidence[0].Quote = "mutated"
+	project.Harness.QualityGates[0].Workspaces[0] = "mutated"
+	project.Harness.QualityGates[0].Env["GOFLAGS"] = "mutated"
+	if project.Manifest.Architecture.Styles[0] != "hexagonal" || project.Manifest.References.Skills[0].Evidence[0].Quote != "ports and adapters" || project.Manifest.QualityGates[0].Workspaces[0] != "." || project.Manifest.QualityGates[0].Env["GOFLAGS"] != "-count=1" {
+		t.Fatal("compatibility projection shares mutable fields with the Forge manifest")
 	}
 }
 

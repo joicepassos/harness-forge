@@ -49,7 +49,9 @@ func (ManifestLoader) Load(path string) (domain.Manifest, error) {
 }
 
 type ProjectConfig struct {
-	Layout   ProjectLayout
+	Layout ProjectLayout
+	// Harness is a compatibility projection of fields shared with the legacy
+	// IR. Forge-only knowledge, targets, and policies remain in Manifest.
 	Harness  domain.Harness
 	Manifest *domain.Manifest
 }
@@ -76,8 +78,9 @@ func (l ProjectLoader) Load(path string) (domain.Harness, error) {
 	return project.Harness, nil
 }
 
-// LoadProject resolves and loads either supported layout into one canonical
-// Harness value while retaining the Forge manifest's references and targets.
+// LoadProject resolves either supported layout. For Forge projects, Harness is
+// only a compatibility projection of shared fields; Manifest retains the full
+// Forge contract and must be used for Forge-specific knowledge and targets.
 func LoadProject(root, selection string) (ProjectConfig, error) {
 	layout, err := ResolveLayout(root, selection)
 	if err != nil {
@@ -94,6 +97,38 @@ func LoadProject(root, selection string) (ProjectConfig, error) {
 	if err != nil {
 		return ProjectConfig{}, err
 	}
-	h := domain.Harness{Version: manifest.IRVersion, Project: manifest.Project, QualityGates: manifest.QualityGates}
+	h := manifestCompatibilityProjection(manifest)
 	return ProjectConfig{Layout: layout, Harness: h, Manifest: &manifest}, nil
+}
+
+func manifestCompatibilityProjection(manifest domain.Manifest) domain.Harness {
+	h := domain.Harness{
+		Version:      manifest.IRVersion,
+		Project:      domain.Project{Name: manifest.Project.Name, Languages: append([]string(nil), manifest.Project.Languages...)},
+		Architecture: domain.Architecture{Styles: append([]string(nil), manifest.Architecture.Styles...)},
+		QualityGates: cloneQualityGates(manifest.QualityGates),
+	}
+	h.Skills = make([]domain.Skill, 0, len(manifest.References.Skills))
+	for _, skill := range manifest.References.Skills {
+		h.Skills = append(h.Skills, domain.Skill{
+			ID: skill.ID, Description: skill.Description, Path: skill.Path, Status: skill.Status,
+			Evidence: append([]domain.Evidence(nil), skill.Evidence...),
+		})
+	}
+	return h
+}
+
+func cloneQualityGates(gates []domain.QualityGate) []domain.QualityGate {
+	cloned := make([]domain.QualityGate, len(gates))
+	for i, gate := range gates {
+		cloned[i] = gate
+		cloned[i].Workspaces = append([]string(nil), gate.Workspaces...)
+		if gate.Env != nil {
+			cloned[i].Env = make(map[string]string, len(gate.Env))
+			for key, value := range gate.Env {
+				cloned[i].Env[key] = value
+			}
+		}
+	}
+	return cloned
 }
