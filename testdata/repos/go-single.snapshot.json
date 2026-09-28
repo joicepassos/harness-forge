@@ -1,0 +1,8 @@
+{
+  "files": [
+    {"path":".gitignore","kind":"other","workspace":".","size":12},
+    {"path":"README.md","kind":"doc","workspace":".","size":76},
+    {"path":"go.mod","kind":"manifest","workspace":".","size":38},
+    {"path":"main.go","kind":"source","workspace":".","size":29}
+  ]
+}
