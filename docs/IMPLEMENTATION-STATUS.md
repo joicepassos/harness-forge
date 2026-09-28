@@ -201,7 +201,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   [partial pilot results](pilot/mili-results-v1.md), and [repetition 2 record](pilot/mli01-repetition-2.md).
   T9.1 protocol is versioned. T9.2 has four valid condition runs across one
   complete task/repetition plus a single Team attempt; T9.3 records available
-  measures and missing-data limits. T9.5
+  measures and missing-data limits in a versioned run ledger; null values mean
+  unmeasured, never zero. T9.5
   publishes descriptive partial outcomes only. T9.6 provisionally defers a
   custom runtime pending the complete pilot and T7/T8 runtime evidence; see
   [ADR 0002](adr/0002-runtime-executor-decision.md). The remaining 41 planned

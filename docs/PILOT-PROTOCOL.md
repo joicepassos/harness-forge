@@ -41,29 +41,45 @@ establish statistical generalization.
 
 ## Run record
 
-Store one JSON object per run with this shape (extend only with versioned fields):
+Store one JSON object per attempted run with this shape (extend only with
+versioned fields). Missing or unmeasured values are `null`, never zero; a
+separate status distinguishes valid runs from excluded attempts. Version 2
+adds explicit run status, exclusion reason, and nullable measurements. The
+initial ledger contains only evidence already retained in the pilot records;
+it does not impute missing values.
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "task_id": "go-01",
   "repository": "go-service",
   "commit": "<immutable git SHA>",
   "condition": "baseline|team|forge|dynamic",
+  "status": "valid|excluded",
+  "exclusion_reason": null,
   "agent": "<product and build>",
   "model": "<exact model identifier>",
   "repeat": 1,
-  "started_at": "<UTC timestamp>",
-  "duration_seconds": 0,
-  "tokens": {"value": 0, "method": "reported|provider-counter|byte-upper-bound"},
+  "started_at": null,
+  "duration_seconds": null,
+  "tokens": {"value": null, "method": null},
   "cost": {"value": null, "currency": null},
-  "tests": {"passed": 0, "failed": 0, "commands": []},
-  "human_review": {"reviewer": "<blinded ID>", "score": null, "notes": ""},
-  "rule_violations": [],
+  "tests": {"status": "measured|not_run|unknown", "passed": null, "failed": null, "commands": null},
+  "human_review": {"reviewer": null, "score": null, "notes": null},
+  "rule_violations": null,
   "instruction_discovery": "observed|not_observed|unknown",
   "failure": null
 }
 ```
+
+Use an empty array only when collection was performed and found no entries;
+use `null` when collection was not performed or the value is unknown.
+
+The backfilled [run ledger](pilot/mili-run-ledger-v2.jsonl) records four valid
+condition runs and the three excluded repetition-2 attempts from available
+reports. It intentionally leaves unrecorded timings, tokens, cost, human review,
+rule violations and instruction discovery as `null`/`unknown`. This ledger is
+an audit aid, not completion of T9.2/T9.3 or a substitute for the 45-run matrix.
 
 ## Release gate and current status
 
