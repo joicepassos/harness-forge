@@ -127,8 +127,9 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   `@opencode/cli@2.0.18` confirms the effective system context for global and
   project-root `AGENTS.md`, ancestor inclusion from `packages/api`, and
   `OPENCODE_DISABLE_PROJECT_CONFIG=1` retaining only global instructions.
-  Dynamic nested discovery after starting at root, V1 behavior, other boundary
-  cases, and actual Forge adapter publication remain unverified. See
+  A separate root-started `read` call confirms nested rules are appended to
+  the next request after the agent reads inside `packages/api`. V1 behavior,
+  other boundary cases, and actual Forge adapter publication remain unverified. See
   [OpenCode adapter validation](OPENCODE-ADAPTER-VALIDATION.md).
 - T8.3: the read-only context resolver is exposed through MCP JSON-RPC stdio
   using the legacy initialize lifecycle. It negotiates `2025-11-25` and
