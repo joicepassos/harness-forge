@@ -22,6 +22,10 @@ three-condition comparison can be made from this repetition.
   A later diagnostic compilation in that clone failed at
   `InboundEventRepository.java:76` with a missing return statement. This is a
   code outcome for the contaminated clone, not a valid comparative Forge run.
+- A fresh Forge retry was prepared from the pinned commit with the frozen
+  overlay, but the Codex CLI session reported its executor as read-only and
+  could not inspect or modify the clone despite the requested `workspace-write`
+  sandbox. No task changes or tests occurred, so this retry is also invalid.
 
 The Team attempt is counted as one valid condition run, not as a complete
 repetition. No comparative claim or repetition-2 pass is made. The original

@@ -35,7 +35,8 @@ Team task attempt is valid: the independent evaluator passed 3/3 and a later
 focused verification passed 12/12. Baseline and Forge are invalid due to clone
 reuse across multiple agent sessions. A diagnostic build of the contaminated
 Forge clone failed compilation at `InboundEventRepository.java:76`; that result
-does not count as a valid Forge condition run. Detailed evidence is in [the
+does not count as a valid Forge condition run. A fresh Forge retry also stopped
+before inspection because the CLI executor was effectively read-only. Detailed evidence is in [the
 repetition 2 log](mli01-repetition-2.md).
 
 ## Limits and follow-up

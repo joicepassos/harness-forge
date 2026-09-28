@@ -144,8 +144,9 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   Team attempt: its independent evaluator passed 3/3 and later focused
   verification passed 12/12. Baseline and Forge reused clones across multiple
   agent sessions and are invalid; a diagnostic Forge build on that clone failed
-  at `InboundEventRepository.java:76`. The repetition remains incomplete and is
-  not comparative. See [the database result](pilot/mili-postgres-keyset-v1.json),
+  at `InboundEventRepository.java:76`. A fresh Forge retry also could not run:
+  the CLI executor remained read-only despite the requested workspace-write
+  setting. The repetition remains incomplete and is not comparative. See [the database result](pilot/mili-postgres-keyset-v1.json),
   [partial pilot results](pilot/mili-results-v1.md), and [repetition 2 record](pilot/mli01-repetition-2.md).
   T9.1 protocol is versioned. T9.2 has four valid condition runs across one
   complete task/repetition plus a single Team attempt; T9.3 records available
