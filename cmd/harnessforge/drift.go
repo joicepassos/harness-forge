@@ -53,6 +53,7 @@ func newDriftCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		defer reader.Close()
 		report, err := application.NewDetect(infrastructure.YAMLLoader{}, reader).Execute(cmd.Context(), path)
 		if err != nil {
 			return err

@@ -13,7 +13,10 @@ import (
 	"strings"
 )
 
-type FileReader struct{ root string }
+type FileReader struct {
+	root   string
+	handle *os.Root
+}
 
 func NewFileReader(root string) (*FileReader, error) {
 	abs, err := filepath.Abs(root)
@@ -31,7 +34,18 @@ func NewFileReader(root string) (*FileReader, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("repository must be a directory")
 	}
-	return &FileReader{root: resolved}, nil
+	handle, err := os.OpenRoot(resolved)
+	if err != nil {
+		return nil, err
+	}
+	return &FileReader{root: resolved, handle: handle}, nil
+}
+
+func (r *FileReader) Close() error {
+	if r == nil || r.handle == nil {
+		return nil
+	}
+	return r.handle.Close()
 }
 
 func (r *FileReader) Contains(ctx context.Context, path, symbol string) (bool, error) {
@@ -41,34 +55,24 @@ func (r *FileReader) Contains(ctx context.Context, path, symbol string) (bool, e
 	if path == "" || symbol == "" || filepath.IsAbs(path) || strings.Contains(path, "\\") || strings.Contains(path, ":") {
 		return false, fmt.Errorf("evidence path must be repository-relative")
 	}
-	full := filepath.Join(r.root, filepath.FromSlash(path))
-	rel, err := filepath.Rel(r.root, full)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+	if path == ".." || strings.HasPrefix(path, "../") {
 		return false, fmt.Errorf("evidence path is outside repository")
 	}
-	resolved, err := filepath.EvalSymlinks(full)
+	file, err := r.handle.Open(filepath.ToSlash(filepath.Clean(path)))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
 		}
 		return false, err
 	}
-	rel, err = filepath.Rel(r.root, resolved)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return false, fmt.Errorf("evidence path resolves outside repository")
-	}
-	info, err := os.Stat(resolved)
+	defer file.Close()
+	info, err := file.Stat()
 	if err != nil {
 		return false, err
 	}
 	if !info.Mode().IsRegular() || info.Size() > inputlimits.HistoricalEvidenceBytes {
 		return false, fmt.Errorf("evidence must be a regular file up to 4 MiB")
 	}
-	file, err := os.Open(resolved)
-	if err != nil {
-		return false, err
-	}
-	defer file.Close()
 	data, err := io.ReadAll(io.LimitReader(file, inputlimits.HistoricalEvidenceBytes+1))
 	if err != nil {
 		return false, err
