@@ -145,6 +145,10 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   interruption; pending items survive and repeated collection is idempotent.
   Capture, review, and GC serialize cross-process read-modify-write operations
   with OS file locks so concurrent mutations do not lose observations or reviews.
+  Acceptance tests delete and rebuild the generated index cache while asserting
+  a persistent observation survives, use an actual linked Git worktree to
+  verify index-cache isolation, and assert every unique payload survives
+  concurrent cross-process captures.
 - T8.1: the official-doc matrix was refreshed on 2026-09-28. No Cursor editor
   or CLI runtime is available here; current CLI docs promise root
   `AGENTS.md`/`CLAUDE.md`, while nested CLI discovery remains unverified.
@@ -268,6 +272,11 @@ approved Codex CLI was used for the Mili pilot attempts recorded above.
 After the T5.6 clone-parity update, `go test ./...` also passed on the active
 checkout. The same command passed independently in both no-Forge consumer
 clones; those small fixtures currently have no dedicated Go test files.
+After the T7.1/T7.5 acceptance additions, `go test ./...` passed on the active
+Windows checkout, including memory and linked-worktree index tests.
+Focused T7.1/T7.5 acceptance tests also passed for persistent-memory survival
+across index-cache rebuild, linked-worktree index isolation, and preservation of
+all concurrent cross-process captures.
 The OpenCode V2 Forge-export capture used the npm cache offline and a local-only
 mock provider; no paid model provider was contacted.
 
