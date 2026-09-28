@@ -72,12 +72,19 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   with an explicit conflict. Concurrent `sync` writers now serialize through
   an OS-backed repository lock stored in the user cache; lock waits honor
   cancellation, and dry-run remains read-only. Concurrent-apply, cross-process
-  lock, and lock-cancellation tests pass on Windows. T4.2/T4.3 preserve scoped
-  glob annotations in both static exports, label them advisory/textual, keep
-  deterministic ID ordering, and state that matching rules coexist without
-  implicit precedence; no native scope enforcement or nested generated outputs
-  are claimed. Renderer contract tests pass for Codex and Claude Code; runtime
-  scope and precedence acceptance remains open. Dry-run
+  lock, and lock-cancellation tests pass on Windows. T4.2 emits nested Codex
+  `AGENTS.md` for literal subtree scopes (`dir/**`) and keeps file/mixed globs
+  advisory; consumers must run Codex from the matching CWD subtree. The local
+  Codex 0.158.0-alpha.2.1 `debug prompt-input` check confirmed root-only
+  discovery at root and cumulative root-to-leaf discovery in `services/api`.
+  T4.3 emits scoped Claude rules as `.claude/rules/<sha256-id>.md` with YAML
+  `paths` frontmatter at byte zero; the compiler marks glob-dialect parity
+  unverified. Both adapters retain global content in the root file, and their
+  single-document APIs fail explicitly when scoped outputs would be discarded.
+  Renderer and sync tests cover deterministic output, ownership, stale-file
+  protection, conflicts, and symlinks. Claude runtime acceptance and target
+  conflict behavior remain open. See the [Codex validation](CODEX-ADAPTER-VALIDATION.md)
+  and [Claude export contract](CLAUDE-CODE-RULES.md). Dry-run
   reports unmanaged, edited, and unsafe output conflicts
   without writing; `sync --check` lists missing current outputs. Apply captures
   preflight snapshots and rechecks outputs immediately before removal and
