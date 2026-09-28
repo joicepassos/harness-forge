@@ -1,12 +1,12 @@
 # OpenCode adapter validation (T8.2)
 
-Status: documentation-based contract proposal. No OpenCode binary was run as
-part of this research. Official documentation was consulted on 2026-09-27; the
-V1 Rules page reported last updated 2026-09-26, while the V2 pages identify a
-documentation surface but do not specify an OpenCode release/build number for
-these semantics. “V1” and “V2” below label documentation contracts, not pinned
-binary versions. The linked official pages are the source of documented
-behavior; installed-version behavior still needs executable tests.
+Status: documentation-based contract proposal with a narrow V2 runtime
+validation added on 2026-09-28. Official documentation was consulted on
+2026-09-27; the V1 Rules page reported last updated 2026-09-26, while the V2
+pages identify a documentation surface but do not specify an OpenCode
+release/build number for these semantics. “V1” and “V2” below label
+documentation contracts, not pinned binary versions. Runtime evidence is
+recorded separately and applies only to the exact tested V2 package and cases.
 
 ## Verified behavior from official documentation
 
@@ -61,16 +61,51 @@ does not prove that OpenCode loaded a file.
 
 | Case | Files / action | Expected assertion grounded in docs | Status |
 | --- | --- | --- | --- |
-| A | Root `AGENTS.md`; run from root | Root instruction is included | Required test |
-| B | Root `AGENTS.md` plus `packages/api/AGENTS.md`; run from `packages/api` | V1 upward-discovery and V2 ancestor inclusion | Required test per pinned version |
+| A | Root `AGENTS.md`; run from root | Root instruction is included | Pass on V2 2.0.18 |
+| B | Root `AGENTS.md` plus `packages/api/AGENTS.md`; run from `packages/api` | V1 upward-discovery and V2 ancestor inclusion | Pass on V2 2.0.18; V1 still required |
 | C | Root `AGENTS.md` plus `packages/api/AGENTS.md`; start at root, then read/list `packages/api` | V2 nested rule is discovered as area is explored | Required V2 test |
 | D | Only project `CLAUDE.md` | V1 fallback loads; V2 does not use this fallback | Required test per major version |
 | E | Project `AGENTS.md` and `CLAUDE.md`, contradictory sentinels | V1 chooses AGENTS over CLAUDE; V2 AGENTS-only contract | Required test per major version |
 | F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | Required test per major version |
-| G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Required V2 test |
+| G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Pass on V2 2.0.18 |
 | H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Required V1 test |
 | I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | Required V2 regression/negative test |
 | J | Workspace outside project root with global AGENTS and nearby project AGENTS | V2 loads global only | Required V2 test |
+
+## Runtime validation: OpenCode V2 2.0.18
+
+The instruction-discovery cases below were executed on 2026-09-28 using
+`@opencode/cli@2.0.18` (`opencode v2.0.18`) on Windows (`win32`). The package
+was run from the npm cache. A temporary XDG config home supplied the global
+`AGENTS.md` and a custom OpenAI-compatible provider pointing only to a mock
+HTTP server on `127.0.0.1`; no external model provider or paid API was used.
+The mock recorded each request body as JSONL, so the assertions inspect the
+actual system messages sent by OpenCode, not filesystem presence or the mock
+response. The fixture was a temporary Git repository with distinct sentinels
+in the global, root, and `packages/api` instruction files.
+
+The instruction-file SHA-256 values were global
+`68eca69381c6d1c7d5d7cdddcf4b225755f37ed0675b50cfcca65208a19870c8`, project
+root `00df5bc6ec20187ec5cb7da1c6d051ee18dc3ccf0fa380773899602e57efddf8`, and
+`packages/api`
+`20246c2275a9200b7b0323bb8e610d09e98ea87e0513b45560e420abdc415fbb`.
+Each run used `opencode run --standalone --model mock/test --format json` from
+the listed working directory. OpenCode's JSONL request bodies were checked for
+the sentinel text in system messages; the returned `LOCAL_MOCK_OK` response
+provided no evidence about model instruction-following.
+
+| Case | Run location / setting | Observed system-message sentinels | Result |
+| --- | --- | --- | --- |
+| A | Project root | Global, project root | Pass |
+| B | `packages/api` | Global, `packages/api`, project root, in that order | Pass |
+| G | Project root with `OPENCODE_DISABLE_PROJECT_CONFIG=1` | Global only | Pass |
+
+The V2 documentation's dynamic nested-discovery scenario (start at the project
+root, then read/list `packages/api`) remains untested. This runtime result does
+not establish V1 behavior, `CLAUDE.md` fallback, config `instructions`
+resolution, outside-root behavior, conflict resolution, or any Forge adapter
+publication behavior. The mock returned a fixed local response; this validates
+the effective request context only, not model compliance or task quality.
 
 ## Adapter and test work still required
 
@@ -89,11 +124,9 @@ does not prove that OpenCode loaded a file.
    fallback, or dynamic nested discovery until tests establish the exact
    released-build behavior.
 
-This artifact is a research/validation proposal for T8.2, not evidence that the
-OpenCode adapter is implemented or that any executable compatibility test has
-passed. The local inventory found no `opencode` executable on PATH, so
-discovery, precedence, workspace-boundary, environment-override, and
-effective-context claims have not been runtime-validated. Documentation-based
-behavior must not be presented as a tested version matrix until the exact
-release, install channel, OS, fixture revision, and observed outcome are
-recorded.
+This artifact remains a research and validation record for T8.2, not evidence
+that the OpenCode adapter is implemented. The runtime evidence above covers
+effective V2 instruction context for only the named build and three cases;
+other discovery, compatibility, and adapter claims remain open until tested
+with their exact release, install channel, OS, fixture revision, and observed
+outcome.
