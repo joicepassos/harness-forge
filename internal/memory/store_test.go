@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	indexdomain "harnessforge/internal/indexing/domain"
+	indexinfra "harnessforge/internal/indexing/infrastructure"
 	"harnessforge/internal/safefile"
 )
 
@@ -155,6 +157,33 @@ func TestCaptureStoresExplicitCandidateAndDeduplicatesOnlySameSource(t *testing.
 	items, err := store.List()
 	if err != nil || len(items) != 2 {
 		t.Fatalf("list=%d err=%v", len(items), err)
+	}
+}
+
+func TestRebuildingIndexCachePreservesPersistentMemoryObservations(t *testing.T) {
+	repo := t.TempDir()
+	cache := filepath.Join(t.TempDir(), "cache")
+	store := &Store{root: filepath.Join(t.TempDir(), "persistent-memory"), repositoryRoot: repo, repositoryID: "repo-id", checkoutID: "checkout-id"}
+	want, err := store.Capture("Preserve this observation across index rebuilds.", "manual", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	indices := indexinfra.JSONStore{CacheDir: cache}
+	if err := indices.Save(repo, indexdomain.Index{Version: "index-v1", Model: "first"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(cache); err != nil {
+		t.Fatal(err)
+	}
+	if err := indices.Save(repo, indexdomain.Index{Version: "index-v1", Model: "rebuilt"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != want.ID || got[0].Content != want.Content {
+		t.Fatalf("persistent observations after index cache rebuild = %#v, want observation %q", got, want.ID)
 	}
 }
 
