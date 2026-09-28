@@ -38,6 +38,14 @@ The default ranking remains the existing deterministic lexical heuristic.
 penalizes lexical overlap between selected excerpts. It is opt-in and should
 be compared against the retrieval eval corpus before becoming a default.
 
+For an explicitly paired retrieval comparison, use
+`context explain <repository> <prompt> --compare-knowledge`. The command builds
+one plan with approved Forge knowledge excluded and one with it included, using
+the same model, estimator, budget, ranking options, and task paths. JSON includes
+both plans, selected knowledge IDs, and the estimated token delta. This is a
+context-selection proxy; it does not measure task correctness or productivity.
+Use `--task-path` to evaluate path-scoped knowledge in both plans.
+
 The document index exposes the same progression through `search`: the default is
 embedding ranking, `--hybrid` blends lexical overlap with embedding similarity,
 and `--diverse` applies deterministic MMR-like reordering to hybrid results.

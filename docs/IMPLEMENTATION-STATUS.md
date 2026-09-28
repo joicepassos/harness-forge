@@ -84,7 +84,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   frontend `Build` integration coverage verifies both selection and explicit
   out-of-scope exclusions. T6.3 reports selected-item and early prompt-envelope
   overflow with the configured estimator and an explicit excluded-prompt reason.
-  T6.4 exposes comparison proxies; task-level quality remains unmeasured.
+  T6.4 adds `context explain --compare-knowledge`, which emits paired plans for
+  the same prompt, model, estimator, budget, ranking options, and task paths,
+  with and without approved knowledge. It reports selected knowledge IDs and
+  estimated token delta while labeling the result as a retrieval proxy;
+  task-level quality remains unmeasured.
 - T7.1–T7.5: local observation capture, review, candidate publication,
   audit provenance, deduplication, and checkout isolation are implemented and
   covered. T7.4 supports preview/apply, age and quota retention, pending-item
@@ -178,8 +182,8 @@ paid provider calls were made.
   context API and `context explain --task-path`; glob matching is segment-aware
   with `**`, and backend/frontend scope fixtures pass. T6.3 reports early
   prompt-envelope overflow with the same configured estimator and an explicit
-  excluded-prompt reason. T6.4 comparison proxies must not be described as
-  measured task quality.
+  excluded-prompt reason. T6.4's paired token/selection report is a retrieval
+  proxy and must not be described as measured task quality.
 - T1.7/T2/T3/T4/T5 also retain acceptance gaps listed in their status entries;
   static fixtures and repository-level tests are not external runtime evidence.
 - This checkout contains pre-existing repository-context/retrieval changes;

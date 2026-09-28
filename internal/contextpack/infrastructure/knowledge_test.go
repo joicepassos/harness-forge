@@ -74,6 +74,24 @@ func TestBuildAddsApprovedForgeKnowledgeToSelectedSources(t *testing.T) {
 	t.Fatalf("approved Forge knowledge was not selected: included=%#v excluded=%#v", plan.Included, plan.Excluded)
 }
 
+func TestBuildCanExcludeApprovedForgeKnowledgeForPairedBaseline(t *testing.T) {
+	root := t.TempDir()
+	writeKnowledgeFixture(t, root, "auth-expiration", harnessdomain.KnowledgeApproved, "alice", "Authentication tokens expire after fifteen minutes.", nil)
+	writeForgeManifest(t, root, `
+  - id: auth-expiration
+    path: .forge/knowledge/auth-expiration.md`)
+	prompt := "How long until authentication tokens expire?"
+	plan, err := Build(context.Background(), root, prompt, "", contextdomain.Options{BudgetTokens: 12000, ExcludeKnowledge: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, excerpt := range plan.Included {
+		if excerpt.KnowledgeID != "" {
+			t.Fatalf("paired baseline included approved Forge knowledge: %#v", excerpt)
+		}
+	}
+}
+
 func TestForgeKnowledgeCandidatesSelectByTaskPathGlobAndKeyword(t *testing.T) {
 	root := t.TempDir()
 	writeScopedKnowledgeFixture(t, root, "backend-webhooks", "services/backend/**", "webhook", "Backend webhook delivery uses the queue.")

@@ -90,11 +90,13 @@ func Build(ctx context.Context, repositoryPath, prompt, model string, options do
 		return nil, err
 	}
 	candidates = append(candidates, fileCandidates...)
-	knowledgeCandidates, err := forgeKnowledgeCandidates(root, options.Layout, prompt, options.TaskPaths)
-	if err != nil {
-		return nil, err
+	if !options.ExcludeKnowledge {
+		knowledgeCandidates, err := forgeKnowledgeCandidates(root, options.Layout, prompt, options.TaskPaths)
+		if err != nil {
+			return nil, err
+		}
+		candidates = append(candidates, knowledgeCandidates...)
 	}
-	candidates = append(candidates, knowledgeCandidates...)
 	candidates = append(candidates, fileExclusions...)
 	if options.UseBM25 {
 		applyBM25(candidates, prompt)

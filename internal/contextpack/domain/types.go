@@ -16,7 +16,10 @@ type Options struct {
 	UseMMR    bool
 	Model     string
 	Layout    string
-	Counter   TokenCounter
+	// ExcludeKnowledge omits Forge knowledge so paired context plans can compare
+	// the same repository and prompt with and without approved knowledge.
+	ExcludeKnowledge bool
+	Counter          TokenCounter
 }
 
 // TokenCounter lets a provider supply model-specific input token accounting
