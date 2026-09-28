@@ -9,7 +9,21 @@ import (
 	"harnessforge/internal/contextpack"
 )
 
-const ProtocolVersion = "2025-06-18"
+// ProtocolVersion is the newest MCP revision this server supports over the
+// legacy initialize/initialized lifecycle. MCP 2026-07-28 uses a stateless
+// lifecycle and is not implemented by this stdio server.
+const ProtocolVersion = "2025-11-25"
+
+const previousProtocolVersion = "2025-06-18"
+
+func negotiatedProtocolVersion(requested string) string {
+	if requested == previousProtocolVersion {
+		return previousProtocolVersion
+	}
+	// For a revision this server does not implement (including stateless MCP
+	// revisions), offer the newest supported legacy revision.
+	return ProtocolVersion
+}
 
 const DefaultBudgetTokens = contextpack.DefaultBudgetTokens
 

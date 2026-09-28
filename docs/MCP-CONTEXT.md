@@ -1,8 +1,10 @@
 # Read-only MCP context contract (T8.3)
 
 HarnessForge can expose its existing context resolver as one read-only MCP
-resource. The stdio server implements JSON-RPC initialize, ping, resources/list,
-and resources/read for protocol version `2025-06-18`. A client can launch it with:
+resource. The stdio server implements the legacy JSON-RPC `initialize` / `initialized`
+lifecycle, `ping`, `resources/list`, and `resources/read`. It negotiates
+`2025-11-25` (the newest legacy handshake revision) and `2025-06-18`; for other
+requested revisions it counter-offers `2025-11-25`. A client can launch it with:
 
 ```sh
 harnessforge mcp serve --repository . --budget 4000
@@ -33,3 +35,10 @@ whether and when to read the resource and whether to include its content in a
 model request. Listing a resource does not guarantee automatic context loading.
 The server advertises only read-only resource capabilities; it does not expose
 tools, prompts, subscriptions, or resource-change notifications.
+
+The `2026-07-28` MCP revision removes the initialize handshake in favor of a
+stateless lifecycle. HarnessForge does not implement that lifecycle yet; a
+client requesting it through `initialize` receives the supported legacy
+counter-offer instead. See the official [2025-11-25 lifecycle version
+negotiation](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle)
+and [2026-07-28 release notes](https://blog.modelcontextprotocol.io/posts/2026-07-28/).

@@ -109,7 +109,7 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 				rpcErr = &rpcError{Code: -32600, Message: "server is already initialized"}
 			} else {
 				initializeResponded = true
-				result = map[string]any{"protocolVersion": ProtocolVersion, "capabilities": map[string]any{"resources": map[string]any{"listChanged": false}}, "serverInfo": map[string]string{"name": "harnessforge", "version": "1"}, "instructions": "Read-only Forge context resource. Resource reads do not execute project commands."}
+				result = map[string]any{"protocolVersion": negotiatedProtocolVersion(p.ProtocolVersion), "capabilities": map[string]any{"resources": map[string]any{"listChanged": false}}, "serverInfo": map[string]string{"name": "harnessforge", "version": "1"}, "instructions": "Read-only Forge context resource. Resource reads do not execute project commands."}
 			}
 		case "ping":
 			result = map[string]any{}

@@ -22,7 +22,7 @@ func TestServeInitializeListAndRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := strings.Join([]string{
-		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}`,
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}`,
 		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
 		`{"jsonrpc":"2.0","id":2,"method":"resources/list"}`,
 		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"forge://context/current"}}`,
@@ -94,8 +94,18 @@ func TestServeErrorsAndLimits(t *testing.T) {
 		if err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(input), &out); err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(out.String(), `"code":-32602`) {
-			t.Fatalf("expected invalid params: %s", out.String())
+		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+		var initialize struct {
+			Result struct {
+				ProtocolVersion string `json:"protocolVersion"`
+			} `json:"result"`
+			Error *rpcError `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(lines[0]), &initialize); err != nil || initialize.Error != nil || initialize.Result.ProtocolVersion != ProtocolVersion {
+			t.Fatalf("unsupported protocol version was not counter-offered: %#v err=%v", initialize, err)
+		}
+		if !strings.Contains(lines[1], `"code":-32602`) {
+			t.Fatalf("expected invalid resource URI: %s", lines[1])
 		}
 	})
 	t.Run("oversized input", func(t *testing.T) {
@@ -193,5 +203,40 @@ func TestServeRespondsToInvalidRequestWithoutID(t *testing.T) {
 	}
 	if response.Error == nil || response.Error.Code != -32600 || response.ID != nil {
 		t.Fatalf("invalid request response = %#v", response)
+	}
+}
+
+func TestServeNegotiatesSupportedAndUnsupportedProtocolVersions(t *testing.T) {
+	tests := []struct {
+		name      string
+		requested string
+		want      string
+	}{
+		{name: "latest handshake revision", requested: ProtocolVersion, want: ProtocolVersion},
+		{name: "previous supported revision", requested: previousProtocolVersion, want: previousProtocolVersion},
+		{name: "unsupported old revision", requested: "2024-11-05", want: ProtocolVersion},
+		{name: "unknown revision", requested: "not-a-version", want: ProtocolVersion},
+		{name: "stateless revision is counter-offered legacy", requested: "2026-07-28", want: ProtocolVersion},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":%q}}`+"\n", tt.requested)
+			var out strings.Builder
+			if err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(input), &out); err != nil {
+				t.Fatal(err)
+			}
+			var response struct {
+				Result struct {
+					ProtocolVersion string `json:"protocolVersion"`
+				} `json:"result"`
+				Error *rpcError `json:"error"`
+			}
+			if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Error != nil || response.Result.ProtocolVersion != tt.want {
+				t.Fatalf("negotiation result = %#v; want version %q", response, tt.want)
+			}
+		})
 	}
 }
