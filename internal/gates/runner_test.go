@@ -72,7 +72,7 @@ func TestRunCancellationAndTimeoutStopGateDescendants(t *testing.T) {
 			case <-time.After(12 * time.Second):
 				t.Fatal("gate did not stop after cancellation/timeout")
 			}
-			// The child waits several seconds before writing this marker.
+			// The child waits ten seconds before writing this marker.
 			time.Sleep(1200 * time.Millisecond)
 			if _, err := os.Stat(marker); !os.IsNotExist(err) {
 				t.Fatalf("descendant survived process-tree termination (marker stat error: %v)", err)
@@ -97,7 +97,7 @@ func descendantCommand(t *testing.T, root, started, marker string) string {
 	t.Helper()
 	if runtime.GOOS == "windows" {
 		// A batch file avoids cmd.exe /C's nested-quote parsing differences.
-		batch := "@echo off\r\necho started>" + started + "\r\nping -n 12 127.0.0.1 >NUL\r\necho alive>" + marker + "\r\nping -n 30 127.0.0.1 >NUL\r\n"
+		batch := "@echo off\r\necho started>" + started + "\r\npowershell.exe -NoProfile -NonInteractive -Command \"Start-Sleep -Seconds 10\"\r\necho alive>" + marker + "\r\npowershell.exe -NoProfile -NonInteractive -Command \"Start-Sleep -Seconds 30\"\r\n"
 		path := filepath.Join(root, "gate-tree.cmd")
 		if err := os.WriteFile(path, []byte(batch), 0600); err != nil {
 			t.Fatal(err)
