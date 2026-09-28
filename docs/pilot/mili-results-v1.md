@@ -2,9 +2,10 @@
 
 Status: incomplete; descriptive evidence only. The user-approved plan calls for
 five tasks, three repetitions, and three conditions (45 agent runs total).
-Only MLI-01 repetition 1 has three valid condition runs. Repetition 2 was
-excluded after condition contamination; the other 42 planned valid runs have
-not been executed. No runtime claim is based on this partial dataset.
+MLI-01 repetition 1 has three valid condition runs. Repetition 2 has one valid
+Team condition attempt; its baseline and Forge attempts used multiple agent
+sessions on the same clone and are invalid. Four of the 45 planned condition
+runs are valid; 41 remain. No runtime claim is based on this partial dataset.
 
 ## MLI-01 repetition 1
 
@@ -27,20 +28,21 @@ agent discovered each instruction source were not captured. Those measures are
 missing, not zero. The file counts include untracked files in each local clone;
 insertions/deletions count tracked files only.
 
-## Repetition 2 exclusion
+## Repetition 2 status
 
-Repetition 2 produced no valid comparative result. The nominal baseline clone
-contained production and test changes for the task; the Team clone had one
-failure in its eight agent-authored focused tests; Forge failed Java compilation
-because of a missing return and had a duplicate agent process. Detailed evidence
-is in [the repetition 2 log](mli01-repetition-2.md). The runs remain excluded
-from scoring.
+Repetition 2 is incomplete and has no three-condition comparative result. Its
+Team task attempt is valid: the independent evaluator passed 3/3 and a later
+focused verification passed 12/12. Baseline and Forge are invalid due to clone
+reuse across multiple agent sessions. A diagnostic build of the contaminated
+Forge clone failed compilation at `InboundEventRepository.java:76`; that result
+does not count as a valid Forge condition run. Detailed evidence is in [the
+repetition 2 log](mli01-repetition-2.md).
 
 ## Limits and follow-up
 
 One task with one valid repetition is far below the frozen sample plan and
 cannot support a quality or efficiency advantage for Team or Forge. The
-Mili-specific continuation is to rerun the contaminated rotation from newly
-verified clean clones, finish repetitions 2 and 3, execute the remaining four
+Mili-specific continuation is to rerun invalid conditions from newly verified
+clean clones, finish repetitions 2 and 3, execute the remaining four
 tasks, and capture runtime, token use, full project-test results, review
 outcomes, rule violations, and instruction-source discovery for each run.

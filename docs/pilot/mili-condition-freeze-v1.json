@@ -148,7 +148,7 @@
     "rubric_file": "mili-evaluator-v1.md",
     "rubric_sha256": "eb0212c488b7647c61b537100c08021cb366f4d6e204d26c7518c2acf11d8049",
     "evaluator_source": "Five task evaluators and PostgreSQL probe retained with hashes. MLI-01 source v3 supersedes the incompatible v1/v2 measurement and is used identically for baseline, team and Forge repetition 1.",
-    "status": "running: MLI-01 repetition 1 has three independent acceptance passes and partial measurements; repetition 2 excluded; full matrix pending",
+    "status": "running: MLI-01 repetition 1 has three valid condition runs; repetition 2 has one valid Team attempt and invalid baseline/Forge retries due to clone reuse across sessions; full matrix pending",
     "baseline_smoke_file": "baseline-mili-v1.json",
     "baseline_smoke_status": "passed: 8 tests, 0 failures, 0 skipped, no Docker",
     "inventory_file": "inventory-v1.json",
@@ -189,11 +189,11 @@
         "baseline_result": "3 acceptance tests pass on clean baseline; old and tenant-scoped repository API signatures supported"
       }
     ],
-    "run_status": "One valid task/repetition across three conditions: MLI-01 repetition 1. Independent v3 evaluator: 3/3 per condition. Agent focused suites were not run per retained CLI reports. Repetition 2 excluded. 42 valid agent runs remain; three attempted runs excluded. Partial results and provisional runtime deferral are documented; pilot incomplete.",
+    "run_status": "Four valid condition runs: MLI-01 repetition 1 baseline/team/Forge plus repetition 2 Team. Independent v3 evaluator: 3/3 in all valid runs. Repetition 2 baseline/Forge are invalid due to multiple agent sessions on one clone; Forge diagnostic compilation failed at InboundEventRepository.java:76. 41 planned condition runs remain; pilot incomplete.",
     "mli01_repetition_1_measurements": "See mli01-repetition-1.md: condition diff sizes recorded; duration, tokens, review scores, rule violations and discovery not captured.",
     "partial_results_file": "mili-results-v1.md",
     "runtime_decision_file": "../adr/0002-runtime-executor-decision.md",
-    "mli01_repetition_2_exclusion": "Excluded from scoring. Intended rotation was team, Forge, baseline. The supposed baseline clone's production files and tests were modified with the MLI-01 task patch; the team clone's agent-authored focused tests had 1 failure of 8; and Forge had a compile error in InboundEventRepository.java (missing return). A duplicate Forge agent process also ran. These runs are retained only as local audit artifacts in ignored .pilot-runs/ and do not count toward the 45-run matrix. No repetition-2 acceptance outcomes are claimed.",
+    "mli01_repetition_2_status": "Incomplete repetition. Team is one valid condition attempt: independent evaluator 3/3 and later focused suite 12/12. Baseline and Forge are invalid because multiple agent sessions reused the same clone. Forge diagnostic compilation on the contaminated clone failed at InboundEventRepository.java:76. Logs and clones remain in ignored .pilot-runs/. No three-condition comparison is claimed.",
     "evaluator_compilation": "MLI-01, MLI-02, MLI-03, and MLI-04 sources compiled in disposable clean pinned clones. The MLI-02 evaluator ran three characterization tests successfully and captured the malformed-cursor baseline defects. These are evaluator baselines, not coding-agent outcome runs.",
     "mli02_probe": "Independent controller evaluator passes on strict parser patch and fails against pinned baseline malformed cursors; no coding-agent run.",
     "mli05_probe": "Jayway JsonPath 2.10.0: frozen `$[` expression raises InvalidPathException and $.type compiles.",

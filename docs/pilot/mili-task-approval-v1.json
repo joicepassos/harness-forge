@@ -39,7 +39,7 @@
     "baseline": "Fresh detached copy of pinned commit 49402ad341a7e8a01aee7968d1b10d91b44c0d1c with no overlays.",
     "team": "Exact four-file bundle frozen in docs/pilot/mili-team-v1/files; hashes recorded in mili-condition-freeze-v1.json.",
     "forge": "Exact four-file generated bundle frozen in docs/pilot/mili-forge-condition-v1/files; source and manifest hashes recorded in mili-condition-freeze-v1.json.",
-    "first_repetition": "MLI-01 completed for baseline, team, and Forge; 3/3 independent v3 acceptance tests pass per condition. 42 of 45 planned runs remain."
+    "first_repetition": "MLI-01 repetition 1 completed for baseline, team, and Forge; 3/3 independent v3 acceptance tests pass per condition. Repetition 2 has one valid Team condition attempt (3/3 acceptance; 12/12 later focused tests); baseline and Forge retries are invalid due to clone reuse across agent sessions. Four of 45 condition runs are valid; 41 remain."
   },
   "run_performed": true,
   "open_freeze_requirements": [],
