@@ -44,7 +44,11 @@ func (YAMLLoader) Load(path string) (domain.Harness, error) {
 	if err := h.Validate(); err != nil {
 		return h, err
 	}
-	if err := schemas.Validate("harness-v1.schema.json", data); err != nil {
+	schema := "harness-v1.schema.json"
+	if h.Version == 2 {
+		schema = "harness-v2.schema.json"
+	}
+	if err := schemas.Validate(schema, data); err != nil {
 		return h, err
 	}
 	return h, nil
