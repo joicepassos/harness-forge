@@ -187,7 +187,11 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   repetitions. The pinned Mili commit, four-file team bundle, generated Forge
   source/export, task text, model/effort, run rotation, and baseline smoke are
   hash-recorded in the pilot freeze files. The original Mili checkout is intact.
-  All five independent task evaluators are frozen by hash. The MLI-02 evaluator
+  The original independent task evaluators were frozen by hash. After the user
+  confirmed the task-draft wording, `mili-condition-freeze-v2.json` pins rubric
+  v2 and MLI-01 evaluator V4; V4 compiled and ran on a clean pinned baseline
+  with three expected acceptance failures. V3 MLI-01 results are historical
+  and excluded from the revised score. The MLI-02 evaluator
   uses the real service/controller and its three characterization tests pass
   on Temurin 25.0.4.1. The four malformed cursor observations are 500, 200,
   200, and 500; the accepted malformed cursors cause repository queries.
@@ -213,8 +217,9 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   the CLI executor remained read-only despite the requested workspace-write
   setting. The repetition remains incomplete and is not comparative. See [the database result](pilot/mili-postgres-keyset-v1.json),
   [partial pilot results](pilot/mili-results-v1.md), and [repetition 2 record](pilot/mli01-repetition-2.md).
-  T9.1 protocol is versioned. T9.2 has four valid condition runs across one
-  complete task/repetition plus a single Team attempt; T9.3 records available
+  T9.1 protocol is versioned. The v1 ledger retains four valid condition runs,
+  but the revised v2 scoring matrix starts at 0/45 because MLI-01 V3 does not
+  meet the approved rubric. T9.3 records available
   measures and missing-data limits in a versioned run ledger; null values mean
   unmeasured, never zero. T9.5
   publishes descriptive partial outcomes only. T9.6 provisionally defers a

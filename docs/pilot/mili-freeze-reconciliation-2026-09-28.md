@@ -16,23 +16,28 @@ and three repetitions per condition. It is marked `partially_frozen` and
 the evaluator/condition freeze. The mutable approval record and the v1 freeze
 remain unchanged.
 
-## Acceptance decision still required
+## Follow-up approval and evaluator revision
 
-The rubric at the recorded freeze digest differs from the current rubric. For
-MLI-01 detail lookup, the original criterion requires the foreign event to have
-the same externally observable not-found response as an unknown ID. The current
-wording requires HTTP 404 and no tenant-B disclosure. The user must select which
-criterion governs the pilot.
+On 2026-09-28, the user confirmed: “Sim: MLI-01–05, Codex CLI padrão, 3
+repetições” in response to using the task texts from `tasks-draft-v1.md` and
+the default Codex CLI configuration. The approved MLI-01 task says foreign
+detail and reprocess must be indistinguishable from not found. This resolves
+the acceptance choice in favor of the draft task text.
 
-The reprocess criterion also needs an exact status decision. The original says
-the foreign event returns the same 404 as an unknown ID; the current wording
-says the same not-found status. The MLI-01 v3 evaluator permits 400 or 404 for
-each response independently and does not require them to match. Its detail
-assertion also only checks that the body omits the tenant-A event ID; it does
-not establish 404, response equivalence, or absence of the tenant-B event ID.
-Thus prior v3 results do not establish either rubric version in full.
+Rubric v2 makes that observable requirement explicit: foreign and unknown
+detail/reprocess requests both return 404 with equal content type and response
+body; foreign-event responses contain no tenant-B event ID; and foreign
+reprocess never mutates the event. `mili-evaluator-v2.md` and
+`mili-evaluator-sources-v2/Mli01AcceptanceTestV4.java` record this revision.
+The earlier V3 evaluator allowed 400 or 404 and did not compare detail
+responses, so its MLI-01 outcomes do not establish the approved criterion.
+Those results remain historical and must be re-evaluated with V4 or rerun from
+fresh clones before they count toward the pilot.
 
-Before more comparison runs, record the selected detail and reprocess criteria,
-write a reviewed evaluator that asserts them, and freeze a new rubric/evaluator
-pair with reproducible hashes. Existing run records remain historical until
-their evidence can be evaluated against that pair.
+The immutable historical approval snapshot and v1 freeze remain unchanged.
+`mili-condition-freeze-v2.json` records the approved task/configuration and the
+rubric/evaluator hashes. The V4 evaluator compiled and ran against a fresh clone
+of the pinned baseline (3 tests, 3 expected contract failures). No scored agent
+condition has run under revision 2 yet; prior V3 outcomes are not included in
+its 0/45 count. The approved task set, Codex CLI defaults, and three
+repetitions are unchanged.
