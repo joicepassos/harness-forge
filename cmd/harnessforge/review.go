@@ -34,8 +34,13 @@ func newReviewCommand() *cobra.Command {
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), presentationFor(cmd.OutOrStdout()).status("success", message))
 			return err
 		}
-		if resolveErr != nil && !strings.Contains(resolveErr.Error(), "missing") {
-			return resolveErr
+		if resolveErr != nil {
+			// An explicit layout is a source selection, not a hint. In
+			// particular, a missing Forge layout must never fall through and
+			// mutate the legacy Harness file.
+			if layout != "" || !strings.Contains(resolveErr.Error(), "missing") {
+				return resolveErr
+			}
 		}
 		if err := application.NewReview(infrastructure.YAMLRuleStore{}, infrastructure.EvidenceRevalidator{Root: root}).Execute(path, args[0], args[1]); err != nil {
 			return err
