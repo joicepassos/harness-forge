@@ -34,8 +34,10 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   `go test -count=1 ./internal/generation/... ./internal/harness/... ./internal/discovery/... ./internal/drift/... ./cmd/harnessforge` passed after this change. External clone-agent acceptance remains unverified; see
   [P0–T1 acceptance](acceptance/p0-t1.md).
 - T2.1: a shared layout resolver discovers `.harness` or `.forge`, rejects
-  ambiguous coexistence unless selection is explicit, and resolves safe
-  repository-relative paths.
+  ambiguous coexistence unless selection is explicit, rejects symlinked
+  layout directories and referenced path components, and resolves safe
+  repository-relative paths. Regression tests cover internal and external
+  symlink targets for both layout directories and references.
 - T2.2–T2.6: `.forge/forge.yaml` has a versioned contract independent from
   Harness IR v1/v2; offline loading preserves the complete manifest, and the
   legacy compatibility projection carries project, architecture, skills, and
