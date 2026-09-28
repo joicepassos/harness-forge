@@ -176,6 +176,79 @@ func TestBuildSelectsKnowledgeByTaskPathAndReportsOutOfScopeExclusion(t *testing
 	}
 }
 
+func TestBuildExplainsHealthAndKeywordKnowledgeExclusions(t *testing.T) {
+	root := t.TempDir()
+	writeKnowledgeFixtureWithMetadata(t, root, "stale-guidance", harnessdomain.KnowledgeApproved, "alice", "Stale webhook guidance.", nil, nil, []string{"webhook"})
+	writeKnowledgeFixtureWithMetadata(t, root, "missing-guidance", harnessdomain.KnowledgeApproved, "alice", "Missing webhook guidance.", nil, nil, []string{"webhook"})
+	writeScopedKnowledgeFixture(t, root, "keyword-mismatch", "services/backend/**", "webhook", "Webhook delivery retries through the queue.")
+	writeScopedKnowledgeFixture(t, root, "no-prompt-keywords", "services/backend/**", "webhook", "Webhook delivery is asynchronous.")
+	setKnowledgeFixtureHealth(t, root, "stale-guidance", harnessdomain.KnowledgeStale)
+	setKnowledgeFixtureHealth(t, root, "missing-guidance", harnessdomain.KnowledgeMissing)
+	writeForgeManifest(t, root, `
+  - id: stale-guidance
+    path: .forge/knowledge/stale-guidance.md
+  - id: missing-guidance
+    path: .forge/knowledge/missing-guidance.md
+  - id: keyword-mismatch
+    path: .forge/knowledge/keyword-mismatch.md
+  - id: no-prompt-keywords
+    path: .forge/knowledge/no-prompt-keywords.md`)
+
+	for _, test := range []struct {
+		prompt, id, reason string
+	}{
+		{"Update webhook", "stale-guidance", "approved knowledge health is stale"},
+		{"Update webhook", "missing-guidance", "approved knowledge health is missing"},
+		{"Update audit logging", "keyword-mismatch", "approved knowledge keywords do not match the task prompt"},
+		{"do it", "no-prompt-keywords", "task prompt contains no relevant keywords for approved knowledge"},
+	} {
+		t.Run(test.id, func(t *testing.T) {
+			plan, err := Build(context.Background(), root, test.prompt, "", contextdomain.Options{
+				Layout: "forge", TaskPaths: []string{"services/backend/api/handler.go"}, BudgetTokens: 12000,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, excerpt := range plan.Included {
+				if excerpt.KnowledgeID == test.id {
+					t.Fatalf("excluded knowledge %q was included: %#v", test.id, excerpt)
+				}
+			}
+			for _, excerpt := range plan.Excluded {
+				if excerpt.KnowledgeID == test.id {
+					if excerpt.Status != "excluded" || excerpt.Reason != test.reason || len(excerpt.Origins) < 2 {
+						t.Fatalf("knowledge exclusion lacks explicit reason or provenance: %#v", excerpt)
+					}
+					return
+				}
+			}
+			t.Fatalf("Build omitted knowledge %q without an explanation: excluded=%#v", test.id, plan.Excluded)
+		})
+	}
+}
+
+func setKnowledgeFixtureHealth(t *testing.T, root, id string, health harnessdomain.KnowledgeHealth) {
+	t.Helper()
+	filename := filepath.Join(root, ".forge", "knowledge", id+".md")
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, err := parseKnowledgeDocument(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item.Health = health
+	metadata, err := yamlMarshalFixture(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document := append(append([]byte("---\n"), metadata...), []byte("---\n\n# Knowledge\n")...)
+	if err := os.WriteFile(filename, document, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func hasKnowledgeExcerpt(excerpts []contextdomain.Excerpt, id string) bool {
 	for _, excerpt := range excerpts {
 		if excerpt.KnowledgeID == id {

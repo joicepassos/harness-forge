@@ -86,6 +86,11 @@ func forgeKnowledgeCandidates(root, selection, prompt string, taskPaths []string
 			return nil, fmt.Errorf("knowledge %q review metadata hash mismatch; review is no longer valid", item.ID)
 		}
 		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing {
+			reason := "approved knowledge health is stale"
+			if item.Health == harnessdomain.KnowledgeMissing {
+				reason = "approved knowledge health is missing"
+			}
+			candidates = append(candidates, excludedKnowledge(item, reference.Path, prompt, reason))
 			continue
 		}
 		if !knowledgePathApplies(item.Scope.Paths, taskPaths) {
@@ -99,7 +104,8 @@ func forgeKnowledgeCandidates(root, selection, prompt string, taskPaths []string
 			})
 			continue
 		}
-		if !knowledgeApplies(nil, item.Keywords, taskPaths, prompt) {
+		if reason := knowledgeKeywordExclusionReason(item.Keywords, prompt); reason != "" {
+			candidates = append(candidates, excludedKnowledge(item, reference.Path, prompt, reason))
 			continue
 		}
 		evidenceHash, err := harnessinfra.KnowledgeFingerprint(root, reference.Path, reference.ID, item.Evidence)
@@ -130,6 +136,37 @@ func forgeKnowledgeCandidates(root, selection, prompt string, taskPaths []string
 	return candidates, nil
 }
 
+func excludedKnowledge(item harnessdomain.KnowledgeItem, documentPath, prompt, reason string) domain.Excerpt {
+	origins := []string{"forge-knowledge:" + item.ID, "forge-document:" + documentPath}
+	return domain.Excerpt{
+		ID: application.StableID("forge-knowledge", item.ID), Source: "forge-knowledge:" + item.ID,
+		Path: documentPath, Text: item.Content,
+		Relevance:       application.Relevance(prompt, strings.Join(item.Scope.Paths, " "), item.Content),
+		EstimatedTokens: application.EstimateTokens(item.Content), Status: "excluded", Reason: reason,
+		Origins: origins, KnowledgeID: item.ID, KnowledgeScope: append([]string(nil), item.Scope.Paths...),
+	}
+}
+
+func knowledgeKeywordExclusionReason(keywords []string, prompt string) string {
+	if len(keywords) == 0 || knowledgeKeywordMatches(keywords, prompt) {
+		return ""
+	}
+	if len(application.Terms(prompt)) == 0 {
+		return "task prompt contains no relevant keywords for approved knowledge"
+	}
+	return "approved knowledge keywords do not match the task prompt"
+}
+
+func knowledgeKeywordMatches(keywords []string, prompt string) bool {
+	lowerPrompt := strings.ToLower(prompt)
+	for _, keyword := range keywords {
+		if strings.Contains(lowerPrompt, strings.ToLower(strings.TrimSpace(keyword))) {
+			return true
+		}
+	}
+	return false
+}
+
 // knowledgeApplies treats scope paths and explicit keywords as independent
 // constraints. Unscoped knowledge remains generally available; scoped
 // knowledge requires at least one matching task path. When keywords are
@@ -138,16 +175,7 @@ func knowledgeApplies(scopes, keywords, taskPaths []string, prompt string) bool 
 	if !knowledgePathApplies(scopes, taskPaths) {
 		return false
 	}
-	if len(keywords) == 0 {
-		return true
-	}
-	lowerPrompt := strings.ToLower(prompt)
-	for _, keyword := range keywords {
-		if strings.Contains(lowerPrompt, strings.ToLower(strings.TrimSpace(keyword))) {
-			return true
-		}
-	}
-	return false
+	return len(keywords) == 0 || knowledgeKeywordMatches(keywords, prompt)
 }
 
 func knowledgePathApplies(scopes, taskPaths []string) bool {

@@ -115,7 +115,9 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   metadata hash validation, freshness checks, provenance, scope, explicit
   keywords, and task-path glob matching. The CLI exposes task paths. Backend /
   frontend `Build` integration coverage verifies both selection and explicit
-  out-of-scope exclusions. T6.3 reports selected-item and early prompt-envelope
+  out-of-scope exclusions. Context plans also explain approved knowledge omitted
+  for stale or missing health, keyword mismatch, or prompts with no relevant
+  keywords. T6.3 reports selected-item and early prompt-envelope
   overflow with the configured estimator and an explicit excluded-prompt reason.
   Counter failures and negative values declare the byte-estimator fallback in
   the result instead of silently reporting the requested counter; the entire
