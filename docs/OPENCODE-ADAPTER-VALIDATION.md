@@ -133,7 +133,7 @@ validates effective request context only, not model compliance or task quality.
 
 This artifact remains a research and validation record for T8.2, not evidence
 that the OpenCode adapter is implemented. The runtime evidence above covers
-effective V2 instruction context for only the named build and three cases;
+effective V2 instruction context for only the named build and five cases;
 other discovery, compatibility, and adapter claims remain open until tested
 with their exact release, install channel, OS, fixture revision, and observed
 outcome.
