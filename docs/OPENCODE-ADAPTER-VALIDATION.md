@@ -69,7 +69,7 @@ does not prove that OpenCode loaded a file.
 | F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | Required test per major version |
 | G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Pass on V2 2.0.18 |
 | H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Required V1 test |
-| I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | Local-file negative case passes on V2 2.0.18; glob and URL remain untested |
+| I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | All three negative cases pass on V2 2.0.18 |
 | J | Workspace outside project root with global AGENTS and nearby project AGENTS | V2 loads global only | Required V2 test |
 
 ## Runtime validation: OpenCode V2 2.0.18
@@ -91,14 +91,16 @@ root `00df5bc6ec20187ec5cb7da1c6d051ee18dc3ccf0fa380773899602e57efddf8`, and
 `20246c2275a9200b7b0323bb8e610d09e98ea87e0513b45560e420abdc415fbb`.
 The V2 config `instructions` negative-case file hash was
 `b38fd1208acffcb36a897428696bf1ac69bd8cec720839cb2a9f26661292ecef`.
+The glob file hash was
+`5c0de3773a406a148bd8cca25893fa94e8c4c92f5cefd38bea54f0aabe8e0dff`.
 The V2 `CLAUDE.md`-only sentinel hash was
 `f0f4b8694d95795c8150d4851b86cf07af2253d0a6703a074fc1eaf4b866ff64`; the
 conflicting-case `AGENTS.md` and `CLAUDE.md` hashes were
 `a3a2065d4a5460256d407065ba264b8112fc424b090e3559cc7e7149baed0ece` and
 `d6a78a18f76228931f2cf420475d359dbdfc9ebe64363cb4dbde0667d88f9b04`.
 Each run used `opencode run --standalone --model mock/test --format json` from
-the listed working directory. OpenCode's JSONL request bodies were checked for
-the sentinel text in system messages; the returned `LOCAL_MOCK_OK` response
+the listed working directory. OpenCode's JSONL request bodies were checked
+across message roles for sentinel text; the returned `LOCAL_MOCK_OK` response
 provided no evidence about model instruction-following.
 
 | Case | Run location / setting | Observed model-visible instructions | Result |
@@ -109,18 +111,18 @@ provided no evidence about model instruction-following.
 | D | Project with only `CLAUDE.md` | Global present; project CLAUDE sentinel absent | Pass |
 | E | Project with conflicting `AGENTS.md` and `CLAUDE.md` | AGENTS sentinel present; CLAUDE sentinel absent | Pass |
 | G | Project root with `OPENCODE_DISABLE_PROJECT_CONFIG=1` | Global only | Pass |
-| I | Global config `instructions` points to a local file with a unique sentinel | Configured file sentinel is absent from all captured request messages | Pass |
+| I | Global config `instructions` points to a local file, glob, and loopback URL, each with a unique sentinel | All three sentinels are absent from captured request messages; the loopback URL was not fetched | Pass |
 
 For case C, the recorded first request did not contain the nested sentinel. The
 mock then issued a controlled `read` call for `packages/api/probe.txt`; after
 that successful read, the next request contained an instruction entry sourced
 from `packages/api/AGENTS.md`. This confirms dynamic discovery for this exact
-build and read path. Case I covers a local `instructions` path only; glob and
-URL cases remain untested. The result does not establish V1 behavior or
-cross-version `CLAUDE.md` fallback parity, outside-root behavior, conflict
-resolution, or any Forge adapter publication behavior. The mock returned a
-fixed local response; this validates effective request context only, not model
-compliance or task quality.
+build and read path. Case I's local path, glob and URL cases all pass as
+negative tests for this exact V2 build. The result does not establish V1
+behavior or cross-version `CLAUDE.md` fallback parity, outside-root behavior,
+conflict resolution, or any Forge adapter publication behavior. The mock
+returned a fixed local response; this validates effective request context only,
+not model compliance or task quality.
 
 ## Adapter and test work still required
 
