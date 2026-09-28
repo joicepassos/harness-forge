@@ -124,12 +124,50 @@ func TestCheckRunsGatesOnlyWhenExplicitlyRequested(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("gate ran without explicit flag: %v %s", err, out)
 	}
+	if !strings.Contains(out.String(), `"id": "explicit"`) || !strings.Contains(out.String(), `"status": "not_run"`) {
+		t.Fatalf("check did not report the skipped gate: %s", out)
+	}
 	cmd = newRootCommand()
 	cmd.SetArgs([]string{"check", "--repository", root, "--run-gates", "--format", "json"})
 	out = new(bytes.Buffer)
 	cmd.SetOut(out)
 	if err := cmd.Execute(); err == nil || !strings.Contains(out.String(), "gate.failed") {
 		t.Fatalf("failing gate wasn't reported: %v %s", err, out)
+	}
+}
+
+func TestCheckRequiresRequestedGatesInStrictProfile(t *testing.T) {
+	root := t.TempDir()
+	config := filepath.Join(root, ".harness", "harness.yaml")
+	if err := os.MkdirAll(filepath.Dir(config), 0700); err != nil {
+		t.Fatal(err)
+	}
+	command := "true"
+	if runtime.GOOS == "windows" {
+		command = "exit /b 0"
+	}
+	text := "version: 2\nproject: {name: sample}\nquality_gates:\n  - id: required\n    command: '" + command + "'\n    workspace: .\n    workspaces: [.]\n"
+	if err := os.WriteFile(config, []byte(text), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newRootCommand()
+	cmd.SetArgs([]string{"check", "--repository", root, "--require-gates", "--format", "json"})
+	out := new(bytes.Buffer)
+	cmd.SetOut(out)
+	if err := cmd.Execute(); err == nil || !strings.Contains(out.String(), "gate.required_not_run") || !strings.Contains(out.String(), `"required": true`) {
+		t.Fatalf("strict check accepted an unrun required gate: %v %s", err, out)
+	}
+
+	cmd = newRootCommand()
+	cmd.SetArgs([]string{"check", "--repository", root, "--require-gates", "--run-gates", "--format", "json"})
+	out = new(bytes.Buffer)
+	cmd.SetOut(out)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("strict check rejected a passing gate: %v %s", err, out)
+	}
+	if !strings.Contains(out.String(), `"status": "passed"`) || !strings.Contains(out.String(), `"skipped_checks": []`) {
+		t.Fatalf("strict check did not report the executed gate: %s", out)
 	}
 }
 

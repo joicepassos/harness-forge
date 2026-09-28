@@ -168,15 +168,23 @@ func readProjectFile(root *os.Root, relative string, limit int64) ([]byte, error
 }
 
 type checkEnvelope struct {
-	Version     int               `json:"version"`
-	OK          bool              `json:"ok"`
-	Diagnostics []checkDiagnostic `json:"diagnostics"`
-	GateResults []gates.Result    `json:"gate_results,omitempty"`
+	Version       int               `json:"version"`
+	OK            bool              `json:"ok"`
+	Diagnostics   []checkDiagnostic `json:"diagnostics"`
+	GateResults   []gates.Result    `json:"gate_results,omitempty"`
+	SkippedChecks []skippedCheck    `json:"skipped_checks"`
+}
+
+type skippedCheck struct {
+	ID       string `json:"id"`
+	Kind     string `json:"kind"`
+	Status   string `json:"status"`
+	Required bool   `json:"required"`
 }
 
 func newCheckCommand() *cobra.Command {
 	var repository, layout, format string
-	var runGates bool
+	var runGates, requireGates bool
 	var gateTimeout time.Duration
 	cmd := &cobra.Command{Use: "check", Short: "Validate project configuration, evidence and generated outputs", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
 		root, err := filepath.Abs(repository)
@@ -184,7 +192,7 @@ func newCheckCommand() *cobra.Command {
 			return err
 		}
 		project, err := harnessinfra.LoadProject(root, layout)
-		env := checkEnvelope{Version: 1, OK: true, Diagnostics: []checkDiagnostic{}}
+		env := checkEnvelope{Version: 1, OK: true, Diagnostics: []checkDiagnostic{}, SkippedChecks: []skippedCheck{}}
 		if err != nil {
 			env.OK = false
 			env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "project.layout_invalid", Severity: "error", Message: err.Error()})
@@ -260,6 +268,35 @@ func newCheckCommand() *cobra.Command {
 					}
 				}
 			}
+			if !runGates {
+				var quality []harnessdomain.QualityGate
+				if project.Manifest != nil {
+					quality = project.Manifest.QualityGates
+				} else {
+					quality = project.Harness.QualityGates
+				}
+				for _, gate := range quality {
+					env.SkippedChecks = append(env.SkippedChecks, skippedCheck{ID: gate.ID, Kind: "quality_gate", Status: "not_run", Required: requireGates})
+					if requireGates {
+						env.OK = false
+						env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "gate.required_not_run", Severity: "error", Message: gate.ID + " was required but --run-gates was not requested."})
+					}
+				}
+				if requireGates && len(quality) == 0 {
+					env.OK = false
+					env.Diagnostics = append(env.Diagnostics, checkDiagnostic{Code: "gate.none_declared", Severity: "error", Message: "--require-gates was requested but no quality gates are declared."})
+				}
+			} else if !valid {
+				var quality []harnessdomain.QualityGate
+				if project.Manifest != nil {
+					quality = project.Manifest.QualityGates
+				} else {
+					quality = project.Harness.QualityGates
+				}
+				for _, gate := range quality {
+					env.SkippedChecks = append(env.SkippedChecks, skippedCheck{ID: gate.ID, Kind: "quality_gate", Status: "blocked_by_project_validation", Required: requireGates})
+				}
+			}
 		}
 		if format == "json" {
 			enc := json.NewEncoder(cmd.OutOrStdout())
@@ -268,6 +305,9 @@ func newCheckCommand() *cobra.Command {
 				return err
 			}
 		} else if format == "text" {
+			for _, skipped := range env.SkippedChecks {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %s check %s was not run\n", skipped.Kind, skipped.ID, skipped.Status)
+			}
 			if env.OK {
 				fmt.Fprintln(cmd.OutOrStdout(), "check passed")
 			} else {
@@ -287,6 +327,7 @@ func newCheckCommand() *cobra.Command {
 	cmd.Flags().StringVar(&layout, "layout", "", "Select harness or forge when both layouts exist")
 	cmd.Flags().StringVar(&format, "format", "text", "Output format: text or json")
 	cmd.Flags().BoolVar(&runGates, "run-gates", false, "Explicitly execute declared quality gates")
+	cmd.Flags().BoolVar(&requireGates, "require-gates", false, "Fail unless declared quality gates are executed")
 	cmd.Flags().DurationVar(&gateTimeout, "gate-timeout", gates.DefaultTimeout, "Maximum runtime per quality gate (requires --run-gates)")
 	return cmd
 }

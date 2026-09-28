@@ -55,7 +55,9 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   with an explicit conflict. Native target scope semantics and concurrent
   writers remain unverified.
 - T5.1/T5.6: read-only aggregate `check`, static Forge/Harness output drift,
-  optional explicit gate execution, and CI drift workflow are implemented.
+  explicit gate status (`not_run`/blocked/executed), optional gate execution,
+  strict `--require-gates`, stale/missing approved knowledge failure, and CI
+  drift workflow are implemented.
   CLI exit codes follow ADR 0001: success 0, failed checks 1, and usage,
   configuration, or execution errors 2. The cross-platform workflow runs both
   no-Forge clone gates and verifies generated drift. It does not launch an
