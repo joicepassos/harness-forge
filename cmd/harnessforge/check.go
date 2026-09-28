@@ -66,8 +66,11 @@ func validateForgeKnowledgeHealth(ctx context.Context, root string, manifest har
 		if item.ReviewMetadataSHA256 != harnessdomain.HashKnowledgeReviewMetadata(item) {
 			return fmt.Errorf("knowledge %q review metadata changed since review", ref.ID)
 		}
-		if item.Health == harnessdomain.KnowledgeStale || item.Health == harnessdomain.KnowledgeMissing {
-			continue
+		switch item.Health {
+		case harnessdomain.KnowledgeStale:
+			return fmt.Errorf("knowledge %q is stale; refresh its evidence and review before use", ref.ID)
+		case harnessdomain.KnowledgeMissing:
+			return fmt.Errorf("knowledge %q is marked missing; restore its evidence and review before use", ref.ID)
 		}
 		fingerprint, err := harnessinfra.KnowledgeFingerprint(root, ref.Path, ref.ID, item.Evidence)
 		if err != nil {

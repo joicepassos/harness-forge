@@ -249,6 +249,41 @@ func TestCheckDetectsApprovedKnowledgeChanges(t *testing.T) {
 	}
 }
 
+func TestCheckFailsApprovedKnowledgeWithStaleOrMissingHealth(t *testing.T) {
+	for _, health := range []string{"stale", "missing"} {
+		t.Run(health, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.WriteFile(filepath.Join(root, "evidence.go"), []byte("package example\nconst TokenLifetime = 15\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			createForgeKnowledgeFixture(t, root, "auth-policy", "approved", "reviewed", "Token lifetime is fifteen minutes.", "evidence.go")
+			if _, err := generation.SyncForge(context.Background(), root, "apply"); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(root, ".forge", "knowledge", "auth-policy.md")
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data = bytes.Replace(data, []byte("health: verified"), []byte("health: "+health), 1)
+			if !bytes.Contains(data, []byte("health: "+health)) {
+				t.Fatalf("fixture did not contain the expected health field: %s", data)
+			}
+			if err := os.WriteFile(path, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+
+			cmd := newRootCommand()
+			cmd.SetArgs([]string{"check", "--repository", root, "--format", "json"})
+			out := new(bytes.Buffer)
+			cmd.SetOut(out)
+			if err := cmd.Execute(); err == nil || !strings.Contains(out.String(), "project.knowledge_invalid") || !strings.Contains(out.String(), "auth-policy") || !strings.Contains(out.String(), health) {
+				t.Fatalf("check did not identify %s knowledge health: %v %s", health, err, out)
+			}
+		})
+	}
+}
+
 func createForgeKnowledgeFixture(t *testing.T, root, id, state, reviewer, content, evidence string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Join(root, ".forge", "knowledge"), 0700); err != nil {
