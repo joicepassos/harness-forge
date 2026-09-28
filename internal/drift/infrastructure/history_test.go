@@ -32,6 +32,7 @@ func TestHistoricalEvidenceAndCurrentChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer reader.Close()
 	if found, err := reader.ContainsAt(context.Background(), "code.go", "Original", "HEAD"); err != nil || !found {
 		t.Fatalf("baseline: %v %v", found, err)
 	}
