@@ -70,8 +70,12 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   with an explicit conflict. Concurrent `sync` writers now serialize through
   an OS-backed repository lock stored in the user cache; lock waits honor
   cancellation, and dry-run remains read-only. Concurrent-apply, cross-process
-  lock, and lock-cancellation tests pass on Windows; native target scope semantics remain
-  unverified. Dry-run reports unmanaged, edited, and unsafe output conflicts
+  lock, and lock-cancellation tests pass on Windows. T4.2/T4.3 preserve scoped
+  glob annotations in both static exports, label them advisory/textual, keep
+  deterministic ID ordering, and state that matching rules coexist without
+  implicit precedence; no native scope enforcement or nested generated outputs
+  are claimed. Renderer contract tests pass for Codex and Claude Code. Dry-run
+  reports unmanaged, edited, and unsafe output conflicts
   without writing; `sync --check` lists missing current outputs. Apply captures
   preflight snapshots and rechecks outputs immediately before removal and
   publication. A deterministic concurrent-create test confirms that human
@@ -134,8 +138,11 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   a local path in config `instructions` is also absent from captured requests.
   A separate root-started `read` call confirms nested rules are appended to
   the next request after the agent reads inside `packages/api`. V1 behavior,
-  the V2 `instructions` glob/URL cases, other boundaries, and actual Forge
-  adapter publication remain unverified. See
+  outside-root traversal, and actual Forge adapter publication remain unverified.
+  V2 local-file, glob, and loopback URL entries in config `instructions` were
+  all absent from captured requests. An external-root boundary probe was
+  inconclusive because its sentinel appeared in the user query, not in an
+  instruction entry. See
   [OpenCode adapter validation](OPENCODE-ADAPTER-VALIDATION.md).
 - T8.3: the read-only context resolver is exposed through MCP JSON-RPC stdio
   using the legacy initialize lifecycle. It negotiates `2025-11-25` and
