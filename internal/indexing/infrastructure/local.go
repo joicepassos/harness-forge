@@ -13,6 +13,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"unicode"
@@ -143,13 +144,24 @@ func (Lexical) Embed(ctx context.Context, text string) ([]float64, int, error) {
 	return vector, tokens, nil
 }
 
-type JSONStore struct{}
+// JSONStore stores generated index data in the user's OS cache, keyed by the
+// canonical repository/worktree path. CacheDir is an optional cache root used
+// by tests and embedders; an empty value uses os.UserCacheDir.
+type JSONStore struct{ CacheDir string }
 
-func (JSONStore) Load(root string) (domain.Index, error) {
-	path := filepath.Join(root, ".harness", "index.json")
+func (store JSONStore) Load(root string) (domain.Index, error) {
+	path, err := store.indexPath(root)
+	if err != nil {
+		return domain.Index{}, err
+	}
 	data, err := inputlimits.ReadFile(path, inputlimits.PersistedIndexBytes, "persisted index")
 	if os.IsNotExist(err) {
-		return domain.Index{}, nil
+		// Read older installations without mutating or deleting the repository
+		// file. The next successful index build writes the new cache location.
+		data, err = store.loadLegacy(root)
+		if err == nil && data == nil {
+			return domain.Index{}, nil
+		}
 	}
 	if err != nil {
 		return domain.Index{}, err
@@ -163,10 +175,49 @@ func (JSONStore) Load(root string) (domain.Index, error) {
 	}
 	return index, nil
 }
-func (JSONStore) Save(root string, index domain.Index) error {
-	dir, err := securityboundary.PrepareDirectory(root, ".harness")
+
+func (JSONStore) loadLegacy(root string) ([]byte, error) {
+	absolute, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	dir := filepath.Join(absolute, ".harness")
+	info, err := os.Lstat(dir)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("legacy index directory cannot be a symlink or non-directory")
+	}
+	legacy := filepath.Join(dir, "index.json")
+	info, err = os.Lstat(legacy)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("legacy index must be a regular file")
+	}
+	data, err := inputlimits.ReadFile(legacy, inputlimits.PersistedIndexBytes, "legacy persisted index")
+	if err == nil && data == nil {
+		data = []byte{}
+	}
+	return data, err
+}
+
+func (store JSONStore) Save(root string, index domain.Index) error {
+	path, err := store.indexPath(root)
 	if err != nil {
 		return err
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return fmt.Errorf("create index cache: %w", err)
 	}
 	data, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
@@ -184,6 +235,43 @@ func (JSONStore) Save(root string, index domain.Index) error {
 	if err != nil {
 		return err
 	}
-	return safefile.Replace(name, filepath.Join(dir, "index.json"))
+	return safefile.Replace(name, path)
 }
+
+func (store JSONStore) indexPath(root string) (string, error) {
+	identity, err := repositoryIdentity(root)
+	if err != nil {
+		return "", err
+	}
+	cacheRoot := store.CacheDir
+	if cacheRoot == "" {
+		cacheRoot, err = os.UserCacheDir()
+		if err != nil {
+			return "", fmt.Errorf("locate user cache: %w", err)
+		}
+	}
+	return filepath.Join(cacheRoot, "harnessforge", "indexes", identity+".json"), nil
+}
+
+func repositoryIdentity(root string) (string, error) {
+	absolute, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	canonical, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
+		return "", fmt.Errorf("resolve repository path: %w", err)
+	}
+	canonical, err = filepath.Abs(canonical)
+	if err != nil {
+		return "", err
+	}
+	canonical = filepath.Clean(canonical)
+	if runtime.GOOS == "windows" {
+		canonical = strings.ToLower(canonical)
+	}
+	sum := sha256.Sum256([]byte(canonical))
+	return hex.EncodeToString(sum[:]), nil
+}
+
 func hash(data []byte) string { sum := sha256.Sum256(data); return hex.EncodeToString(sum[:]) }

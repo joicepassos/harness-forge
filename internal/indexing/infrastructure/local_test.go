@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
 	"harnessforge/internal/indexing/domain"
 	"os"
 	"path/filepath"
@@ -81,9 +82,12 @@ func TestJSONStoreRoundTrip(t *testing.T) {
 			Text: text, Hash: hash([]byte(text)), Model: "m", StartLine: 1, EndLine: 1, Vector: []float64{1, 0},
 		}},
 	}
-	store := JSONStore{}
+	store := testJSONStore(t)
 	if err := store.Save(dir, index); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".harness")); !os.IsNotExist(err) {
+		t.Fatalf("index cache created repository state at .harness: %v", err)
 	}
 	index.Model = "updated"
 	index.Chunks[0].Model = "updated"
@@ -95,7 +99,79 @@ func TestJSONStoreRoundTrip(t *testing.T) {
 		t.Fatal(loaded, err)
 	}
 }
-func TestJSONStoreRejectsRedirectedHarnessDirectory(t *testing.T) {
+
+func TestJSONStoreSeparatesRepositoryAndWorktreeCaches(t *testing.T) {
+	cache := filepath.Join(t.TempDir(), "cache")
+	store := JSONStore{CacheDir: cache}
+	repo := t.TempDir()
+	worktree := t.TempDir()
+	if err := store.Save(repo, validTestIndex("repo")); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Save(worktree, validTestIndex("worktree")); err != nil {
+		t.Fatal(err)
+	}
+	repoPath, err := store.indexPath(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktreePath, err := store.indexPath(worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repoPath == worktreePath {
+		t.Fatalf("repository and worktree share cache path %q", repoPath)
+	}
+	for root, want := range map[string]string{repo: "repo", worktree: "worktree"} {
+		loaded, err := store.Load(root)
+		if err != nil || loaded.Chunks[0].Text != want {
+			t.Fatalf("load %s = %#v, %v; want text %q", root, loaded, err, want)
+		}
+	}
+}
+
+func TestJSONStoreReadsLegacyIndexWithoutDeletingIt(t *testing.T) {
+	root := t.TempDir()
+	legacyDir := filepath.Join(root, ".harness")
+	if err := os.Mkdir(legacyDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	legacyPath := filepath.Join(legacyDir, "index.json")
+	legacyBytes, err := json.Marshal(validTestIndex("legacy"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacyPath, legacyBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	store := JSONStore{CacheDir: filepath.Join(t.TempDir(), "cache")}
+	loaded, err := store.Load(root)
+	if err != nil || loaded.Chunks[0].Text != "legacy" {
+		t.Fatalf("legacy load = %#v, %v", loaded, err)
+	}
+	if err := store.Save(root, validTestIndex("cached")); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err = store.Load(root)
+	if err != nil || loaded.Chunks[0].Text != "cached" {
+		t.Fatalf("cache should take precedence after save: %#v, %v", loaded, err)
+	}
+	stillThere, err := os.ReadFile(legacyPath)
+	if err != nil || string(stillThere) != string(legacyBytes) {
+		t.Fatalf("legacy index was changed or deleted: %v", err)
+	}
+}
+
+func validTestIndex(text string) domain.Index {
+	return domain.Index{
+		Version: "index-v1", Model: "m", Dimensions: 1,
+		Chunks: []domain.Chunk{{
+			ID: hash([]byte("id-" + text)), Source: "README.md", SourceHash: hash([]byte("source")),
+			Text: text, Hash: hash([]byte(text)), Model: "m", StartLine: 1, EndLine: 1, Vector: []float64{1},
+		}},
+	}
+}
+func TestJSONStoreDoesNotWriteThroughHarnessDirectory(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink creation requires developer mode or elevated privileges")
 	}
@@ -103,8 +179,12 @@ func TestJSONStoreRejectsRedirectedHarnessDirectory(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(dir, ".harness")); err != nil {
 		t.Fatal(err)
 	}
-	if err := (JSONStore{}).Save(dir, domain.Index{}); err == nil {
-		t.Fatal("redirected .harness directory accepted")
+	store := testJSONStore(t)
+	if err := store.Save(dir, domain.Index{Version: "index-v1", Model: "m"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, "index.json")); !os.IsNotExist(err) {
+		t.Fatalf("cache save wrote through .harness symlink: %v", err)
 	}
 }
 
@@ -117,13 +197,18 @@ func TestJSONStoreRejectsMalformedAndOversizedIndexes(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{"Version":"old"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (JSONStore{}).Load(dir); err == nil {
+	if _, err := testJSONStore(t).Load(dir); err == nil {
 		t.Fatal("malformed index accepted")
 	}
 	if err := os.WriteFile(path, make([]byte, 16<<20+1), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (JSONStore{}).Load(dir); err == nil {
+	if _, err := testJSONStore(t).Load(dir); err == nil {
 		t.Fatal("oversized index accepted")
 	}
+}
+
+func testJSONStore(t *testing.T) JSONStore {
+	t.Helper()
+	return JSONStore{CacheDir: filepath.Join(t.TempDir(), "user-cache")}
 }

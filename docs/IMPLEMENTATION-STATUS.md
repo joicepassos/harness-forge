@@ -129,8 +129,11 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   estimated token delta while labeling the result as a retrieval proxy;
   task-level quality remains unmeasured.
 - T7.1–T7.5: local observation capture, review, candidate publication,
-  audit provenance, and checkout isolation are implemented and covered. T7.3
-  memory publication reuses an existing candidate/approved item when content, kind, scope,
+  audit provenance, and checkout isolation are implemented and covered. Generated
+  indexes use the OS user cache keyed by canonical checkout/worktree path;
+  legacy `.harness/index.json` files remain readable and are not removed. T7.3
+  memory publication reuses an existing candidate/approved item when content,
+  kind, scope,
   keywords, and evidence match, without changing its provenance or review;
   rejected/deprecated items do not block a new candidate. T7.4 supports
   preview/apply, age and quota retention, pending-item

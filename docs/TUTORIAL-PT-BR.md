@@ -92,7 +92,7 @@ Mude a descrição de uma regra ou um arquivo usado como evidência e execute `d
 
 ## 7. Indexe e pesquise documentos localmente
 
-O índice é salvo em `.harness\index.json`. A busca abaixo não chama um modelo de texto:
+O índice gerado fica no cache do usuário do sistema operacional, em `harnessforge/indexes`, separado dos dados de projeto versionados em `.harness` e `.forge`. Cada caminho canônico de repositório ou worktree recebe um cache próprio. Apagar esse cache só exige gerar o índice novamente. Arquivos antigos em `.harness\index.json` continuam intactos e podem ser lidos como compatibilidade; o próximo `index` grava no cache. A busca abaixo não chama um modelo de texto:
 
 ```powershell
 harnessforge index .
