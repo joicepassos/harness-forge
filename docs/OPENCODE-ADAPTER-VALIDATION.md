@@ -64,8 +64,8 @@ does not prove that OpenCode loaded a file.
 | A | Root `AGENTS.md`; run from root | Root instruction is included | Pass on V2 2.0.18 |
 | B | Root `AGENTS.md` plus `packages/api/AGENTS.md`; run from `packages/api` | V1 upward-discovery and V2 ancestor inclusion | Pass on V2 2.0.18; V1 still required |
 | C | Root `AGENTS.md` plus `packages/api/AGENTS.md`; start at root, then read/list `packages/api` | V2 nested rule is discovered as area is explored | Pass on V2 2.0.18 |
-| D | Only project `CLAUDE.md` | V1 fallback loads; V2 does not use this fallback | Required test per major version |
-| E | Project `AGENTS.md` and `CLAUDE.md`, contradictory sentinels | V1 chooses AGENTS over CLAUDE; V2 AGENTS-only contract | Required test per major version |
+| D | Only project `CLAUDE.md` | V1 fallback loads; V2 does not use this fallback | V2 negative case passes on 2.0.18; V1 still required |
+| E | Project `AGENTS.md` and `CLAUDE.md`, contradictory sentinels | V1 chooses AGENTS over CLAUDE; V2 AGENTS-only contract | V2 case passes on 2.0.18; V1 still required |
 | F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | Required test per major version |
 | G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Pass on V2 2.0.18 |
 | H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Required V1 test |
@@ -91,6 +91,11 @@ root `00df5bc6ec20187ec5cb7da1c6d051ee18dc3ccf0fa380773899602e57efddf8`, and
 `20246c2275a9200b7b0323bb8e610d09e98ea87e0513b45560e420abdc415fbb`.
 The V2 config `instructions` negative-case file hash was
 `b38fd1208acffcb36a897428696bf1ac69bd8cec720839cb2a9f26661292ecef`.
+The V2 `CLAUDE.md`-only sentinel hash was
+`f0f4b8694d95795c8150d4851b86cf07af2253d0a6703a074fc1eaf4b866ff64`; the
+conflicting-case `AGENTS.md` and `CLAUDE.md` hashes were
+`a3a2065d4a5460256d407065ba264b8112fc424b090e3559cc7e7149baed0ece` and
+`d6a78a18f76228931f2cf420475d359dbdfc9ebe64363cb4dbde0667d88f9b04`.
 Each run used `opencode run --standalone --model mock/test --format json` from
 the listed working directory. OpenCode's JSONL request bodies were checked for
 the sentinel text in system messages; the returned `LOCAL_MOCK_OK` response
@@ -101,6 +106,8 @@ provided no evidence about model instruction-following.
 | A | Project root | Global, project root | Pass |
 | B | `packages/api` | Global, `packages/api`, project root, in that order | Pass |
 | C | Project root, then successfully read `packages/api/probe.txt` | Nested rule absent initially; `packages/api/AGENTS.md` appears in the next request's instruction entry | Pass |
+| D | Project with only `CLAUDE.md` | Global present; project CLAUDE sentinel absent | Pass |
+| E | Project with conflicting `AGENTS.md` and `CLAUDE.md` | AGENTS sentinel present; CLAUDE sentinel absent | Pass |
 | G | Project root with `OPENCODE_DISABLE_PROJECT_CONFIG=1` | Global only | Pass |
 | I | Global config `instructions` points to a local file with a unique sentinel | Configured file sentinel is absent from all captured request messages | Pass |
 
@@ -133,7 +140,7 @@ validates effective request context only, not model compliance or task quality.
 
 This artifact remains a research and validation record for T8.2, not evidence
 that the OpenCode adapter is implemented. The runtime evidence above covers
-effective V2 instruction context for only the named build and five cases;
+effective V2 instruction context for only the named build and seven cases;
 other discovery, compatibility, and adapter claims remain open until tested
 with their exact release, install channel, OS, fixture revision, and observed
 outcome.
