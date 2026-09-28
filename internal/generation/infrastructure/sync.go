@@ -600,10 +600,15 @@ func syncForge(ctx context.Context, root, mode string, afterMutation func(int) e
 		return result, e
 	}
 	owned := map[string]string{}
+	seenOwned := map[string]bool{}
 	for _, f := range prior.Files {
-		if !isSupportedGeneratedPath(f.Path) {
-			return result, fmt.Errorf("invalid path in generated manifest")
+		if !isSupportedGeneratedPath(f.Path) || seenOwned[f.Path] || len(f.SHA256) != sha256.Size*2 {
+			return result, fmt.Errorf("invalid generated manifest file entry")
 		}
+		if _, err := hex.DecodeString(f.SHA256); err != nil {
+			return result, fmt.Errorf("invalid generated manifest hash for %s", f.Path)
+		}
+		seenOwned[f.Path] = true
 		owned[f.Path] = f.SHA256
 	}
 	staleOwned := make([]string, 0)

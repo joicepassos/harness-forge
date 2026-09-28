@@ -2,6 +2,8 @@ package infrastructure
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -138,6 +140,38 @@ func TestSyncForgePreviewApplyCheckAndCloneOwnership(t *testing.T) {
 	}
 	if _, err := SyncForge(context.Background(), clone, "apply"); err != nil {
 		t.Fatalf("clone ownership was not recognized: %v", err)
+	}
+}
+
+func TestSyncForgeRejectsMalformedOwnershipManifestBeforeApply(t *testing.T) {
+	for name, manifest := range map[string]GeneratedManifest{
+		"duplicate path": {Version: 1, Files: []GeneratedFile{
+			{Path: "AGENTS.md", SHA256: strings.Repeat("a", sha256.Size*2)},
+			{Path: "AGENTS.md", SHA256: strings.Repeat("b", sha256.Size*2)},
+		}},
+		"invalid hash":      {Version: 1, Files: []GeneratedFile{{Path: "AGENTS.md", SHA256: "not-a-hash"}}},
+		"wrong hash length": {Version: 1, Files: []GeneratedFile{{Path: "AGENTS.md", SHA256: "abcd"}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := forgeSyncFixture(t)
+			path := filepath.Join(root, filepath.FromSlash(generatedManifest))
+			data, err := json.Marshal(manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := SyncForge(context.Background(), root, "apply"); err == nil || !strings.Contains(err.Error(), "invalid generated manifest") {
+				t.Fatalf("malformed ownership manifest was accepted: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); !os.IsNotExist(err) {
+				t.Fatal("apply wrote generated output after rejecting manifest")
+			}
+		})
 	}
 }
 
