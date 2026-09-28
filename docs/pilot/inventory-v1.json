@@ -2,7 +2,7 @@
   "schema_version": 1,
   "inventory_id": "harnessforge-evolution-pilot-v1",
   "recorded_on": "2026-09-27",
-  "status": "mili_pilot_frozen_pre_run_partial_mli02_evaluator",
+  "status": "mili_pilot_frozen_pre_run_all_evaluators",
   "purpose": "Versioned inventory for separating implementation fixtures from independent validation data. Null or empty fields mean unavailable, not zero or a successful run.",
   "development_repositories": [
     {
@@ -128,7 +128,7 @@
         "MLI-04",
         "MLI-05"
       ],
-      "reason_excluded_from_validation": "The pinned clean commit is selected and the original dirty checkout is excluded. Tasks, Codex CLI model/configuration, repetitions, conditions, baseline smoke, and independent evaluators are versioned; corrected MLI-02 evaluator execution and coding-agent outcome runs remain pending.",
+      "reason_excluded_from_validation": "The pinned clean commit is selected and the original dirty checkout is excluded. Tasks, Codex CLI model/configuration, repetitions, conditions, baseline smoke, and all five independent evaluators are frozen; coding-agent outcome runs remain pending.",
       "pilot_freeze": "mili-condition-freeze-v1.json",
       "original_checkout_changes_included": false
     },
@@ -210,7 +210,7 @@
   "runs": [],
   "limitations": [
     "No coding-agent pilot runs have been performed.",
-    "The corrected MLI-02 production service/controller evaluator still needs execution on Java 25; MLI-01/03/04 evaluators and the PostgreSQL probe are complete. Recorded failures characterize the pinned baseline and are not coding-agent task outcomes.",
+    "All five independent evaluators and the PostgreSQL probe are frozen. The corrected MLI-02 production service/controller evaluator passed its characterization suite on Java 25 and recorded the baseline's malformed-cursor behavior. These failures characterize the pinned baseline and are not coding-agent task outcomes.",
     "The PostgreSQL 18.3 keyset check found that millisecond cursor truncation skips rows with submillisecond timestamps; see mili-postgres-keyset-v1.json.",
     "The original Mili working tree is dirty and excluded; all task runs must use fresh copies of the pinned commit."
   ],

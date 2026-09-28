@@ -151,6 +151,8 @@
     "status": "frozen: all five task evaluators and database probe; pre-run baseline defects recorded",
     "baseline_smoke_file": "baseline-mili-v1.json",
     "baseline_smoke_status": "passed: 8 tests, 0 failures, 0 skipped, no Docker",
+    "inventory_file": "inventory-v1.json",
+    "inventory_sha256": "b9900e655c6958c0a8dd364da9ecca8604241918e0d29645b3feba24fee6eb43",
     "evaluator_sources": [
       {
         "path": "Mli01AcceptanceTest.java",
