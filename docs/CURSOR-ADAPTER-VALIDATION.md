@@ -1,6 +1,6 @@
 # Cursor adapter validation matrix (T8.1)
 
-Research snapshot: 2026-09-27. This records the current public Cursor documentation and proposes a testable target contract for Forge. The official Rules and CLI pages are rolling and do not give minimum application/CLI versions for most rule features; they are product documentation, not a versioned specification. Therefore “current” below means the behavior stated by the official documentation on the snapshot date, not a compatibility guarantee for any particular installed build. No Cursor editor or CLI runtime was available for this audit; every executable scenario below remains unverified.
+Research snapshot: 2026-09-28. This records the current public Cursor documentation and proposes a testable target contract for Forge. The official Rules and CLI pages are rolling and do not give minimum application/CLI versions for most rule features; they are product documentation, not a versioned specification. Therefore “current” below means the behavior stated by the official documentation on the snapshot date, not a compatibility guarantee for any particular installed build. No Cursor editor or CLI runtime is available in this environment; every executable scenario below remains unverified.
 
 ## Verified from official documentation
 
@@ -16,7 +16,7 @@ Research snapshot: 2026-09-27. This records the current public Cursor documentat
 | AGENTS.md | Current Rules docs say `AGENTS.md` works at the project root and in subdirectories. Nested instructions combine with parent instructions; more specific instructions take precedence. | Root and nested AGENTS output is a portable mechanism for directory scope, but do not merge it with MDC automatically without testing interaction. |
 | Team/User precedence | Team rules take precedence over project rules, which take precedence over user rules; applicable instructions are merged, earlier sources take precedence on conflicts. Team rules may be enforced and cannot be disabled by team members. | Forge can describe only repository-generated project guidance. It cannot know account/team rules; diagnostics must not promise final effective precedence. |
 | Legacy `.cursorrules` | Current Rules page's listed types no longer includes `.cursorrules`; the legacy file is absent from its current documented rule format. Older official docs described it as supported but deprecated. | Treat `.cursorrules` as legacy/undocumented for current support. Do not emit it. Import it only as legacy input with an explicit migration warning; test detection and never infer precedence. |
-| Cursor CLI | CLI docs say CLI uses the same rules system as editor, loads `.cursor/rules` according to configuration, and also reads root `AGENTS.md` and `CLAUDE.md` alongside those rules. | Mark adapter target as Cursor Agent (editor/CLI) only when tested separately. The docs establish the CLI's root CLAUDE.md support; they do not establish all editor/CLI discovery parity. |
+| Cursor CLI | CLI docs state it supports the same `.cursor/rules` system as the editor and additionally reads root `AGENTS.md` and `CLAUDE.md`. The Rules page documents nested `AGENTS.md` for Cursor generally, but the CLI page does not specify nested discovery. | Do not assume nested `AGENTS.md` behavior is shared by CLI; validate editor and CLI separately. Root CLAUDE.md is documented for CLI; nested CLI discovery and full parity remain unverified. |
 | Scope of application | Rules docs say rule context affects Agent and that rules do not affect Tab or other AI features; the current FAQ says User Rules do not apply to Inline Edit. | Describe the adapter as Agent-context output; do not claim Tab completion, Bugbot, or all inline-edit coverage. |
 | Version declarations | The current Rules and CLI documentation are rolling pages and do not state a minimum Cursor editor build or CLI version for `.mdc`, nested AGENTS.md, or the precedence model. The source snapshot for this matrix is 2026-09-27. | Forge must not invent a minimum version. Store the tested product, exact build/version, OS, date and scenario in validation results. |
 
@@ -30,7 +30,7 @@ Sources are linked in [Official sources](#official-sources). The old documentati
 | File-scoped instruction | `.cursor/rules/<id>.mdc`, `alwaysApply: false`, `globs: ...` | Documented concept, but glob dialect equivalence is unproven. Requires runtime fixture tests for every supported pattern class. |
 | Advisory/agent-selected instruction | `.cursor/rules/<id>.mdc`, `alwaysApply: false`, non-empty `description`, no `globs` | Selection depends on Agent relevance judgment; cannot claim deterministic inclusion. |
 | Manually invoked instruction | `.cursor/rules/<id>.mdc`, `alwaysApply: false`, no `description` or `globs` | Documented trigger; manual @-mention discovery/name behavior needs runtime test. |
-| Folder/directory scope | `AGENTS.md` at root and relevant subdirectories, or root `.cursor/rules` with globs | Nested AGENTS hierarchy/precedence is documented; precedence between AGENTS.md and project rules is not. Preserve as separate outputs and report unresolved merge behavior. |
+| Folder/directory scope | `AGENTS.md` at root and relevant subdirectories, or root `.cursor/rules` with globs | The Rules page documents nested AGENTS hierarchy and specificity for Cursor generally; the CLI page explicitly promises only root AGENTS/CLAUDE files. Precedence between AGENTS.md and project rules is not documented. Preserve separate outputs and validate editor/CLI behavior independently. |
 | Skill, executable gate, evidence URI, approval state, review provenance | No equivalent established by the rules docs | Keep these in Forge; do not silently flatten into a claim of native Cursor support. If text is rendered into a rule, mark it as copied guidance with loss of execution/governance semantics. |
 | Organization/team-wide constraints | Cursor Team Rules in dashboard | Not project-file output, account-controlled and plan-dependent. Forge adapter cannot create or inspect these; mention that external rules may override project output. |
 
@@ -38,7 +38,7 @@ Recommended stable adapter contract: emit only project-owned artifacts (`.cursor
 
 ## Runtime tests still required (not proven by documentation)
 
-These tests require an installed Cursor build and a disposable repository. Record exact Cursor editor version/build, CLI version (`agent --version` if available), OS, date, workspace root and outcome. Public docs provide no minimum version baseline, so test at least the currently supported stable build at validation time and the oldest build Forge elects to support; if no oldest build is selected, mark the compatibility range unknown.
+These tests require an installed Cursor build and a disposable repository. On the 2026-09-28 audit, `cursor-agent`, `agent`, and `cursor` were not available on PATH, so no runtime test could be run. Record exact Cursor editor version/build, CLI version (`agent --version` if available), OS, date, workspace root and outcome when a runtime is available. Public docs provide no minimum version baseline, so test at least the currently supported stable build at validation time and the oldest build Forge elects to support; if no oldest build is selected, mark the compatibility range unknown.
 
 | ID | Fixture / action | Evidence to collect |
 |---|---|---|
@@ -60,6 +60,6 @@ Release gate for T8.1: check in runtime results with the exact versions and all 
 ## Official sources
 
 - [Cursor Rules documentation](https://cursor.com/docs/rules) — current project-rule formats, metadata behavior, globs, Team/User precedence, nested `AGENTS.md`, feature limitations and legacy context.
-- [Cursor CLI: Using Agent in CLI](https://cursor.com/docs/cli/using) — CLI rule system, root `AGENTS.md`/`CLAUDE.md`, and relation to editor rules.
+- [Cursor CLI: Using Agent in CLI](https://prod.cursor.com/docs/cli/using) — CLI rule system, root `AGENTS.md`/`CLAUDE.md`, and relation to editor rules (checked 2026-09-28).
 - [Cursor CLI overview](https://cursor.com/docs/cli/overview) — current CLI install and modes.
 - [Cursor changelog 0.45.x](https://cursor.com/changelog/0-45-x) — historical introduction of `.cursor/rules` (January 2025); not a current minimum-version guarantee.
