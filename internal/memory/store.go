@@ -109,11 +109,16 @@ func (s *Store) Capture(content, source string, evidence []Evidence) (Observatio
 			return Observation{}, fmt.Errorf("evidence paths must be repository-relative")
 		}
 	}
+	lock, err := s.lockMutation()
+	if err != nil {
+		return Observation{}, err
+	}
+	defer lock.Close()
 	info, err := os.Stat(filepath.Join(s.root, "observations.json"))
 	if err == nil && info.Size() > 8<<20 {
 		return Observation{}, fmt.Errorf("local observations exceed 8 MiB; review or collect garbage before capturing more")
 	}
-	entries, err := s.List()
+	entries, err := s.list()
 	if err != nil {
 		return Observation{}, err
 	}
@@ -135,6 +140,12 @@ func (s *Store) Capture(content, source string, evidence []Evidence) (Observatio
 }
 
 func (s *Store) List() ([]Observation, error) {
+	return s.list()
+}
+
+// list reads a verified snapshot without taking the mutation lock. Atomic
+// replacement in save means readers see either the complete old or new file.
+func (s *Store) list() ([]Observation, error) {
 	data, err := os.ReadFile(filepath.Join(s.root, "observations.json"))
 	if os.IsNotExist(err) {
 		return []Observation{}, nil
@@ -175,7 +186,12 @@ func (s *Store) Review(id string, state State, reviewer string) (Observation, er
 	if state != Candidate && strings.TrimSpace(reviewer) == "" {
 		return Observation{}, fmt.Errorf("reviewer is required for a final decision")
 	}
-	entries, err := s.List()
+	lock, err := s.lockMutation()
+	if err != nil {
+		return Observation{}, err
+	}
+	defer lock.Close()
+	entries, err := s.list()
 	if err != nil {
 		return Observation{}, err
 	}
@@ -220,6 +236,10 @@ func (s *Store) PreviewGC(now time.Time, retention time.Duration, maximum ...int
 	if err != nil {
 		return GCPlan{}, err
 	}
+	return previewGC(entries, now, retention, maximum...), nil
+}
+
+func previewGC(entries []Observation, now time.Time, retention time.Duration, maximum ...int) GCPlan {
 	plan := GCPlan{Remove: []string{}}
 	resolved := []Observation{}
 	remove := map[string]bool{}
@@ -254,20 +274,22 @@ func (s *Store) PreviewGC(now time.Time, retention time.Duration, maximum ...int
 		plan.QuotaExceeded = remaining > limit
 	}
 	sort.Strings(plan.Remove)
-	return plan, nil
+	return plan
 }
 func (s *Store) ApplyGC(now time.Time, retention time.Duration, maximum ...int) (GCPlan, error) {
-	plan, err := s.PreviewGC(now, retention, maximum...)
+	lock, err := s.lockMutation()
 	if err != nil {
-		return plan, err
+		return GCPlan{}, err
 	}
+	defer lock.Close()
+	entries, err := s.list()
+	if err != nil {
+		return GCPlan{}, err
+	}
+	plan := previewGC(entries, now, retention, maximum...)
 	remove := map[string]bool{}
 	for _, id := range plan.Remove {
 		remove[id] = true
-	}
-	entries, err := s.List()
-	if err != nil {
-		return plan, err
 	}
 	kept := entries[:0]
 	for _, item := range entries {

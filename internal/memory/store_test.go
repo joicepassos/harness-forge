@@ -5,7 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +16,123 @@ import (
 
 func testStore(path, repo, checkout string) *Store {
 	return &Store{root: path, repositoryID: repo, checkoutID: checkout}
+}
+
+func TestCaptureSerializesReadModifyWriteAcrossProcesses(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "shared-store")
+	const captureWorkers, capturesPerWorker, gcWorker = 4, 12, 4
+	const workers = captureWorkers + 1
+	var wg sync.WaitGroup
+	errors := make(chan error, workers)
+	for worker := 0; worker < workers; worker++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			cmd := exec.Command(os.Args[0], "-test.run=^TestMemoryCaptureWorker$")
+			action := "capture"
+			count := capturesPerWorker
+			if worker == gcWorker {
+				action = "gc"
+				count = 40
+			}
+			cmd.Env = append(os.Environ(), "HARNESSFORGE_MEMORY_WORKER=1", "HARNESSFORGE_MEMORY_ROOT="+root,
+				"HARNESSFORGE_MEMORY_WORKER_ID="+strconv.Itoa(worker), "HARNESSFORGE_MEMORY_COUNT="+strconv.Itoa(count), "HARNESSFORGE_MEMORY_ACTION="+action)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				errors <- fmt.Errorf("worker %d: %w: %s", worker, err, output)
+			}
+		}(worker)
+	}
+	wg.Wait()
+	close(errors)
+	for err := range errors {
+		t.Error(err)
+	}
+	items, err := testStore(root, "repo", "checkout").List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != captureWorkers*capturesPerWorker {
+		t.Fatalf("concurrent mutations retained %d observations, want %d", len(items), captureWorkers*capturesPerWorker)
+	}
+}
+
+// TestMemoryCaptureWorker is launched as a separate test process by the
+// cross-process serialization test above.
+func TestMemoryCaptureWorker(t *testing.T) {
+	if os.Getenv("HARNESSFORGE_MEMORY_WORKER") != "1" {
+		return
+	}
+	worker, err := strconv.Atoi(os.Getenv("HARNESSFORGE_MEMORY_WORKER_ID"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	count, err := strconv.Atoi(os.Getenv("HARNESSFORGE_MEMORY_COUNT"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := testStore(os.Getenv("HARNESSFORGE_MEMORY_ROOT"), "repo", "checkout")
+	if os.Getenv("HARNESSFORGE_MEMORY_ACTION") == "review" {
+		if _, err := store.Review(os.Getenv("HARNESSFORGE_MEMORY_OBSERVATION_ID"), Approved, fmt.Sprintf("reviewer-%d", worker)); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	if os.Getenv("HARNESSFORGE_MEMORY_ACTION") == "gc" {
+		for i := 0; i < count; i++ {
+			if _, err := store.ApplyGC(time.Now(), 0); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return
+	}
+	for i := 0; i < count; i++ {
+		if _, err := store.Capture(fmt.Sprintf("worker %d observation %d", worker, i), "manual", nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestReviewSerializesReadModifyWriteAcrossProcesses(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "shared-store")
+	store := testStore(root, "repo", "checkout")
+	first, err := store.Capture("first candidate", "manual", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := store.Capture("second candidate", "manual", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := []string{first.ID, second.ID}
+	var wg sync.WaitGroup
+	errors := make(chan error, len(ids))
+	for worker, id := range ids {
+		wg.Add(1)
+		go func(worker int, id string) {
+			defer wg.Done()
+			cmd := exec.Command(os.Args[0], "-test.run=^TestMemoryCaptureWorker$")
+			cmd.Env = append(os.Environ(), "HARNESSFORGE_MEMORY_WORKER=1", "HARNESSFORGE_MEMORY_ROOT="+root,
+				"HARNESSFORGE_MEMORY_WORKER_ID="+strconv.Itoa(worker), "HARNESSFORGE_MEMORY_COUNT=1",
+				"HARNESSFORGE_MEMORY_ACTION=review", "HARNESSFORGE_MEMORY_OBSERVATION_ID="+id)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				errors <- fmt.Errorf("review worker %d: %w: %s", worker, err, output)
+			}
+		}(worker, id)
+	}
+	wg.Wait()
+	close(errors)
+	for err := range errors {
+		t.Error(err)
+	}
+	items, err := store.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range items {
+		if item.State != Approved {
+			t.Errorf("concurrent reviews lost an update for %s: state=%s", item.ID, item.State)
+		}
+	}
 }
 
 func TestCaptureStoresExplicitCandidateAndDeduplicatesOnlySameSource(t *testing.T) {
