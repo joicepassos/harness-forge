@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "pilot_id": "harnessforge-mili-v1",
-  "status": "frozen_pre_run",
+  "status": "pilot_running",
   "approved_on": "2026-09-27",
   "approval_source": "user confirmation in the HarnessForge implementation task",
   "repository": {
@@ -38,9 +38,10 @@
     "artifacts_frozen": true,
     "baseline": "Fresh detached copy of pinned commit 49402ad341a7e8a01aee7968d1b10d91b44c0d1c with no overlays.",
     "team": "Exact four-file bundle frozen in docs/pilot/mili-team-v1/files; hashes recorded in mili-condition-freeze-v1.json.",
-    "forge": "Exact four-file generated bundle frozen in docs/pilot/mili-forge-condition-v1/files; source and manifest hashes recorded in mili-condition-freeze-v1.json."
+    "forge": "Exact four-file generated bundle frozen in docs/pilot/mili-forge-condition-v1/files; source and manifest hashes recorded in mili-condition-freeze-v1.json.",
+    "first_repetition": "MLI-01 completed for baseline, team, and Forge; 3/3 independent v3 acceptance tests pass per condition. 42 of 45 planned runs remain."
   },
-  "run_performed": false,
+  "run_performed": true,
   "open_freeze_requirements": [],
   "integrity_note": "The Mili checkout contains modified source files and untracked instruction/index files. They are excluded from the code baseline. The current .harness/index.json was generated from that modified tree and is not accepted as the Forge condition."
 }

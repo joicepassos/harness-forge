@@ -117,7 +117,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   submillisecond precision: the API cursor truncates to milliseconds. The
   pinned MLI-02 baseline therefore fails pagination completeness. The MLI-05
   JsonPath probe confirms the frozen malformed expression is rejected. These
-  evaluator checks are not coding-agent pilot runs; none have started. See
+  evaluator checks are not coding-agent pilot runs. The user-approved MLI-01
+  repetition-1 runs are now complete on three isolated clones: baseline, team,
+  and Forge each passed 3/3 independent v3 acceptance checks; 42 of 45 runs
+  remain. The original v1/v2 MLI-01 evaluator failures were instrument defects
+  and excluded. See
   [the database result](pilot/mili-postgres-keyset-v1.json).
   T9.2–T9.5 remain pending; T9.6 awaits comparative evidence.
 

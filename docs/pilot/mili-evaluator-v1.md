@@ -67,9 +67,8 @@ Required observations:
    in the query string must not select B (whether the implementation ignores or
    rejects this obsolete parameter is a documented API detail; B data must not
    be disclosed).
-2. Detail for B's event returns 404 and has the same externally observable
-   not-found response as an unknown ID.
-3. Reprocess for B's event returns the same 404 as an unknown ID and never
+2. Detail for B's event returns 404 without disclosing tenant-B data.
+3. Reprocess for B's event returns the same not-found status as an unknown ID and never
    invokes a reset/mutation for that event.
 4. A tenant-A event remains visible to A, to prove the endpoint is functional
    rather than globally denying access.
