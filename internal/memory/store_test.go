@@ -56,6 +56,18 @@ func TestCaptureSerializesReadModifyWriteAcrossProcesses(t *testing.T) {
 	if len(items) != captureWorkers*capturesPerWorker {
 		t.Fatalf("concurrent mutations retained %d observations, want %d", len(items), captureWorkers*capturesPerWorker)
 	}
+	got := make(map[string]bool, len(items))
+	for _, item := range items {
+		got[item.Content] = true
+	}
+	for worker := 0; worker < captureWorkers; worker++ {
+		for i := 0; i < capturesPerWorker; i++ {
+			want := fmt.Sprintf("worker %d observation %d", worker, i)
+			if !got[want] {
+				t.Errorf("concurrent mutations lost observation %q", want)
+			}
+		}
+	}
 }
 
 // TestMemoryCaptureWorker is launched as a separate test process by the
