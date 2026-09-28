@@ -1,9 +1,12 @@
 package application_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -166,6 +169,87 @@ func TestPreviewToForgePreservesFieldsAndProducesDeterministicPlan(t *testing.T)
 	}
 	if len(first.Warnings) != 1 || !strings.Contains(first.Warnings[0], "candidate") {
 		t.Fatalf("approval reset was not disclosed: %#v", first.Warnings)
+	}
+}
+
+func TestPreviewToForgePreservesEveryMappedLegacyField(t *testing.T) {
+	root, source := writeLegacyMigrationProject(t)
+	loader := infrastructure.YAMLLoader{}
+	legacy, err := loader.Load(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := application.PreviewToForge(loader, root, source, []string{"codex", "claude"}, domain.KnowledgeBusinessRule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestFile := planFileContent(t, plan, ".forge/forge.yaml")
+	var manifest domain.Manifest
+	if err := yaml.Unmarshal([]byte(manifestFile), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	wantManifest := domain.Manifest{
+		LayoutVersion: 1,
+		IRVersion:     legacy.Version,
+		Project:       legacy.Project,
+		Architecture:  legacy.Architecture,
+		Targets:       []string{"codex", "claude"},
+		References: domain.ManifestReferences{
+			Knowledge: make([]domain.KnowledgeReference, len(legacy.Rules)),
+			Skills:    make([]domain.SkillReference, len(legacy.Skills)),
+		},
+		QualityGates: append([]domain.QualityGate(nil), legacy.QualityGates...),
+	}
+	wantKnowledge := make(map[string]domain.KnowledgeItem, len(legacy.Rules))
+	for i, rule := range legacy.Rules {
+		idHash := sha256.Sum256([]byte(rule.ID))
+		itemPath := ".forge/knowledge/items/" + hex.EncodeToString(idHash[:]) + ".md"
+		wantManifest.References.Knowledge[i] = domain.KnowledgeReference{ID: rule.ID, Path: itemPath}
+		evidence := make([]domain.KnowledgeEvidence, len(rule.Evidence))
+		for j, item := range rule.Evidence {
+			evidence[j] = domain.KnowledgeEvidence{
+				Path: item.File, Workspace: item.Workspace, Kind: item.Kind, Symbol: item.Symbol,
+				Quote: item.Quote, StartLine: item.StartLine, EndLine: item.EndLine,
+				SHA256: item.SHA256, Revision: item.Revision,
+			}
+		}
+		wantKnowledge[itemPath] = domain.KnowledgeItem{
+			ID: rule.ID, Kind: domain.KnowledgeBusinessRule, Scope: rule.Scope,
+			Content: rule.Description, Origin: rule.Origin,
+			Review: domain.KnowledgeCandidate, Health: domain.KnowledgeUnknown,
+			Evidence: evidence, ContentSHA256: domain.HashKnowledgeContent(rule.Description),
+			LegacyReviewStatus: rule.Status, LegacyReview: rule.Review,
+		}
+	}
+	for i, skill := range legacy.Skills {
+		wantManifest.References.Skills[i] = domain.SkillReference{
+			ID: skill.ID, Description: skill.Description, Path: skill.Path, Status: skill.Status,
+			Evidence: append([]domain.Evidence(nil), skill.Evidence...),
+		}
+	}
+	if !reflect.DeepEqual(manifest, wantManifest) {
+		t.Fatalf("Forge manifest did not preserve every mapped legacy field:\n got: %#v\nwant: %#v", manifest, wantManifest)
+	}
+	for _, file := range plan.Files {
+		want, ok := wantKnowledge[file.Path]
+		if !ok {
+			continue
+		}
+		parts := strings.SplitN(file.Content, "---\n", 3)
+		if len(parts) != 3 {
+			t.Fatalf("invalid knowledge front matter in %s", file.Path)
+		}
+		var got domain.KnowledgeItem
+		if err := yaml.Unmarshal([]byte(parts[1]), &got); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("knowledge migration lost a mapped rule field in %s:\n got: %#v\nwant: %#v", file.Path, got, want)
+		}
+		delete(wantKnowledge, file.Path)
+	}
+	if len(wantKnowledge) != 0 {
+		t.Fatalf("migration omitted knowledge files for: %#v", wantKnowledge)
 	}
 }
 
