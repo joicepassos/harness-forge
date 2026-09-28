@@ -116,10 +116,11 @@ mock then issued a controlled `read` call for `packages/api/probe.txt`; after
 that successful read, the next request contained an instruction entry sourced
 from `packages/api/AGENTS.md`. This confirms dynamic discovery for this exact
 build and read path. Case I covers a local `instructions` path only; glob and
-URL cases remain untested. The result does not establish V1 behavior,
-`CLAUDE.md` fallback, outside-root behavior, conflict resolution, or any Forge
-adapter publication behavior. The mock returned a fixed local response; this
-validates effective request context only, not model compliance or task quality.
+URL cases remain untested. The result does not establish V1 behavior or
+cross-version `CLAUDE.md` fallback parity, outside-root behavior, conflict
+resolution, or any Forge adapter publication behavior. The mock returned a
+fixed local response; this validates effective request context only, not model
+compliance or task quality.
 
 ## Adapter and test work still required
 
