@@ -28,9 +28,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T1.6: `testdata/clones/without-forge/` contains Codex and Claude Code clones
   with static native instructions and no HarnessForge configuration.
 - T1.7: deterministic repository-level tests for generation, ownership, review,
-  discovery, and drift passed; external clone-agent acceptance is not complete.
-  The static clone fixture proves only that native instruction files are
-  present; see [P0–T1 acceptance](acceptance/p0-t1.md).
+  discovery, and drift pass. `TestWithoutForgeClonesPreserveExportedContract`
+  now checks both static consumer clones for absence of Forge state and verifies
+  exported rules, skill references/content, gates, and project manifests.
+  External clone-agent acceptance remains unverified; see
+  [P0–T1 acceptance](acceptance/p0-t1.md).
 - T2.1: a shared layout resolver discovers `.harness` or `.forge`, rejects
   ambiguous coexistence unless selection is explicit, and resolves safe
   repository-relative paths.
