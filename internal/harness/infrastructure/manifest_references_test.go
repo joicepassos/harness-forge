@@ -63,3 +63,47 @@ func TestValidateManifestReferencesReportsMissingAndRejectsSymlinks(t *testing.T
 		t.Fatalf("symlink reference accepted: %v", err)
 	}
 }
+
+func TestValidateManifestReferencesRejectsSymlinkedAncestorComponents(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		workspace  bool
+		linkTarget func(root string) string
+	}{
+		{name: "knowledge ancestor to outside", linkTarget: func(root string) string { return filepath.Join(filepath.Dir(root), "outside-knowledge") }},
+		{name: "knowledge ancestor to internal directory", linkTarget: func(root string) string { return filepath.Join(root, "real-knowledge") }},
+		{name: "workspace ancestor to outside", workspace: true, linkTarget: func(root string) string { return filepath.Join(filepath.Dir(root), "outside-workspace") }},
+		{name: "workspace ancestor to internal directory", workspace: true, linkTarget: func(root string) string { return filepath.Join(root, "real-workspace") }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			layout := ProjectLayout{Root: root, Kind: LayoutForge}
+			outside := tc.linkTarget(root)
+			if err := os.MkdirAll(outside, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if !tc.workspace {
+				if err := os.WriteFile(filepath.Join(outside, "item.md"), []byte("content"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.WriteFile(filepath.Join(outside, "go.mod"), []byte("module example\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			link := filepath.Join(root, "apps")
+			if err := os.Symlink(outside, link); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+			manifest := domain.Manifest{}
+			if tc.workspace {
+				manifest.QualityGates = []domain.QualityGate{{ID: "test", Workspaces: []string{"apps"}}}
+			} else {
+				manifest.References.Knowledge = []domain.KnowledgeReference{{ID: "linked", Path: "apps/item.md"}}
+			}
+			if err := ValidateManifestReferences(layout, manifest); err == nil || !strings.Contains(err.Error(), "symlink") {
+				t.Fatalf("ancestor symlink accepted: %v", err)
+			}
+		})
+	}
+}
