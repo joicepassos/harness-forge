@@ -20,7 +20,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   fixtures are inventoried separately from the selected Mili validation commit.
   A focused clean-commit smoke baseline records 8 passing tests. A PostgreSQL
   18.3 probe found the MLI-02 cursor precision defect; comparative agent-task
-  baselines remain part of T9.2.
+  baselines remain part of T9.2. Comparative baseline metrics are partial, so
+  T0.4's validation-corpus metrics acceptance remains open.
 - T1.1–T1.5: generation preserves skills and structured workspaces; generated
   files use ownership hashes; approval records bind rule/evidence fingerprints;
   discovery rejects conflicting IDs; drift reports evidence presence and
@@ -32,7 +33,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   now checks both static consumer clones for absence of Forge state and verifies
   exported rules, skill references/content, gates, and project manifests.
   `go test -count=1 ./internal/generation/... ./internal/harness/... ./internal/discovery/... ./internal/drift/... ./cmd/harnessforge` passed after this change. External clone-agent acceptance remains unverified; see
-  [P0–T1 acceptance](acceptance/p0-t1.md).
+  [P0–T1 acceptance](acceptance/p0-t1.md). T1.7 is locally verified but not
+  externally accepted until an agent consumes the generated clone.
 - T2.1: a shared layout resolver discovers `.harness` or `.forge`, rejects
   ambiguous coexistence unless selection is explicit, rejects symlinked
   layout directories and referenced path components, and resolves safe
@@ -74,7 +76,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   glob annotations in both static exports, label them advisory/textual, keep
   deterministic ID ordering, and state that matching rules coexist without
   implicit precedence; no native scope enforcement or nested generated outputs
-  are claimed. Renderer contract tests pass for Codex and Claude Code. Dry-run
+  are claimed. Renderer contract tests pass for Codex and Claude Code; runtime
+  scope and precedence acceptance remains open. Dry-run
   reports unmanaged, edited, and unsafe output conflicts
   without writing; `sync --check` lists missing current outputs. Apply captures
   preflight snapshots and rechecks outputs immediately before removal and
@@ -91,6 +94,7 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   configuration, or execution errors 2. The cross-platform workflow runs both
   no-Forge clone gates and verifies generated drift. It does not launch an
   external agent against the clone, so runtime discovery remains unverified.
+  Its GitHub OS matrix has not run; external CI acceptance remains pending.
 - T5.2–T5.4: explicit candidate import, reviewer-bound approval bound to rule,
   evidence, and reviewable metadata hashes, and Forge knowledge/evidence drift
   are covered. Legacy approvals without the metadata digest require re-review.
@@ -221,6 +225,10 @@ Mili pilot attempts recorded above.
 
 ## Remaining validation
 
+- Acceptance distinction: T4.2/T4.3 renderer contracts, T1.7/T5.6 clone gates,
+  and T8.6 workflow configuration are implemented and locally verifiable, but
+  target-runtime discovery/precedence, an external clone-agent run, and the
+  GitHub OS matrix are separate acceptance criteria and remain pending.
 - Cursor, broad OpenCode compatibility, and external Codex/Claude runtime
   validation, end-to-end clone agent runs, pilot measurements, and the runtime
   decision require exact agent builds and representative repositories; the
