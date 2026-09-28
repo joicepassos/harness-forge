@@ -16,6 +16,17 @@ type testTokenCounter struct {
 	force bool
 }
 
+type intermittentTokenCounter struct{ calls int }
+
+func (c *intermittentTokenCounter) Name() string { return "intermittent-counter-v1" }
+func (c *intermittentTokenCounter) Count(_ context.Context, _ string, _ []byte) (int, error) {
+	c.calls++
+	if c.calls == 2 {
+		return 0, errors.New("temporary counter failure")
+	}
+	return 1, nil
+}
+
 func (c *testTokenCounter) Name() string { return "test-counter-v1" }
 func (c *testTokenCounter) Count(_ context.Context, model string, payload []byte) (int, error) {
 	c.model = model
@@ -45,6 +56,44 @@ func TestSelectWithBudgetDeclaresNegativeCounterFallback(t *testing.T) {
 	}}, "authentication", Budget{MaxInputTokens: 500, Counter: counter}, domain.Metrics{})
 	if want := "test-counter-v1; fallback=payload-byte-upper-bound-v1 (counter returned negative value)"; plan.Estimator != want {
 		t.Fatalf("estimator = %q, want %q", plan.Estimator, want)
+	}
+}
+
+func TestSelectWithBudgetRecomputesWholePlanAfterIntermittentCounterFailure(t *testing.T) {
+	candidates := []domain.Excerpt{
+		{ID: "a", Source: "a", Text: "authentication " + strings.Repeat("a", 100), Relevance: 10, Origins: []string{"a.go"}},
+		{ID: "b", Source: "b", Text: "authentication " + strings.Repeat("b", 100), Relevance: 9, Origins: []string{"b.go"}},
+	}
+	budget := Budget{MaxInputTokens: 220, ReserveTokens: 17}
+	want := SelectWithBudget(context.Background(), cloneExcerpts(candidates), "authentication", budget, domain.Metrics{})
+	counter := &intermittentTokenCounter{}
+	got := SelectWithBudget(context.Background(), candidates, "authentication", Budget{
+		MaxInputTokens: budget.MaxInputTokens,
+		ReserveTokens:  budget.ReserveTokens,
+		Counter:        counter,
+	}, domain.Metrics{})
+
+	if got.Estimator != "intermittent-counter-v1; fallback="+estimatorName+" (counter error)" {
+		t.Fatalf("estimator = %q", got.Estimator)
+	}
+	if got.EstimatedTokens != want.EstimatedTokens || got.BudgetOverflow != want.BudgetOverflow || got.OverflowTokens != want.OverflowTokens {
+		t.Fatalf("fallback plan used inconsistent units: got %+v, byte-only plan %+v", got, want)
+	}
+	if len(got.Included) != len(want.Included) || len(got.Excluded) != len(want.Excluded) {
+		t.Fatalf("fallback selection differs from byte-only selection: got included=%+v excluded=%+v; want included=%+v excluded=%+v", got.Included, got.Excluded, want.Included, want.Excluded)
+	}
+	for i := range got.Included {
+		if got.Included[i].ID != want.Included[i].ID || got.Included[i].EstimatedTokens != want.Included[i].EstimatedTokens {
+			t.Fatalf("included excerpt %d was not consistently re-estimated: got %+v, want %+v", i, got.Included[i], want.Included[i])
+		}
+	}
+	for i := range got.Excluded {
+		if got.Excluded[i].ID != want.Excluded[i].ID || got.Excluded[i].EstimatedTokens != want.Excluded[i].EstimatedTokens {
+			t.Fatalf("excluded excerpt %d was not consistently re-estimated: got %+v, want %+v", i, got.Excluded[i], want.Excluded[i])
+		}
+	}
+	if counter.calls <= 2 {
+		t.Fatalf("counter did not fail after an earlier successful measurement: calls=%d", counter.calls)
 	}
 }
 

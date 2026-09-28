@@ -55,6 +55,10 @@ func SelectWithBudget(ctx context.Context, candidates []domain.Excerpt, prompt s
 }
 
 func selectWithBudget(ctx context.Context, candidates []domain.Excerpt, prompt string, budget Budget, metrics domain.Metrics) *domain.Plan {
+	// Selection annotates and reorders candidates in place. Keep an untouched
+	// copy so a counter failure can restart the complete plan in one unit.
+	candidates = cloneExcerpts(candidates)
+	originalCandidates := cloneExcerpts(candidates)
 	counter := budget.Counter
 	if counter == nil {
 		counter = ConservativeByteEstimator{}
@@ -208,7 +212,15 @@ func selectWithBudget(ctx context.Context, candidates []domain.Excerpt, prompt s
 	}
 	estimator := counter.Name()
 	if len(fallbackReasons) > 0 {
-		estimator += "; fallback=" + estimatorName + " (" + strings.Join(fallbackReasons, ", ") + ")"
+		// A provider counter can fail after earlier calls succeeded. Returning
+		// this attempt would mix provider tokens and bytes in candidate sizes and
+		// serialized budget checks. Restart from the original candidates and
+		// recompute every value with the byte estimator instead.
+		fallbackBudget := budget
+		fallbackBudget.Counter = ConservativeByteEstimator{}
+		fallbackPlan := selectWithBudget(ctx, originalCandidates, prompt, fallbackBudget, metrics)
+		fallbackPlan.Estimator = counter.Name() + "; fallback=" + estimatorName + " (" + strings.Join(fallbackReasons, ", ") + ")"
+		return fallbackPlan
 	}
 	return &domain.Plan{
 		BudgetTokens:         budget.MaxInputTokens,
@@ -231,6 +243,16 @@ func selectWithBudget(ctx context.Context, candidates []domain.Excerpt, prompt s
 			Quality:                             "proxy only: recall counts deterministic prompt-matched candidates retained after deduplication, compression and budget selection; answer quality still requires provider evaluation",
 		},
 	}
+}
+
+func cloneExcerpts(values []domain.Excerpt) []domain.Excerpt {
+	cloned := make([]domain.Excerpt, len(values))
+	copy(cloned, values)
+	for i := range cloned {
+		cloned[i].Origins = append([]string(nil), values[i].Origins...)
+		cloned[i].KnowledgeScope = append([]string(nil), values[i].KnowledgeScope...)
+	}
+	return cloned
 }
 
 // ScopeRelevance scores prompt terms that also occur in knowledge scope paths.
