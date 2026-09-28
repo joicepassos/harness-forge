@@ -183,9 +183,35 @@ but the neutral-query rerun shows the parent `AGENTS.md` is included in system
 instructions outside the inner Git root. This conflicts with the current V2
 documentation statement that only global instructions load in this setup.
 The result does not establish V1 behavior or cross-version `CLAUDE.md` fallback parity,
-conflict resolution, or any Forge adapter publication behavior. The mock
-returned a fixed local response; this validates effective request context only,
-not model compliance or task quality.
+or conflict resolution. The mock returned a fixed local response; this
+validates effective request context only, not model compliance or task quality.
+
+## Forge-generated Codex export in OpenCode V2
+
+On 2026-09-28, `@opencode/cli@2.0.18` was run offline against a temporary copy
+of the Codex no-Forge consumer clone after T5.6 established byte-for-byte parity
+between that clone and current `SyncForge` output. The project `AGENTS.md`
+SHA-256 was
+`e56b70deb02be4d70f00edf16f807450c1e2bad2870a6185b0a54947de61e167`; the
+native skill at `.agents/skills/payment-provider-change/SKILL.md` had SHA-256
+`a33b01b747f31c68d7ed2193774d139697219090512442d43a41c63d17607949`.
+
+The command was `npm exec --offline --yes --package=@opencode/cli@2.0.18 --
+opencode run --standalone --model mock/test --format json 'Respond briefly to
+this request.'`. An isolated XDG config supplied the global instruction and a
+provider whose only endpoint was the local mock on `127.0.0.1`. The actual
+request capture contained the global sentinel, generated `PAY-001` rule, and
+native skill reference. The V2 `instructions` file, glob, and URL sentinels
+were absent, and the URL handler was not contacted. OpenCode returned the
+mock's fixed `LOCAL_MOCK_OK` response. The capture SHA-256 was
+`7cb9575641a39acc83a963f320dfe1c1aa5d07fa4c74944e4371b4095e192560`; the
+two-request JSONL capture is checked in at
+[`acceptance/evidence/opencode-forge-v2-requests-2026-09-28.jsonl`](acceptance/evidence/opencode-forge-v2-requests-2026-09-28.jsonl).
+
+This verifies that this exact OpenCode V2 build exposes the Forge-synced
+Codex-format instructions and skill reference to a request from a consumer
+clone without Forge. It does not establish that a model follows them, that the
+skill body is automatically loaded, or that V1 has the same behavior.
 
 ## Adapter and test work still required
 
@@ -197,16 +223,16 @@ not model compliance or task quality.
 3. Define deterministic collision behavior when Forge already owns
    `AGENTS.md`, a user has edited it, or a pre-existing `CLAUDE.md` would be
    selected as V1 fallback. Preserve user bytes and report an explicit conflict.
-4. Verify effective context rather than just checking generated file paths.
-   Record the binary version, install channel, environment variables, cwd,
-   fixture hash, and observed sentinels.
+4. Continue verifying effective context rather than just checking generated
+   file paths. Record the binary version, install channel, environment
+   variables, cwd, fixture hash, and observed sentinels.
 5. Do not claim parity for V2 `instructions` configuration, `CLAUDE.md`
    fallback, or dynamic nested discovery until tests establish the exact
    released-build behavior.
 
 This artifact remains a research and validation record for T8.2, not evidence
-that the OpenCode adapter is implemented. The runtime evidence above covers
-effective V2 instruction context for only the named build and seven cases;
-other discovery, compatibility, and adapter claims remain open until tested
-with their exact release, install channel, OS, fixture revision, and observed
+that OpenCode has a dedicated target adapter. Runtime evidence covers effective
+V2 instruction context for only the named build and listed cases; other
+discovery, compatibility, and adapter claims remain open until tested with
+their exact release, install channel, OS, fixture revision, and observed
 outcome.

@@ -158,9 +158,12 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   confirm global/root/ancestor instructions, `OPENCODE_DISABLE_PROJECT_CONFIG=1`,
   `CLAUDE.md` exclusion, and local/glob/URL `instructions` exclusion. A separate
   root-started V2 `read` call confirms nested rules are appended to the next
-  request after reading inside `packages/api`. V1 disable controls, V2 global
-  Claude fallback comparison, and actual Forge adapter publication remain
-  unverified. An external-root probe
+  request after reading inside `packages/api`. A follow-up V2 mock run in a
+  temporary no-Forge clone confirmed that OpenCode receives the current
+  Forge-synced Codex `AGENTS.md` rule and native skill reference; this verifies
+  cross-consumption for `@opencode/cli@2.0.18`, not model compliance or skill
+  body loading. V1 disable controls and the V2 global Claude fallback
+  comparison remain unverified. An external-root probe
   with a neutral query found the parent `AGENTS.md` in system instructions
   outside an inner Git root, contrary to the V2 docs' “global only” statement.
   V2 local-file, glob, and loopback URL entries in config `instructions` were
@@ -265,6 +268,8 @@ approved Codex CLI was used for the Mili pilot attempts recorded above.
 After the T5.6 clone-parity update, `go test ./...` also passed on the active
 checkout. The same command passed independently in both no-Forge consumer
 clones; those small fixtures currently have no dedicated Go test files.
+The OpenCode V2 Forge-export capture used the npm cache offline and a local-only
+mock provider; no paid model provider was contacted.
 
 ## Remaining validation
 
