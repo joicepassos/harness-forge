@@ -67,11 +67,18 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   an OS-backed repository lock stored in the user cache; lock waits honor
   cancellation, and dry-run remains read-only. Concurrent-apply, cross-process
   lock, and lock-cancellation tests pass on Windows; native target scope semantics remain
-  unverified.
+  unverified. Dry-run reports unmanaged, edited, and unsafe output conflicts
+  without writing; `sync --check` lists missing current outputs. Apply captures
+  preflight snapshots and rechecks outputs immediately before removal and
+  publication. A deterministic concurrent-create test confirms that human
+  bytes survive and earlier transaction outputs are restored.
 - T5.1/T5.6: read-only aggregate `check`, static Forge/Harness output drift,
   explicit gate status (`not_run`/blocked/executed), optional gate execution,
   strict `--require-gates`, stale/missing approved knowledge failure, and CI
   drift workflow are implemented.
+  `doctor` discovers either project layout, validates Forge references, and
+  reports declared policies and gates without claiming to enforce or run them.
+  Harness diagnostics remain supported.
   CLI exit codes follow ADR 0001: success 0, failed checks 1, and usage,
   configuration, or execution errors 2. The cross-platform workflow runs both
   no-Forge clone gates and verifies generated drift. It does not launch an
@@ -93,7 +100,9 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   out-of-scope exclusions. T6.3 reports selected-item and early prompt-envelope
   overflow with the configured estimator and an explicit excluded-prompt reason.
   Counter failures and negative values declare the byte-estimator fallback in
-  the result instead of silently reporting the requested counter.
+  the result instead of silently reporting the requested counter; the entire
+  selection is recomputed in bytes after an intermittent failure so values
+  from incompatible estimators are never mixed.
   T6.4 adds `context explain --compare-knowledge`, which emits paired plans for
   the same prompt, model, estimator, budget, ranking options, and task paths,
   with and without approved knowledge. It reports selected knowledge IDs and
@@ -113,11 +122,13 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   runtime tests were performed, so release acceptance remains open. The
   snapshots separate documented behavior from exact-build runtime evidence.
 - T8.3: the read-only context resolver is exposed through MCP JSON-RPC stdio
-  for protocol `2025-06-18`, with initialize, resources/list, resources/read,
-  a task-prompt resource template, optional repository-relative task paths,
-  bounded messages, and no tools or write operations. Protocol behavior is
-  covered locally; remote transport, authentication, and client-specific
-  discovery remain out of scope. See [MCP context contract](MCP-CONTEXT.md).
+  using the legacy initialize lifecycle. It negotiates `2025-11-25` and
+  `2025-06-18`, counter-offers `2025-11-25` for unsupported versions, and
+  supports resources/list, resources/read, a task-prompt resource template,
+  optional repository-relative task paths, bounded messages, and no tools or
+  write operations. Protocol behavior is covered locally; remote transport,
+  authentication, and client-specific discovery remain out of scope. See
+  [MCP context contract](MCP-CONTEXT.md).
 - T8.4: sync validates and publishes portable Agent Skills bundles under
   `.agents/skills/` and `.claude/skills/`; generated instruction files link to
   skills without duplicating their bodies. Updates and stale-file cleanup use
