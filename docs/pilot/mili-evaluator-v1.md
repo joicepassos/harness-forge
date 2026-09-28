@@ -78,6 +78,10 @@ Status: `PASS` only if all four assertions pass and service/repository calls
 carry the authenticated A scope for list, detail, and reprocess. Otherwise
 `FAIL`.
 
+Frozen evaluator source: `mili-evaluator-sources-v1/Mli01AcceptanceTest.java`.
+At the pinned baseline it compiled and exposed the three cross-tenant failures
+in list, detail, and reprocess; the positive tenant-A visibility control passed.
+
 ## MLI-02 — Malformed pagination cursors are rejected
 
 Command:
@@ -86,8 +90,8 @@ Command:
 & '.\gradlew.bat' test --tests 'com.mili.core.webhook.internal.infrastructure.http.Mli02AcceptanceTest' --no-daemon
 ```
 
-Required deterministic observations, using a mocked repository/service and an
-in-process HTTP controller:
+Required deterministic observations, using the production monitoring service
+and controller, a mocked repository, and an in-process HTTP controller:
 
 1. Missing and blank cursor values start page one and reach the repository with
    both boundary components null.
@@ -99,23 +103,29 @@ in-process HTTP controller:
 4. A deterministic 50-item first-page response emits exactly
    `<last.receivedAt.toEpochMilli()>|<last.id>` as its next cursor; feeding that
    cursor to a second controller/service request passes the same boundary to
-   the repository. A pure in-memory keyset fixture must also demonstrate no
-   duplicate IDs across its two pages.
+   the repository. The MLI-02 source checks cursor encoding and boundary
+   plumbing; row completeness is established only by the separate database
+   probe below.
 
-Status: `PASS` requires assertions 1–4 and a separate proof of the actual
-PostgreSQL keyset query semantics. If only parser/controller/mock or an
-in-memory comparator checks run, report `PARTIAL`, even if those checks pass.
-Report `FAIL` for any failed primary assertion.
+Status: `PASS` requires assertions 1–4 and a separate PostgreSQL execution of
+the production keyset predicate that traverses the complete fixture with no
+missing or duplicate IDs. If only parser/controller/mock or an in-memory
+comparator checks run, report `PARTIAL`, even if those checks pass. Report
+`FAIL` if a primary assertion fails or the database-backed traversal loses or
+duplicates rows.
 
 SQL limitation: the pinned repository uses PostgreSQL-specific row comparison
 `(received_at, id) < (:beforeReceivedAt::timestamptz, :beforeId)`, ordered by
 `received_at DESC, id DESC`, with `LIMIT 50`. A mocked repository or a copied
 in-memory comparator proves cursor plumbing, not that this SQL produces a
 complete duplicate-free page sequence. Existing end-to-end pagination tests
-use `BaseIntegrationTest` and therefore Testcontainers. To claim `PASS`, run a
-separate database-backed check against PostgreSQL (Docker is not required if a
-controlled PostgreSQL instance is supplied); if unavailable, record `PARTIAL`
-and leave SQL behavior unverified. Do not silently omit this distinction.
+use `BaseIntegrationTest` and therefore Testcontainers. The frozen
+`Mli02PostgresKeyset.sql` probe includes tied millisecond timestamps and
+submillisecond timestamps to detect precision loss from the API's
+epoch-millisecond cursor. To claim `PASS`, run a separate database-backed
+check against PostgreSQL (Docker is not required if a controlled PostgreSQL
+instance is supplied); if unavailable, record `PARTIAL` and leave SQL behavior
+unverified. Do not silently omit this distinction.
 
 ## MLI-03 — Pause/delete invalidate ingest authentication cache
 
@@ -148,6 +158,11 @@ Required observations:
 Status: `PASS` if all four pass for both pause and delete; otherwise `FAIL`.
 The request harness and cache/service tests must not use Testcontainers.
 
+Frozen evaluator source: `mili-evaluator-sources-v1/Mli03AcceptanceTest.java`.
+It compiled in the clean pinned clone. The baseline failed after pause and
+delete: cached ACTIVE data remained available and ingest requests returned 202
+and published, exposing the stale-cache defect.
+
 ## MLI-04 — Reprocessing an absent event returns 404
 
 Command:
@@ -167,6 +182,10 @@ plus an in-process MVC/controller test using the real exception advice.
 
 Status: `PASS` if all observations pass. These checks must not inherit
 `BaseIntegrationTest` and must not require Testcontainers.
+
+Frozen evaluator source: `mili-evaluator-sources-v1/Mli04AcceptanceTest.java`.
+It compiled at the pinned baseline. The absent-event 404 assertions failed as
+expected; the FAILED-to-204 and non-FAILED-to-409 controls passed.
 
 ## MLI-05 — JSONPath is validated before webhook persistence
 

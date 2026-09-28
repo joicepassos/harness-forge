@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "run_id": "mili-baseline-smoke-001",
+  "run_date": "2026-09-27",
+  "run_type": "baseline_sanity_only_no_agent_task",
+  "repository": {
+    "repository_id": "mili",
+    "commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+    "checkout": "fresh clone, detached HEAD, no tracked or untracked source changes",
+    "working_directory": "backend/core"
+  },
+  "command": ".\\gradlew.bat test --tests '*WebhookMonitoringServiceTest' --tests '*EventTypePathTest' --tests '*WebhookInboundCacheTest' --no-daemon",
+  "runtime": {
+    "operating_system": "Windows 11 10.0 amd64",
+    "java": "Eclipse Temurin OpenJDK 25.0.4.1+1-LTS",
+    "gradle": "9.5.1"
+  },
+  "result": {
+    "status": "passed",
+    "test_suites": 3,
+    "tests": 8,
+    "failures": 0,
+    "skipped": 0,
+    "docker_used": false
+  },
+  "suites": [
+    {
+      "class": "com.mili.core.webhook.internal.application.monitoring.WebhookMonitoringServiceTest",
+      "tests": ["listFiltersByStatusAndEventType", "reprocessResetsFailedEventToPending", "reprocessRejectsNonFailedEvent"]
+    },
+    {
+      "class": "com.mili.core.webhook.internal.domain.EventTypePathTest",
+      "tests": ["returnsEmptyWhenValueIsNotText", "returnsEmptyWhenPathMissing", "extractsTypeFromDefaultPath"]
+    },
+    {
+      "class": "com.mili.core.webhook.internal.infrastructure.cache.WebhookInboundCacheTest",
+      "tests": ["knownTokenReturnsConfigWithoutSecondRepositoryHit", "unknownTokenReturnsEmpty"]
+    }
+  ],
+  "setup_note": "The inherited JAVA_HOME was invalid in this environment. The pass used the Mili-provided Temurin 25.0.4.1 installation with JAVA_HOME and PATH set for the Gradle process only; no global environment setting was changed.",
+  "limitations": [
+    "This records build/test feasibility on the pinned clean commit, not a pilot task run or an outcome under baseline/team/Forge instructions.",
+    "The selected legacy suites do not independently prove the five new task acceptance criteria; those evaluator checks remain to be frozen."
+  ]
+}

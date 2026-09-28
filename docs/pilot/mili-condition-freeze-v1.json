@@ -51,6 +51,7 @@
       "bundle": "mili-forge-condition-v1/files",
       "source_project": "mili-forge-source",
       "source_manifest_sha256": "d91e319b7559b9d3b4c46dba0cc47132a826074f557d7490d04bc07973d0fe22",
+      "source_knowledge_item_sha256": "3bc761b36936a404c03c3ebc1d844690bb3d8000456f86a2d429774080fe04d2",
       "reviewer": "codex-pilot-preparation",
       "reviewed_knowledge_id": "import-agents-09e217e70d1f",
       "generated_manifest_sha256": "8d6226b43305c97a2b8312f651d1b0770a15cd3d5226167b1cc07ce2ebd6b66e",
@@ -145,25 +146,50 @@
   },
   "evaluation": {
     "rubric_file": "mili-evaluator-v1.md",
-    "rubric_sha256": "88411823abb37a0306e2e1b99bce05e3f0b18ec13dbef562af4b0c7d3581a802",
-    "evaluator_source": "docs/pilot/mili-evaluator-sources-v1/: Mli02AcceptanceTest.java and Mli05JsonPathProbe.java, independently exercised in scratch copies. The malformed-path probe passes; MLI-02 evaluator passes on an explicitly patched scratch tree but its unmodified baseline result is recorded separately.",
-    "status": "partial: MLI-02 and MLI-05 probes only; MLI-01/03/04 evaluator sources pending",
+    "rubric_sha256": "7a8ac10a230705433d5fd9db0e71d750b8e83774b79d58ff837772c24223e2b4",
+    "evaluator_source": "docs/pilot/mili-evaluator-sources-v1/: MLI-01/03/04 and MLI-05 sources are frozen; MLI-02 service/controller evaluator source is corrected and awaits clean-clone execution; PostgreSQL probe is frozen; no coding-agent runs started.",
+    "status": "partial: MLI-02 corrected source awaits execution; MLI-01/03/04/05 evaluators and database probe frozen",
     "baseline_smoke_file": "baseline-mili-v1.json",
     "baseline_smoke_status": "passed: 8 tests, 0 failures, 0 skipped, no Docker",
     "evaluator_sources": [
       {
+        "path": "Mli01AcceptanceTest.java",
+        "sha256": "79b584a23c2e696723150584fe23006e2a87f2708490662863ebc922e418148d",
+        "baseline_result": "compiled; three cross-tenant assertions failed; tenant-A visibility control passed"
+      },
+      {
         "path": "Mli02AcceptanceTest.java",
-        "sha256": "b3b1304c51ab4b84230aaaac3e2a8a70ac343f6c55d34b2b5e11573830eb94c0"
+        "sha256": "D83A511816AA411B4AB39C5CEDAAE02DD0F24639C040F0F31723B1FAEAD16D76",
+        "baseline_result": "corrected evaluator instantiates the production service/controller and awaits rerun in the clean pinned clone"
+      },
+      {
+        "path": "Mli03AcceptanceTest.java",
+        "sha256": "1599eea87296f6ad30b90137e38d32956451d4941cc9bdfa260d2ce5d6b73c2c",
+        "baseline_result": "compiled; detects stale ACTIVE cache after pause/delete and ingest 202 plus publication"
+      },
+      {
+        "path": "Mli04AcceptanceTest.java",
+        "sha256": "e4ee3e8d7ee7577555797f03abc3387f84a0dbffc8bbce95d4c93ff47247c1b6",
+        "baseline_result": "compiled; absent-event 404 assertions fail; FAILED 204 and non-FAILED 409 controls pass"
       },
       {
         "path": "Mli05JsonPathProbe.java",
-        "sha256": "d503a4b83ae589428987969d00d9f926db3035f2159adb8ecacf873dd4d8d1e8"
+        "sha256": "d503a4b83ae589428987969d00d9f926db3035f2159adb8ecacf873dd4d8d1e8",
+        "baseline_result": "Jayway JsonPath 2.10.0 accepts $.type and rejects frozen malformed expression $["
+      },
+      {
+        "path": "Mli02PostgresKeyset.sql",
+        "sha256": "5d5adbe0ca210cec16181245a681092179068a9abdcb1aa867170db79cdd5a20"
       }
     ],
     "run_status": "no_agent_runs_started",
-    "mli02_probe": "The acceptance test passed on a copied scratch tree with strict cursor parsing and HTTP 400 advice. Evaluator-construction only, not a coding-agent outcome; baseline fails malformed-cursor assertions.",
-    "mli05_probe": "Jayway JsonPath 2.10.0 resolved from the pinned build; frozen expression `$[` throws InvalidPathException and $.type compiles.",
-    "mli02_postgresql_check": "PostgreSQL 18 is running locally, but the postgres role requires a password not supplied for this pilot. No authentication or server configuration was changed; SQL keyset semantics remain unverified and MLI-02 is PARTIAL."
+    "evaluator_compilation": "MLI-01, MLI-03, and MLI-04 sources compiled in disposable clean pinned clones; corrected MLI-02 production service/controller evaluator awaits execution. These are evaluator baselines, not coding-agent outcome runs.",
+    "mli02_probe": "Independent controller evaluator passes on strict parser patch and fails against pinned baseline malformed cursors; no coding-agent run.",
+    "mli05_probe": "Jayway JsonPath 2.10.0: frozen `$[` expression raises InvalidPathException and $.type compiles.",
+    "mli02_postgresql_check": "PostgreSQL 18.3 isolated disposable cluster: exact-millisecond ties traversed 120/120 unique IDs; submillisecond timestamps traversed 50/120 and skipped 70 due epoch-millisecond cursor truncation. Baseline MLI-02 SQL pagination fails completeness.",
+    "mli02_database_result": "mili-postgres-keyset-v1.json",
+    "database_result_sha256": "b1d562d98661cdb89b92d8ab0ab7a9a6c5eca8010454609a520a143805cfcffb",
+    "mli04_baseline_probe": "Four independent checks compiled; FAILED to return 404 for missing IDs (service IllegalArgumentException and MVC response fail); FAILED to 204 and PROCESSED 409 controls passed."
   },
   "run_performed": false
 }

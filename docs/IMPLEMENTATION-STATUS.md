@@ -9,11 +9,18 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   those are still uncommitted and are not claimed as part of this plan's tasks.
 - T0.2: the six priority findings are mapped to regression tests in
   [the acceptance map](acceptance/t0.2-regressions.md).
-- T0.3: reusable single-module and Go-workspace monorepo fixtures cover
-  repository paths and workspace roots. Windows path semantics are covered by
-  host-independent resolver tests, not by a Windows filesystem fixture.
-- T0.5: [ADR 0001](adr/0001-layout-cli-contracts.md) defines layout coexistence,
-  relative references, JSON diagnostics version, and CLI exit codes.
+- T0.3: reusable single-module, Go-workspace monorepo, and Windows path/workspace
+  fixtures cover repository paths, portable references, and workspace roots.
+- T0.5: [ADR 0001](adr/0001-layout-cli-contracts.md) defines independent layout,
+  IR, JSON diagnostic, and build versions, compatibility behavior, and CLI exit
+  codes, aligned with the current implementation.
+- T0.6: the OS test matrix runs uncached deterministic tests with provider API
+  keys blanked; no paid provider calls are enabled by this workflow.
+- T0.4: synthetic single-module, monorepo, and Windows-workspace development
+  fixtures are inventoried separately from the selected Mili validation commit.
+  A focused clean-commit smoke baseline records 8 passing tests. A PostgreSQL
+  18.3 probe found the MLI-02 cursor precision defect; comparative agent-task
+  baselines remain part of T9.2.
 - T1.1–T1.5: generation preserves skills and structured workspaces; generated
   files use ownership hashes; approval records bind rule/evidence fingerprints;
   discovery rejects conflicting IDs; drift reports evidence presence and
@@ -99,12 +106,19 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   repetitions. The pinned Mili commit, four-file team bundle, generated Forge
   source/export, task text, model/effort, run rotation, and baseline smoke are
   hash-recorded in the pilot freeze files. The original Mili checkout is intact.
-  Evaluator coverage is partial: MLI-02 and the MLI-05 parser probe were tested
-  independently; MLI-01/03/04 acceptance evaluators are not yet frozen. A local
-  PostgreSQL 18 service is running, but the available postgres role requires an
-  unavailable password, so MLI-02's real keyset SQL is unverified and its status
-  remains PARTIAL. No coding-agent pilot runs have started. T0.4 and T9.2–T9.5
-  remain pending; T9.6 awaits comparative evidence.
+  Independent MLI-01/03/04 evaluators and MLI-05 parser probe are frozen by
+  hash. The corrected MLI-02 evaluator now exercises the real service and
+  controller, but Java 25 was unavailable in this shell to rerun it. Baseline probes
+  found cross-tenant exposure in MLI-01, stale ACTIVE cache and accepted ingest
+  after pause/delete in MLI-03, and missing-event HTTP 404 failures in MLI-04;
+  MLI-04 FAILED/204 and non-FAILED/409 controls pass. The frozen PostgreSQL
+  18.3 probe traversed tied millisecond rows without loss but skipped 70 of 120 rows when timestamps had
+  submillisecond precision: the API cursor truncates to milliseconds. The
+  pinned MLI-02 baseline therefore fails pagination completeness. The MLI-05
+  JsonPath probe confirms the frozen malformed expression is rejected. These
+  evaluator checks are not coding-agent pilot runs; none have started. See
+  [the database result](pilot/mili-postgres-keyset-v1.json).
+  T9.2–T9.5 remain pending; T9.6 awaits comparative evidence.
 
 ## Verification
 
@@ -126,11 +140,13 @@ paid provider calls were made.
 - External Cursor/OpenCode/Codex/Claude runtime validation, end-to-end clone
   agent runs, pilot measurements, and the runtime decision require pinned agent
   builds and representative repositories; none are fabricated here.
-- T0.4 and T9.2–T9.5 need independent acceptance evaluators for MLI-01/03/04
-  and authenticated access for the PostgreSQL keyset check. Mili's clean HEAD,
-  approved tasks, run configuration, and instruction bundles are frozen; the
-  original modified working tree is excluded. The available Go fixture is only
-  development data and is not treated as pilot evidence.
+- T0.4/T9.1 need a clean Java 25 execution of the corrected MLI-02 evaluator
+  before the pilot evaluator freeze is complete. T9.2–T9.5 need completion of
+  the frozen run matrix and outcome measurements.
+  Mili's clean HEAD, approved tasks, run configuration, instruction bundles,
+  and PostgreSQL keyset finding are versioned; the original modified working
+  tree is excluded. Synthetic Go and Windows fixtures remain development data,
+  not pilot evidence.
 - T6.2 now supports explicit knowledge keywords and task paths through the
   context API and `context explain --task-path`; glob matching is segment-aware
   with `**`, and backend/frontend scope fixtures pass. T6.3 reports early

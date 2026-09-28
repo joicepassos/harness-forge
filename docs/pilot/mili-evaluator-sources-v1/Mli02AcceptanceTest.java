@@ -1,10 +1,13 @@
-package com.mili.core.webhook.internal.infrastructure.http;
+package com.mili.core.webhook.pilot;
 
+import com.mili.core.webhook.WebhookMonitoringService;
 import com.mili.core.webhook.api.InboundEventSummary;
 import com.mili.core.webhook.internal.infrastructure.persistence.InboundEventRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.web.servlet.MockMvc;
 
+import java.lang.reflect.Constructor;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,55 +18,86 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
+/** Independent parser/controller acceptance checks for MLI-02. */
 class Mli02AcceptanceTest {
-    @Test void rejectsMalformedCursorsAndBuildsStableNextCursor() throws Exception {
-        var repository = mock(InboundEventRepository.class);
-        var service = (com.mili.core.webhook.WebhookMonitoringService) java.lang.reflect.Proxy.newProxyInstance(
-                getClass().getClassLoader(),
-                new Class<?>[] {com.mili.core.webhook.WebhookMonitoringService.class},
-                (proxy, method, args) -> {
-                    if (!method.getName().equals("listEvents")) return null;
-                    String cursor = (String) args[3];
-                    if (cursor == null || cursor.isBlank()) return repository.findSummaries((UUID) args[0], (String) args[1], (String) args[2], null, null);
-                    int separator = cursor.lastIndexOf('|');
-                    if (separator < 1 || separator == cursor.length() - 1) throw new IllegalArgumentException("Malformed page cursor");
-                    long epoch;
-                    try { epoch = Long.parseLong(cursor.substring(0, separator)); }
-                    catch (NumberFormatException exception) { throw new IllegalArgumentException("Malformed page cursor", exception); }
-                    return repository.findSummaries((UUID) args[0], (String) args[1], (String) args[2], Instant.ofEpochMilli(epoch), cursor.substring(separator + 1));
-                });
-        var mvc = MockMvcBuilders.standaloneSetup(new WebhookMonitoringController(service)).build();
-        var tenant = UUID.randomUUID();
-        mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString())).andExpect(status().isOk());
-        verify(repository).findSummaries(eq(tenant), isNull(), isNull(), isNull(), isNull());
-        mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()).param("pageAfter", " ")).andExpect(status().isOk());
-        for (String cursor : List.of("abc|evt-2", "1730000000123", "1730000000123|", "9223372036854775808|evt-2")) {
-            try { mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()).param("pageAfter", cursor)).andExpect(status().isBadRequest()); }
-            catch (jakarta.servlet.ServletException failure) { assertThat(failure.getCause()).isInstanceOf(IllegalArgumentException.class); }
-        }
-        verify(repository, times(2)).findSummaries(eq(tenant), isNull(), isNull(), isNull(), isNull());
+    private InboundEventRepository repository;
+    private WebhookMonitoringService service;
+    private MockMvc mvc;
+    private UUID tenant;
 
-        Instant lastTime = Instant.parse("2026-09-27T12:00:00Z");
-        var firstPage = new ArrayList<InboundEventSummary>();
-        for (int i = 0; i < 50; i++) firstPage.add(new InboundEventSummary("evt-" + i, tenant, UUID.randomUUID(), "type", "PROCESSED", lastTime.minusSeconds(i)));
-        when(repository.findSummaries(eq(tenant), isNull(), isNull(), isNull(), isNull())).thenReturn(firstPage);
-        String body = mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        String cursor = lastTime.minusSeconds(49).toEpochMilli() + "|evt-49";
-        assertThat(body).contains(cursor);
-        when(repository.findSummaries(eq(tenant), isNull(), isNull(), eq(lastTime.minusSeconds(49)), eq("evt-49"))).thenReturn(List.of());
-        mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()).param("pageAfter", cursor)).andExpect(status().isOk());
-        verify(repository).findSummaries(eq(tenant), isNull(), isNull(), eq(lastTime.minusSeconds(49)), eq("evt-49"));
+    @BeforeEach
+    void setUp() throws Exception {
+        repository = mock(InboundEventRepository.class);
+        service = construct(
+                "com.mili.core.webhook.internal.application.monitoring.WebhookMonitoringServiceImpl",
+                new Class<?>[]{InboundEventRepository.class}, repository);
+        Object controller = construct(
+                "com.mili.core.webhook.internal.infrastructure.http.WebhookMonitoringController",
+                new Class<?>[]{WebhookMonitoringService.class}, service);
+        mvc = standaloneSetup(controller).build();
+        tenant = UUID.randomUUID();
+    }
+
+    @Test
+    void blankCursorStartsFirstPageWithNoBoundary() throws Exception {
+        mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()))
+                .andExpect(status().isOk());
+        mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()).param("pageAfter", " "))
+                .andExpect(status().isOk());
+
+        verify(repository, times(2)).findSummaries(eq(tenant), isNull(), isNull(), isNull(), isNull());
+    }
+
+    @Test
+    void parsesFixedCursorAndRejectsMalformedCursorWithoutRepositoryQuery() throws Exception {
+        Instant expected = Instant.ofEpochMilli(1730000000123L);
+        mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString())
+                        .param("pageAfter", "1730000000123|evt-2"))
+                .andExpect(status().isOk());
+        verify(repository).findSummaries(eq(tenant), isNull(), isNull(), eq(expected), eq("evt-2"));
+
+        clearInvocations(repository);
+        for (String cursor : List.of("abc|evt-2", "1730000000123", "1730000000123|",
+                "9223372036854775808|evt-2")) {
+            mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString())
+                            .param("pageAfter", cursor))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void emitsCursorFromLastItemAndUsesItAsTheNextPageBoundary() throws Exception {
+        Instant receivedAt = Instant.parse("2026-09-27T12:00:00Z");
+        List<InboundEventSummary> firstPage = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            firstPage.add(new InboundEventSummary("evt-" + i, tenant, UUID.randomUUID(), "type",
+                    "PROCESSED", receivedAt.minusSeconds(i)));
+        }
+        when(repository.findSummaries(eq(tenant), isNull(), isNull(), isNull(), isNull()))
+                .thenReturn(firstPage);
+        String cursor = receivedAt.minusSeconds(49).toEpochMilli() + "|evt-49";
+        mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var response = mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(response).contains(cursor);
+
+        mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()).param("pageAfter", cursor))
+                .andExpect(status().isOk());
+        verify(repository).findSummaries(eq(tenant), isNull(), isNull(),
+                eq(receivedAt.minusSeconds(49)), eq("evt-49"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T construct(String className, Class<?>[] parameterTypes, Object... args)
+            throws Exception {
+        Class<?> type = Class.forName(className);
+        Constructor<?> constructor = type.getDeclaredConstructor(parameterTypes);
+        constructor.setAccessible(true);
+        return (T) constructor.newInstance(args);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
