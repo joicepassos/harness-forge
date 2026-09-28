@@ -114,6 +114,15 @@ comparator checks run, report `PARTIAL`, even if those checks pass. Report
 `FAIL` if a primary assertion fails or the database-backed traversal loses or
 duplicates rows.
 
+Frozen evaluator source: `mili-evaluator-sources-v1/Mli02AcceptanceTest.java`
+(SHA-256 recorded in `mili-condition-freeze-v1.json`). It calls the production
+service and controller with a mocked repository. On the pinned baseline, all
+three characterization tests pass, while malformed cursors produce observable
+statuses `[500, 200, 200, 500]`; the two malformed values accepted as HTTP 200
+also trigger repository queries. These observations mean the baseline fails
+the required malformed-cursor contract. This evaluator result is separate from
+the PostgreSQL result below and from agent-task outcome runs.
+
 SQL limitation: the pinned repository uses PostgreSQL-specific row comparison
 `(received_at, id) < (:beforeReceivedAt::timestamptz, :beforeId)`, ordered by
 `received_at DESC, id DESC`, with `LIMIT 50`. A mocked repository or a copied

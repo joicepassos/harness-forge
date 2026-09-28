@@ -106,10 +106,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   repetitions. The pinned Mili commit, four-file team bundle, generated Forge
   source/export, task text, model/effort, run rotation, and baseline smoke are
   hash-recorded in the pilot freeze files. The original Mili checkout is intact.
-  Independent MLI-01/03/04 evaluators and MLI-05 parser probe are frozen by
-  hash. The corrected MLI-02 evaluator now exercises the real service and
-  controller, but Java 25 was unavailable in this shell to rerun it. Baseline probes
-  found cross-tenant exposure in MLI-01, stale ACTIVE cache and accepted ingest
+  All five independent task evaluators are frozen by hash. The MLI-02 evaluator
+  uses the real service/controller and its three characterization tests pass
+  on Temurin 25.0.4.1. The four malformed cursor observations are 500, 200,
+  200, and 500; the accepted malformed cursors cause repository queries.
+  Baseline probes found cross-tenant exposure in MLI-01, stale ACTIVE cache and accepted ingest
   after pause/delete in MLI-03, and missing-event HTTP 404 failures in MLI-04;
   MLI-04 FAILED/204 and non-FAILED/409 controls pass. The frozen PostgreSQL
   18.3 probe traversed tied millisecond rows without loss but skipped 70 of 120 rows when timestamps had
@@ -140,9 +141,7 @@ paid provider calls were made.
 - External Cursor/OpenCode/Codex/Claude runtime validation, end-to-end clone
   agent runs, pilot measurements, and the runtime decision require pinned agent
   builds and representative repositories; none are fabricated here.
-- T0.4/T9.1 need a clean Java 25 execution of the corrected MLI-02 evaluator
-  before the pilot evaluator freeze is complete. T9.2–T9.5 need completion of
-  the frozen run matrix and outcome measurements.
+- T9.2–T9.5 need completion of the frozen run matrix and outcome measurements.
   Mili's clean HEAD, approved tasks, run configuration, instruction bundles,
   and PostgreSQL keyset finding are versioned; the original modified working
   tree is excluded. Synthetic Go and Windows fixtures remain development data,

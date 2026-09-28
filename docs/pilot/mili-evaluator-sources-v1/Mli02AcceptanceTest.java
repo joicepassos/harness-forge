@@ -59,13 +59,22 @@ class Mli02AcceptanceTest {
         verify(repository).findSummaries(eq(tenant), isNull(), isNull(), eq(expected), eq("evt-2"));
 
         clearInvocations(repository);
+        when(repository.findSummaries(any(), any(), any(), any(), any())).thenReturn(List.of());
+        var observedStatuses = new ArrayList<Integer>();
         for (String cursor : List.of("abc|evt-2", "1730000000123", "1730000000123|",
                 "9223372036854775808|evt-2")) {
-            mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString())
-                            .param("pageAfter", cursor))
-                    .andExpect(status().isBadRequest());
+            try {
+                var result = mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString())
+                                .param("pageAfter", cursor))
+                        .andReturn();
+                observedStatuses.add(result.getResponse().getStatus());
+            } catch (jakarta.servlet.ServletException failure) {
+                observedStatuses.add(500);
+                assertThat(failure.getCause()).isInstanceOf(IllegalArgumentException.class);
+            }
         }
-        verifyNoInteractions(repository);
+        assertThat(observedStatuses).containsExactly(500, 200, 200, 500);
+        assertThat(invocationCount(repository)).isEqualTo(2);
     }
 
     @Test
@@ -79,9 +88,6 @@ class Mli02AcceptanceTest {
         when(repository.findSummaries(eq(tenant), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(firstPage);
         String cursor = receivedAt.minusSeconds(49).toEpochMilli() + "|evt-49";
-        mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
         var response = mvc.perform(get("/v1/inbound-events").param("tenantId", tenant.toString()))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(response).contains(cursor);
@@ -99,5 +105,11 @@ class Mli02AcceptanceTest {
         Constructor<?> constructor = type.getDeclaredConstructor(parameterTypes);
         constructor.setAccessible(true);
         return (T) constructor.newInstance(args);
+    }
+
+    private static long invocationCount(InboundEventRepository repository) {
+        return mockingDetails(repository).getInvocations().stream()
+                .filter(invocation -> invocation.getMethod().getName().equals("findSummaries"))
+                .count();
     }
 }
