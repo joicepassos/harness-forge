@@ -30,6 +30,15 @@ func (m Markdown) Render(input domain.Input) (domain.Document, error) {
 	sort.Slice(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
 	var out bytes.Buffer
 	fmt.Fprintf(&out, "%s\n# %s agent instructions\n\n", marker, input.Project)
+	if len(input.Architecture) > 0 {
+		styles := append([]string(nil), input.Architecture...)
+		sort.Strings(styles)
+		out.WriteString("## Architecture\n\n")
+		for _, style := range styles {
+			fmt.Fprintf(&out, "- %s\n", style)
+		}
+		out.WriteByte('\n')
+	}
 	if len(rules) > 0 {
 		out.WriteString("## Approved rules\n\n")
 		for _, r := range rules {

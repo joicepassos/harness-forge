@@ -143,6 +143,31 @@ func TestSyncForgePreviewApplyCheckAndCloneOwnership(t *testing.T) {
 	}
 }
 
+func TestCompileForgeExportsArchitectureToCodexAndClaude(t *testing.T) {
+	root := t.TempDir()
+	config := filepath.Join(root, ".forge", "forge.yaml")
+	if err := os.MkdirAll(filepath.Dir(config), 0700); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "layout_version: 1\nir_version: 2\nproject: {name: sample}\narchitecture:\n  styles: [hexagonal, event-driven]\ntargets: [codex, claude]\nreferences: {}\n"
+	if err := os.WriteFile(config, []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := CompileForge(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"AGENTS.md", "CLAUDE.md"} {
+		content, ok := result.Diff[path]
+		if !ok {
+			t.Fatalf("missing target export %s: %#v", path, result.Files)
+		}
+		if !strings.Contains(content, "## Architecture") || !strings.Contains(content, "- event-driven") || !strings.Contains(content, "- hexagonal") {
+			t.Errorf("%s omitted architecture styles: %s", path, content)
+		}
+	}
+}
+
 func TestSyncForgeRejectsMalformedOwnershipManifestBeforeApply(t *testing.T) {
 	for name, manifest := range map[string]GeneratedManifest{
 		"duplicate path": {Version: 1, Files: []GeneratedFile{

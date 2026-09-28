@@ -282,7 +282,7 @@ func CompileForge(root string) (SyncResult, error) {
 	if err := harnessinfra.ValidateManifestReferences(layout, *project.Manifest); err != nil {
 		return SyncResult{}, err
 	}
-	input := domain.Input{Project: project.Manifest.Project.Name}
+	input := domain.Input{Project: project.Manifest.Project.Name, Architecture: append([]string(nil), project.Manifest.Architecture.Styles...)}
 	rootHandle, err := os.OpenRoot(layout.Root)
 	if err != nil {
 		return SyncResult{}, err

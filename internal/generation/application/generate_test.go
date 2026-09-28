@@ -30,7 +30,7 @@ type writer struct{ called bool }
 func (w *writer) Write(context.Context, string, domain.Document) error { w.called = true; return nil }
 func TestGeneratePreservesSkillsAndStructuredQualityGates(t *testing.T) {
 	a, w := &adapter{}, &writer{}
-	h := harnessdomain.Harness{Project: harnessdomain.Project{Name: "sample"}, Rules: []harnessdomain.Rule{{ID: "approved", Description: "Keep", Status: "approved"}, {ID: "candidate", Description: "Skip", Status: "candidate"}, {ID: "rejected", Description: "Skip", Status: "rejected"}}, Skills: []harnessdomain.Skill{{ID: "backend", Description: "Backend conventions", Path: "skills/backend/SKILL.md"}, {ID: "draft", Description: "Not published", Status: "candidate"}}, QualityGates: []harnessdomain.QualityGate{{ID: "test", Command: "go test ./...", Workspace: "services/api", Workspaces: []string{"services/api", "libs/core"}}}}
+	h := harnessdomain.Harness{Project: harnessdomain.Project{Name: "sample"}, Architecture: harnessdomain.Architecture{Styles: []string{"hexagonal", "event-driven"}}, Rules: []harnessdomain.Rule{{ID: "approved", Description: "Keep", Status: "approved"}, {ID: "candidate", Description: "Skip", Status: "candidate"}, {ID: "rejected", Description: "Skip", Status: "rejected"}}, Skills: []harnessdomain.Skill{{ID: "backend", Description: "Backend conventions", Path: "skills/backend/SKILL.md"}, {ID: "draft", Description: "Not published", Status: "candidate"}}, QualityGates: []harnessdomain.QualityGate{{ID: "test", Command: "go test ./...", Workspace: "services/api", Workspaces: []string{"services/api", "libs/core"}}}}
 	if err := NewGenerate(loader{h}, a, w).Execute(context.Background(), "harness.yaml", "repository"); err != nil {
 		t.Fatal(err)
 	}
@@ -38,6 +38,9 @@ func TestGeneratePreservesSkillsAndStructuredQualityGates(t *testing.T) {
 		t.Fatalf("%#v", a.input)
 	}
 	gate := a.input.Gates[0]
+	if len(a.input.Architecture) != 2 || a.input.Architecture[0] != "hexagonal" || a.input.Architecture[1] != "event-driven" {
+		t.Fatalf("architecture metadata lost: %#v", a.input.Architecture)
+	}
 	if gate.Workspace != "services/api" || len(gate.Workspaces) != 2 || gate.Workspaces[1] != "libs/core" {
 		t.Fatalf("gate workspace lost: %#v", gate)
 	}

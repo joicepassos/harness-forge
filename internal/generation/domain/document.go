@@ -5,11 +5,12 @@ type Document struct {
 	Content []byte
 }
 type Input struct {
-	Project  string
-	Rules    []Rule
-	Skills   []Skill
-	Gates    []QualityGate
-	Policies []Policy
+	Project      string
+	Architecture []string
+	Rules        []Rule
+	Skills       []Skill
+	Gates        []QualityGate
+	Policies     []Policy
 }
 type Rule struct {
 	ID, Description string

@@ -49,7 +49,8 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   explicit: legacy `generate` directs Forge projects to native `sync` rather
   than emitting a partial document.
 - T4.1–T4.6: deterministic Codex/Claude compile adapters, shared ownership
-  manifest, dry-run/check/apply, collision and edit protection, staging, clone
+  manifest, architecture metadata in both native exports, dry-run/check/apply,
+  collision and edit protection, staging, clone
   ownership, idempotence, and symlink checks are implemented. T4.5 now records a
   durable recovery journal before publishing files; interrupted transactions
   roll back on the next apply, and post-interruption human edits are preserved
