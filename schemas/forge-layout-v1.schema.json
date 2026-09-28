@@ -27,10 +27,11 @@
             "type": "object", "additionalProperties": false,
             "required": ["id", "description", "path"],
             "properties": {
-              "id": { "$ref": "#/$defs/text" },
-              "description": { "$ref": "#/$defs/text" },
-              "path": { "$ref": "#/$defs/relativePath" },
-              "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+                "id": { "$ref": "#/$defs/text" },
+                "description": { "$ref": "#/$defs/text" },
+                "path": { "$ref": "#/$defs/relativePath" },
+                "status": { "enum": ["approved"] },
+                "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
             }
           }
         }

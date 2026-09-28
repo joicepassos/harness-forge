@@ -41,6 +41,7 @@ type SkillReference struct {
 	ID          string     `json:"id" yaml:"id"`
 	Description string     `json:"description" yaml:"description"`
 	Path        string     `json:"path" yaml:"path"`
+	Status      string     `json:"status,omitempty" yaml:"status,omitempty"`
 	Evidence    []Evidence `json:"evidence,omitempty" yaml:"evidence,omitempty"`
 }
 
@@ -104,6 +105,9 @@ func (m Manifest) Validate() error {
 		}
 		if err := validateRelativePath(field+".path", skill.Path); err != nil {
 			return err
+		}
+		if skill.Status != "" && skill.Status != "approved" {
+			return fmt.Errorf("%s.status: expected approved when present", field)
 		}
 	}
 	ids := map[string]bool{}

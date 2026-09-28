@@ -34,6 +34,7 @@ skills:
   - id: payment-review
     description: Review payment provider changes
     path: .harness/skills/payment/SKILL.md
+    status: approved
     evidence:
       - file: internal/payment/service.go
         symbol: RequestKey
@@ -110,7 +111,7 @@ func TestPreviewToForgePreservesFieldsAndProducesDeterministicPlan(t *testing.T)
 			}
 		}
 	}
-	if manifest.Project.Name != "payment-service" || manifest.Targets[1] != "claude" || manifest.References.Skills[0].ID != "payment-review" || manifest.References.Skills[0].Description != "Review payment provider changes" || manifest.References.Skills[0].Path != ".harness/skills/payment/SKILL.md" {
+	if manifest.Project.Name != "payment-service" || manifest.Targets[1] != "claude" || manifest.References.Skills[0].ID != "payment-review" || manifest.References.Skills[0].Description != "Review payment provider changes" || manifest.References.Skills[0].Path != ".harness/skills/payment/SKILL.md" || manifest.References.Skills[0].Status != "approved" {
 		t.Fatalf("manifest lost legacy fields: %#v", manifest)
 	}
 	if len(manifest.Architecture.Styles) != 2 || manifest.Architecture.Styles[0] != "hexagonal" || manifest.Architecture.Styles[1] != "domain-driven" {
