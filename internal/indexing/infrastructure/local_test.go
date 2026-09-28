@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"harnessforge/internal/indexing/domain"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -126,6 +128,70 @@ func TestJSONStoreSeparatesRepositoryAndWorktreeCaches(t *testing.T) {
 		loaded, err := store.Load(root)
 		if err != nil || loaded.Chunks[0].Text != want {
 			t.Fatalf("load %s = %#v, %v; want text %q", root, loaded, err, want)
+		}
+	}
+}
+
+func TestJSONStoreSeparatesLinkedGitWorktreeCaches(t *testing.T) {
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git is unavailable")
+	}
+	root := t.TempDir()
+	main := filepath.Join(root, "main")
+	worktree := filepath.Join(root, "worktree")
+	if err := os.MkdirAll(main, 0700); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(git, "-C", main, "init", "-q")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Skipf("git repository initialization unavailable: %v\n%s", err, output)
+	}
+	runGit := func(dir string, args ...string) string {
+		t.Helper()
+		command := exec.Command(git, append([]string{"-C", dir}, args...)...)
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, output)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	runGit(main, "-c", "user.name=HarnessForge test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-m", "initial")
+	command = exec.Command(git, "-C", main, "worktree", "add", "-b", "index-worktree", worktree)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Skipf("git worktree is unavailable: %v\n%s", err, output)
+	}
+	defer func() {
+		_ = exec.Command(git, "-C", main, "worktree", "remove", "--force", worktree).Run()
+	}()
+	if mainGitDir := runGit(main, "rev-parse", "--git-dir"); !filepath.IsAbs(mainGitDir) {
+		mainGitDir = filepath.Join(main, mainGitDir)
+		if _, err := os.Stat(filepath.Join(mainGitDir, "worktrees")); err != nil {
+			t.Fatalf("main checkout is not linked to a worktree administration directory: %v", err)
+		}
+	}
+	store := JSONStore{CacheDir: filepath.Join(root, "cache")}
+	if err := store.Save(main, validTestIndex("main checkout")); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Save(worktree, validTestIndex("linked worktree")); err != nil {
+		t.Fatal(err)
+	}
+	mainPath, err := store.indexPath(main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktreePath, err := store.indexPath(worktree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mainPath == worktreePath {
+		t.Fatalf("linked worktree shares generated index cache path %q", mainPath)
+	}
+	for checkout, want := range map[string]string{main: "main checkout", worktree: "linked worktree"} {
+		loaded, err := store.Load(checkout)
+		if err != nil || len(loaded.Chunks) != 1 || loaded.Chunks[0].Text != want {
+			t.Fatalf("load %s = %#v, %v; want text %q", checkout, loaded, err, want)
 		}
 	}
 }
