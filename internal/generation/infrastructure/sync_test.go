@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -80,6 +81,9 @@ func TestSyncForgePreviewApplyCheckAndCloneOwnership(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); !os.IsNotExist(err) {
 		t.Fatal("dry-run wrote output")
 	}
+	if _, err := os.Stat(filepath.Join(root, ".forge", ".sync.lock")); !os.IsNotExist(err) {
+		t.Fatal("dry-run wrote lock state into the project")
+	}
 	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
 		t.Fatal(err)
 	}
@@ -140,6 +144,49 @@ func TestSyncForgePreviewApplyCheckAndCloneOwnership(t *testing.T) {
 	}
 	if _, err := SyncForge(context.Background(), clone, "apply"); err != nil {
 		t.Fatalf("clone ownership was not recognized: %v", err)
+	}
+}
+
+func TestConcurrentSyncAppliesSerializeAndLeaveCheckableOutput(t *testing.T) {
+	root := forgeSyncFixture(t)
+	enteredMutation := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	firstDone := make(chan error, 1)
+	var pauseOnce sync.Once
+	go func() {
+		_, err := syncForge(context.Background(), root, "apply", func(int) error {
+			pauseOnce.Do(func() {
+				close(enteredMutation)
+				<-releaseFirst
+			})
+			return nil
+		})
+		firstDone <- err
+	}()
+	<-enteredMutation
+
+	secondStarted := make(chan struct{})
+	secondDone := make(chan error, 1)
+	go func() {
+		close(secondStarted)
+		_, err := SyncForge(context.Background(), root, "apply")
+		secondDone <- err
+	}()
+	<-secondStarted
+	select {
+	case err := <-secondDone:
+		t.Fatalf("concurrent apply completed while the first transaction was paused: %v", err)
+	case <-time.After(40 * time.Millisecond):
+	}
+	close(releaseFirst)
+	if err := <-firstDone; err != nil {
+		t.Fatalf("first apply failed: %v", err)
+	}
+	if err := <-secondDone; err != nil {
+		t.Fatalf("second apply failed: %v", err)
+	}
+	if _, err := SyncForge(context.Background(), root, "check"); err != nil {
+		t.Fatalf("serialized applies left output out of sync: %v", err)
 	}
 }
 

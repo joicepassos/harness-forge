@@ -54,8 +54,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   ownership, idempotence, and symlink checks are implemented. T4.5 now records a
   durable recovery journal before publishing files; interrupted transactions
   roll back on the next apply, and post-interruption human edits are preserved
-  with an explicit conflict. Native target scope semantics and concurrent
-  writers remain unverified.
+  with an explicit conflict. Concurrent `sync` writers now serialize through
+  an OS-backed repository lock stored in the user cache; lock waits honor
+  cancellation, and dry-run remains read-only. Concurrent-apply and lock
+  cancellation tests pass on Windows; native target scope semantics remain
+  unverified.
 - T5.1/T5.6: read-only aggregate `check`, static Forge/Harness output drift,
   explicit gate status (`not_run`/blocked/executed), optional gate execution,
   strict `--require-gates`, stale/missing approved knowledge failure, and CI

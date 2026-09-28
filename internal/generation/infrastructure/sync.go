@@ -484,12 +484,35 @@ func syncForge(ctx context.Context, root, mode string, afterMutation func(int) e
 	if err != nil {
 		return SyncResult{}, err
 	}
+	rootInfo, err := os.Lstat(abs)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	if !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 {
+		return SyncResult{}, fmt.Errorf("repository must be a non-symlink directory")
+	}
+	lock, err := acquireSyncFileLock(ctx, abs)
+	if err != nil {
+		return SyncResult{}, fmt.Errorf("acquire sync lock: %w", err)
+	}
+	result, syncErr := syncForgeLocked(ctx, abs, mode, afterMutation)
+	closeErr := lock.Close()
+	if syncErr != nil {
+		return result, syncErr
+	}
+	if closeErr != nil {
+		return result, fmt.Errorf("release sync lock: %w", closeErr)
+	}
+	return result, nil
+}
+
+func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(int) error) (SyncResult, error) {
 	if mode == "apply" {
 		if err := recoverSyncJournal(abs); err != nil {
 			return SyncResult{}, err
 		}
 	}
-	result, err := CompileForge(root)
+	result, err := CompileForge(abs)
 	if err != nil {
 		return result, err
 	}
