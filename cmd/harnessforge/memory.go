@@ -207,8 +207,21 @@ func newMemoryCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Published candidate %s at %s. Review it explicitly before sync.\n", item.ID, path)
-		return err
+		project, err := harnessinfra.LoadProject(repository, "forge")
+		if err != nil {
+			return err
+		}
+		for _, reference := range project.Manifest.References.Knowledge {
+			if reference.Path == path {
+				if reference.ID != item.ID {
+					_, err = fmt.Fprintf(cmd.OutOrStdout(), "Equivalent knowledge already exists as %s at %s; publication was not duplicated.\n", reference.ID, path)
+					return err
+				}
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "Published candidate %s at %s. Review it explicitly before sync.\n", item.ID, path)
+				return err
+			}
+		}
+		return fmt.Errorf("published knowledge path %q is not referenced by the Forge manifest", path)
 	}}
 	publish.Flags().StringVar(&repository, "repository", ".", "Repository with a Forge layout")
 	publish.Flags().StringVar(&kind, "kind", "", "Knowledge type: fact, convention, business_rule, decision, constraint")

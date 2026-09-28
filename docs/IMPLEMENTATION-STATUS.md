@@ -90,8 +90,11 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   estimated token delta while labeling the result as a retrieval proxy;
   task-level quality remains unmeasured.
 - T7.1–T7.5: local observation capture, review, candidate publication,
-  audit provenance, deduplication, and checkout isolation are implemented and
-  covered. T7.4 supports preview/apply, age and quota retention, pending-item
+  audit provenance, and checkout isolation are implemented and covered. T7.3
+  reuses an existing candidate/approved item when content, kind, scope,
+  keywords, and evidence match, without changing its provenance or review;
+  rejected/deprecated items do not block a new candidate. T7.4 supports
+  preview/apply, age and quota retention, pending-item
   preservation, atomic snapshot replacement, and safe retry after an injected
   interruption; pending items survive and repeated collection is idempotent.
 - T8.1/T8.2: official-doc behavior matrices exist; no Cursor/OpenCode binary

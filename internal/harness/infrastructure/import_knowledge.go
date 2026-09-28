@@ -31,20 +31,26 @@ func ImportKnowledgeCandidate(root string, item harnessdomain.KnowledgeItem) (st
 		return "", err
 	}
 	for _, ref := range project.Manifest.References.Knowledge {
+		path, _ := project.Layout.ResolveReference(ref.Path)
+		existing, err := os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		current, err := parseKnowledgeFrontMatter(existing)
+		if err != nil {
+			return "", err
+		}
 		if ref.ID == item.ID {
-			path, _ := project.Layout.ResolveReference(ref.Path)
-			existing, err := os.ReadFile(path)
-			if err != nil {
-				return "", err
-			}
-			current, err := parseKnowledgeFrontMatter(existing)
-			if err != nil {
-				return "", err
-			}
-			if current.Content == item.Content && current.Origin == item.Origin && current.Kind == item.Kind && reflect.DeepEqual(current.Scope, item.Scope) && current.EvidenceSHA256 == item.EvidenceSHA256 && reflect.DeepEqual(current.Evidence, item.Evidence) {
+			if sameKnowledgeImport(current, item) {
 				return ref.Path, nil
 			}
 			return "", fmt.Errorf("knowledge ID %q already exists with different content", item.ID)
+		}
+		// A repeated observation can have a different local ID and audit
+		// origin while representing the same reviewed claim. Reuse its
+		// existing reference without touching the source document or manifest.
+		if equivalentKnowledgePublication(current, item) {
+			return ref.Path, nil
 		}
 	}
 	identifier := sha256.Sum256([]byte(item.ID))
@@ -153,6 +159,27 @@ func ImportKnowledgeCandidate(root string, item harnessdomain.KnowledgeItem) (st
 		return "", err
 	}
 	return relative, nil
+}
+
+func equivalentKnowledgePublication(existing, candidate harnessdomain.KnowledgeItem) bool {
+	if existing.Review != harnessdomain.KnowledgeCandidate && existing.Review != harnessdomain.KnowledgeApproved {
+		return false
+	}
+	return existing.Content == candidate.Content &&
+		existing.Kind == candidate.Kind &&
+		reflect.DeepEqual(existing.Scope, candidate.Scope) &&
+		reflect.DeepEqual(existing.Keywords, candidate.Keywords) &&
+		reflect.DeepEqual(existing.Evidence, candidate.Evidence)
+}
+
+func sameKnowledgeImport(existing, candidate harnessdomain.KnowledgeItem) bool {
+	return existing.Content == candidate.Content &&
+		existing.Origin == candidate.Origin &&
+		existing.Kind == candidate.Kind &&
+		reflect.DeepEqual(existing.Scope, candidate.Scope) &&
+		reflect.DeepEqual(existing.Keywords, candidate.Keywords) &&
+		existing.EvidenceSHA256 == candidate.EvidenceSHA256 &&
+		reflect.DeepEqual(existing.Evidence, candidate.Evidence)
 }
 
 func parseKnowledgeFrontMatter(data []byte) (harnessdomain.KnowledgeItem, error) {
