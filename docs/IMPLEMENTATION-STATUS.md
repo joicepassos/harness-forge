@@ -213,11 +213,15 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   custom runtime pending the complete pilot and T7/T8 runtime evidence; see
   [ADR 0002](adr/0002-runtime-executor-decision.md). The remaining 41 planned
   condition runs are outstanding, so neither T9.5 nor T9.6 has final acceptance.
-  A 2026-09-28 integrity audit found the MLI-01 rubric was changed after its
-  recorded freeze digest and the approval-record digest cannot be reproduced
-  from tracked history; no further comparison run should use this freeze until
-  the immutable approval and reviewed rubric are reconciled. See the
-  [freeze integrity audit](pilot/freeze-integrity-audit-2026-09-28.md).
+  A 2026-09-28 reconciliation recovered the historical partial-approval bytes
+  from commit `df787e2a` into a byte-identical snapshot with a reproducible
+  SHA-256. The original freeze pointer still does not match that approval, and
+  the MLI-01 rubric changed after its recorded digest. The v3 evaluator also
+  does not establish either rubric fully. No new comparison runs may use the
+  old freeze until the detail and reprocess criteria are reviewed and a new
+  evaluator/freeze pair is committed. See the
+  [freeze integrity audit](pilot/freeze-integrity-audit-2026-09-28.md) and
+  [reconciliation record](pilot/mili-freeze-reconciliation-2026-09-28.md).
 
 ## Verification
 
@@ -249,7 +253,8 @@ approved Codex CLI was used for the Mili pilot attempts recorded above.
   and is not generalized to other builds or adapter behavior.
 - T9.2–T9.5 need completion of the frozen run matrix and outcome measurements.
   Mili's clean HEAD, approved tasks, run configuration, instruction bundles,
-  and PostgreSQL keyset finding are versioned; the original modified working
+  immutable historical approval snapshot, and PostgreSQL keyset finding are
+  versioned; the original modified working
   tree is excluded. Only one complete task/repetition exists so far, plus one
   valid Team condition attempt. Synthetic Go
   and Windows fixtures remain development data, not pilot evidence.
