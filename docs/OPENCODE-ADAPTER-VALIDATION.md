@@ -69,7 +69,7 @@ does not prove that OpenCode loaded a file.
 | F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | Required test per major version |
 | G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Pass on V2 2.0.18 |
 | H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Required V1 test |
-| I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | Required V2 regression/negative test |
+| I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | Local-file negative case passes on V2 2.0.18; glob and URL remain untested |
 | J | Workspace outside project root with global AGENTS and nearby project AGENTS | V2 loads global only | Required V2 test |
 
 ## Runtime validation: OpenCode V2 2.0.18
@@ -89,27 +89,30 @@ The instruction-file SHA-256 values were global
 root `00df5bc6ec20187ec5cb7da1c6d051ee18dc3ccf0fa380773899602e57efddf8`, and
 `packages/api`
 `20246c2275a9200b7b0323bb8e610d09e98ea87e0513b45560e420abdc415fbb`.
+The V2 config `instructions` negative-case file hash was
+`b38fd1208acffcb36a897428696bf1ac69bd8cec720839cb2a9f26661292ecef`.
 Each run used `opencode run --standalone --model mock/test --format json` from
 the listed working directory. OpenCode's JSONL request bodies were checked for
 the sentinel text in system messages; the returned `LOCAL_MOCK_OK` response
 provided no evidence about model instruction-following.
 
-| Case | Run location / setting | Observed system-message sentinels | Result |
+| Case | Run location / setting | Observed model-visible instructions | Result |
 | --- | --- | --- | --- |
 | A | Project root | Global, project root | Pass |
 | B | `packages/api` | Global, `packages/api`, project root, in that order | Pass |
 | C | Project root, then successfully read `packages/api/probe.txt` | Nested rule absent initially; `packages/api/AGENTS.md` appears in the next request's instruction entry | Pass |
 | G | Project root with `OPENCODE_DISABLE_PROJECT_CONFIG=1` | Global only | Pass |
+| I | Global config `instructions` points to a local file with a unique sentinel | Configured file sentinel is absent from system messages | Pass |
 
 For case C, the recorded first request did not contain the nested sentinel. The
 mock then issued a controlled `read` call for `packages/api/probe.txt`; after
 that successful read, the next request contained an instruction entry sourced
 from `packages/api/AGENTS.md`. This confirms dynamic discovery for this exact
-build and read path. The result does not establish V1 behavior, `CLAUDE.md`
-fallback, config `instructions` resolution, outside-root behavior, conflict
-resolution, or any Forge adapter publication behavior. The mock returned a
-fixed local response; this validates effective request context only, not model
-compliance or task quality.
+build and read path. Case I covers a local `instructions` path only; glob and
+URL cases remain untested. The result does not establish V1 behavior,
+`CLAUDE.md` fallback, outside-root behavior, conflict resolution, or any Forge
+adapter publication behavior. The mock returned a fixed local response; this
+validates effective request context only, not model compliance or task quality.
 
 ## Adapter and test work still required
 
