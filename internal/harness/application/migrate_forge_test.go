@@ -13,7 +13,7 @@ import (
 	"harnessforge/internal/harness/infrastructure"
 )
 
-const legacyHarnessForForgeMigration = `version: 1
+const legacyHarnessForForgeMigration = `version: 2
 project:
   name: payment-service
   languages: [Go]
@@ -26,10 +26,19 @@ rules:
       paths: [internal/payment/**]
     origin: human
     status: approved
+    review:
+      content_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      evidence_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
     evidence:
       - file: internal/payment/service.go
+        kind: symbol
+        workspace: backend
         symbol: RequestKey
         quote: same request key returns the original payment
+        start_line: 4
+        end_line: 4
+        sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+        revision: 0123456789abcdef
 skills:
   - id: payment-review
     description: Review payment provider changes
@@ -37,11 +46,20 @@ skills:
     status: approved
     evidence:
       - file: internal/payment/service.go
+        kind: symbol
+        workspace: backend
         symbol: RequestKey
         quote: same request key returns the original payment
+        start_line: 4
+        end_line: 4
+        sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+        revision: 0123456789abcdef
 quality_gates:
   - id: unit
     command: go test ./...
+    workspace: .
+    workspaces: [.]
+    env: {GOFLAGS: -count=1}
 `
 
 func writeLegacyMigrationProject(t *testing.T) (string, string) {
@@ -117,10 +135,14 @@ func TestPreviewToForgePreservesFieldsAndProducesDeterministicPlan(t *testing.T)
 	if len(manifest.Architecture.Styles) != 2 || manifest.Architecture.Styles[0] != "hexagonal" || manifest.Architecture.Styles[1] != "domain-driven" {
 		t.Fatalf("manifest lost architecture styles: %#v", manifest.Architecture)
 	}
-	if len(manifest.References.Skills[0].Evidence) != 1 || manifest.References.Skills[0].Evidence[0].File != "internal/payment/service.go" || manifest.References.Skills[0].Evidence[0].Quote != "same request key returns the original payment" {
+	if len(manifest.References.Skills[0].Evidence) != 1 || manifest.References.Skills[0].Evidence[0] != (domain.Evidence{
+		File: "internal/payment/service.go", Kind: "symbol", Workspace: "backend", Symbol: "RequestKey",
+		Quote: "same request key returns the original payment", StartLine: 4, EndLine: 4,
+		SHA256: strings.Repeat("c", 64), Revision: "0123456789abcdef",
+	}) {
 		t.Fatalf("skill evidence was lost: %#v", manifest.References.Skills[0].Evidence)
 	}
-	if manifest.QualityGates[0].Command != "go test ./..." || manifest.References.Knowledge[0].ID != "idempotent-payment" {
+	if manifest.QualityGates[0].Command != "go test ./..." || manifest.QualityGates[0].Workspace != "." || len(manifest.QualityGates[0].Workspaces) != 1 || manifest.QualityGates[0].Workspaces[0] != "." || manifest.QualityGates[0].Env["GOFLAGS"] != "-count=1" || manifest.References.Knowledge[0].ID != "idempotent-payment" {
 		t.Fatalf("gates or knowledge references lost: %#v", manifest)
 	}
 	var knowledge domain.KnowledgeItem
@@ -135,7 +157,11 @@ func TestPreviewToForgePreservesFieldsAndProducesDeterministicPlan(t *testing.T)
 			}
 		}
 	}
-	if knowledge.ID != "idempotent-payment" || knowledge.Scope.Paths[0] != "internal/payment/**" || knowledge.Evidence[0].Quote == "" || knowledge.Review != domain.KnowledgeCandidate || knowledge.LegacyReviewStatus != "approved" {
+	if knowledge.ID != "idempotent-payment" || knowledge.Kind != domain.KnowledgeBusinessRule || knowledge.Scope.Paths[0] != "internal/payment/**" || knowledge.Origin != "human" || knowledge.Evidence[0] != (domain.KnowledgeEvidence{
+		Path: "internal/payment/service.go", Kind: "symbol", Workspace: "backend", Symbol: "RequestKey",
+		Quote: "same request key returns the original payment", StartLine: 4, EndLine: 4,
+		SHA256: strings.Repeat("c", 64), Revision: "0123456789abcdef",
+	}) || knowledge.Review != domain.KnowledgeCandidate || knowledge.Health != domain.KnowledgeUnknown || knowledge.ContentSHA256 != domain.HashKnowledgeContent("Payment creation is idempotent by request key.") || knowledge.LegacyReviewStatus != "approved" || knowledge.LegacyReview == nil || knowledge.LegacyReview.ContentSHA256 != strings.Repeat("a", 64) || knowledge.LegacyReview.EvidenceSHA256 != strings.Repeat("b", 64) {
 		t.Fatalf("rule metadata was not preserved safely: %#v", knowledge)
 	}
 	if len(first.Warnings) != 1 || !strings.Contains(first.Warnings[0], "candidate") {
