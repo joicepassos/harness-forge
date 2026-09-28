@@ -1,6 +1,6 @@
 # OpenCode adapter validation (T8.2)
 
-Status: documentation-based contract proposal with a narrow V2 runtime
+Status: documentation-based contract with narrow V1 and V2 runtime
 validation added on 2026-09-28. Official documentation was consulted on
 2026-09-27; the V1 Rules page reported last updated 2026-09-26, while the V2
 pages identify a documentation surface but do not specify an OpenCode
@@ -61,16 +61,59 @@ does not prove that OpenCode loaded a file.
 
 | Case | Files / action | Expected assertion grounded in docs | Status |
 | --- | --- | --- | --- |
-| A | Root `AGENTS.md`; run from root | Root instruction is included | Pass on V2 2.0.18 |
-| B | Root `AGENTS.md` plus `packages/api/AGENTS.md`; run from `packages/api` | V1 upward-discovery and V2 ancestor inclusion | Pass on V2 2.0.18; V1 still required |
+| A | Root `AGENTS.md`; run from root | Root instruction is included | Pass on V1 1.18.33 and V2 2.0.18 |
+| B | Root `AGENTS.md` plus `packages/api/AGENTS.md`; run from `packages/api` | V1 upward-discovery and V2 ancestor inclusion | Pass on V1 1.18.33 and V2 2.0.18 |
 | C | Root `AGENTS.md` plus `packages/api/AGENTS.md`; start at root, then read/list `packages/api` | V2 nested rule is discovered as area is explored | Pass on V2 2.0.18 |
-| D | Only project `CLAUDE.md` | V1 fallback loads; V2 does not use this fallback | V2 negative case passes on 2.0.18; V1 still required |
-| E | Project `AGENTS.md` and `CLAUDE.md`, contradictory sentinels | V1 chooses AGENTS over CLAUDE; V2 AGENTS-only contract | V2 case passes on 2.0.18; V1 still required |
-| F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | Required test per major version |
+| D | Only project `CLAUDE.md` | V1 fallback loads; V2 does not use this fallback | V1 fallback passes on 1.18.33; V2 negative case passes on 2.0.18 |
+| E | Project `AGENTS.md` and `CLAUDE.md`, contradictory sentinels | V1 chooses AGENTS over CLAUDE; V2 AGENTS-only contract | V1 precedence passes on 1.18.33; V2 case passes on 2.0.18 |
+| F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | V1 precedence and fallback pass on 1.18.33; V2 global Claude comparison pending |
 | G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Pass on V2 2.0.18 |
-| H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Required V1 test |
+| H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Path, glob, and URL inclusion pass on 1.18.33; timeout duration unmeasured |
 | I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | All three negative cases pass on V2 2.0.18 |
 | J | Workspace outside project root with global AGENTS and parent AGENTS above an inner Git root | The V2 docs say global only; parent sentinel must be absent from instruction entries | Required V2 test; see observed runtime result below |
+
+## Runtime validation: OpenCode V1 1.18.33
+
+The V1 cases were executed on 2026-09-28 on Windows (`win32`) with the npm
+package `opencode-ai@1.18.33`; `opencode --version` returned `1.18.33`. The npm
+tarball shasum is `1195faeb9b33cb39ad58fc01be813307d1e3b935` and its integrity is
+`sha512-58P1ffLRXiAY4QeoABqUjqf6DEzm1ihpovvn9Ad+oOLbLiwK/rf88wruT9IATJ7AtNjmi8iA7pC8tN4o5y799Q==`.
+The V1 rules are documented at [OpenCode Rules](https://opencode.ai/docs/rules/);
+the custom provider uses the [documented provider configuration](https://opencode.ai/docs/providers/).
+
+Each run used the OpenCode CLI against a local OpenAI-compatible mock bound to
+`127.0.0.1:8765`. Temporary XDG config/data/state/cache directories and a
+temporary Windows user profile isolated the global OpenCode and Claude files;
+the normal profile was not modified. Captured JSONL request bodies were
+inspected in the system-message role for unique sentinels. There were 11 CLI
+runs and 22 captured requests, including OpenCode's title-generation requests.
+The mock returned only `LOCAL_MOCK_OK`; no external model provider was called.
+
+| Case | Observed model-visible instructions | Result |
+| --- | --- | --- |
+| A | Global `AGENTS.md` and project-root `AGENTS.md`; nested sentinel absent when starting at root | Pass |
+| B | Global, project-root, and nested `AGENTS.md` when starting in the nested directory | Pass |
+| D | Project `CLAUDE.md` loads when that project has no `AGENTS.md` | Pass |
+| E | Project `AGENTS.md` loads; conflicting project `CLAUDE.md` is absent | Pass |
+| F | With both global files, OpenCode global `AGENTS.md` loads and global Claude `CLAUDE.md` does not; after removing only the OpenCode file, global Claude fallback loads | Pass |
+| H | Local `instructions` path, glob, and loopback URL each add their unique sentinel; the URL mock records `GET /instructions.md` | Pass for inclusion; timeout duration not measured |
+
+Evidence fingerprints: request bodies
+`9e3f6db1eaa32680ba0a644a0e1339e1e74b4b2ba87cb4c652af9f40e981d7bc`;
+URL access log `e84f03d113e02557e886e8e3f06f7899315e8d6e23c727c8f164ebf16bae1f5f`;
+mock server source `71b49173363f5f162a749d0c945e403c287c2e73721fa25bd705e17f31eb0928`.
+Fixture hashes: project root AGENTS
+`e2033aa72c4c8b9eed8bd97c122eb352839df9c319f00d8362a422e698898338`, nested
+AGENTS `0715d17a932244beeedc5fa214c2954280dfbdc3b095f3d0cd75a71adb1ab0b8`,
+Claude-only project file
+`d780e1ed12b9f713f41a6c9247b8b09ade47da2969fdc279d87685bc59d957ec`, and
+isolated global Claude file
+`89e9da62c06537dc3bffb72c0ce77980c6e835c0dc391cd967c8d40ec82141bb`.
+
+This evidence applies only to V1 `1.18.33` and the listed cases. The documented
+five-second timeout was not measured; V1 disable controls and actual
+HarnessForge-published outputs remain unverified. The captured files and mock
+were kept under ignored `.pilot-runs/` and were not committed.
 
 ## Runtime validation: OpenCode V2 2.0.18
 

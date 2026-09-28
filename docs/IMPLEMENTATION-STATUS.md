@@ -139,16 +139,17 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T8.1: the official-doc matrix was refreshed on 2026-09-28. No Cursor editor
   or CLI runtime is available here; current CLI docs promise root
   `AGENTS.md`/`CLAUDE.md`, while nested CLI discovery remains unverified.
-  Cursor release/runtime acceptance remains open. T8.2: a local-mock runtime
-  check on Windows with `@opencode/cli@2.0.18` confirms the effective system
-  context for global and project-root `AGENTS.md`, ancestor inclusion from
-  `packages/api`, and
-  `OPENCODE_DISABLE_PROJECT_CONFIG=1` retaining only global instructions. In
-  V2, `CLAUDE.md` alone is ignored and the two-file case loads only `AGENTS.md`;
-  a local path in config `instructions` is also absent from captured requests.
-  A separate root-started `read` call confirms nested rules are appended to
-  the next request after the agent reads inside `packages/api`. V1 behavior,
-  actual Forge adapter publication remain unverified. An external-root probe
+  Cursor release/runtime acceptance remains open. T8.2: isolated local-mock
+  checks on Windows cover OpenCode V1 `opencode-ai@1.18.33` and V2
+  `@opencode/cli@2.0.18`. V1 captures confirm root and nested `AGENTS.md`,
+  project `CLAUDE.md` fallback and precedence, global OpenCode-vs-Claude
+  fallback, and `instructions` local path/glob/URL inclusion. V2 captures
+  confirm global/root/ancestor instructions, `OPENCODE_DISABLE_PROJECT_CONFIG=1`,
+  `CLAUDE.md` exclusion, and local/glob/URL `instructions` exclusion. A separate
+  root-started V2 `read` call confirms nested rules are appended to the next
+  request after reading inside `packages/api`. V1 URL timeout behavior, V2
+  global Claude fallback comparison, and actual Forge adapter publication
+  remain unverified. An external-root probe
   with a neutral query found the parent `AGENTS.md` in system instructions
   outside an inner Git root, contrary to the V2 docs' “global only” statement.
   V2 local-file, glob, and loopback URL entries in config `instructions` were
