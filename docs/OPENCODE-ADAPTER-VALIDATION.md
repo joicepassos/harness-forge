@@ -80,8 +80,8 @@ was run from the npm cache. A temporary XDG config home supplied the global
 `AGENTS.md` and a custom OpenAI-compatible provider pointing only to a mock
 HTTP server on `127.0.0.1`; no external model provider or paid API was used.
 The mock recorded each request body as JSONL, so the assertions inspect the
-actual system messages sent by OpenCode, not filesystem presence or the mock
-response. The fixture was a temporary Git repository with distinct sentinels
+actual messages sent by OpenCode, not filesystem presence or the mock response.
+The fixture was a temporary Git repository with distinct sentinels
 in the global, root, and `packages/api` instruction files.
 
 The instruction-file SHA-256 values were global
@@ -102,7 +102,7 @@ provided no evidence about model instruction-following.
 | B | `packages/api` | Global, `packages/api`, project root, in that order | Pass |
 | C | Project root, then successfully read `packages/api/probe.txt` | Nested rule absent initially; `packages/api/AGENTS.md` appears in the next request's instruction entry | Pass |
 | G | Project root with `OPENCODE_DISABLE_PROJECT_CONFIG=1` | Global only | Pass |
-| I | Global config `instructions` points to a local file with a unique sentinel | Configured file sentinel is absent from system messages | Pass |
+| I | Global config `instructions` points to a local file with a unique sentinel | Configured file sentinel is absent from all captured request messages | Pass |
 
 For case C, the recorded first request did not contain the nested sentinel. The
 mock then issued a controlled `read` call for `packages/api/probe.txt`; after
