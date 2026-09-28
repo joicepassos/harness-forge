@@ -16,8 +16,11 @@ func TestAdaptersAreDeterministicAndAgentSpecific(t *testing.T) {
 		t.Fatal(err)
 	}
 	again, _ := (Markdown{Agent: "codex"}).Render(input)
-	claude, _ := (Markdown{Agent: "claude"}).Render(input)
-	if codex.Path != "AGENTS.md" || claude.Path != "CLAUDE.md" || !bytes.Equal(codex.Content, again.Content) || bytes.Index(codex.Content, []byte("[a]")) > bytes.Index(codex.Content, []byte("[z]")) {
+	claudeDocs, claudeErr := (ClaudeAdapter{}).RenderDocuments(input)
+	if claudeErr != nil {
+		t.Fatal(claudeErr)
+	}
+	if codex.Path != "AGENTS.md" || len(claudeDocs) != 2 || claudeDocs[0].Path != "CLAUDE.md" || !bytes.Equal(codex.Content, again.Content) || bytes.Index(codex.Content, []byte("[a]")) > bytes.Index(codex.Content, []byte("[z]")) {
 		t.Fatal("non-deterministic adapter output")
 	}
 	if _, err := (Markdown{Agent: "other"}).Render(input); err == nil {

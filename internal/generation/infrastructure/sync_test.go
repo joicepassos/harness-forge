@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -439,6 +440,135 @@ func TestCompileForgeExportsArchitectureToCodexAndClaude(t *testing.T) {
 		if !strings.Contains(content, "## Architecture") || !strings.Contains(content, "- event-driven") || !strings.Contains(content, "- hexagonal") {
 			t.Errorf("%s omitted architecture styles: %s", path, content)
 		}
+	}
+}
+
+func TestCompileAndSyncClaudeNativeScopedRulesWithOwnership(t *testing.T) {
+	root := forgeSyncFixture(t)
+	addForgeSyncKnowledge(t, root, "scoped", "Use service conventions.", []string{"services/**", "services/api/**/*.go"})
+	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = []byte(strings.Replace(string(manifest), "targets: [codex]", "targets: [claude]", 1))
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := CompileForge(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Files) != 2 || !containsGeneratedPath(plan.Files, "CLAUDE.md") {
+		t.Fatalf("compiled Claude outputs = %#v", plan.Files)
+	}
+	var scoped GeneratedFile
+	for _, file := range plan.Files {
+		if strings.HasPrefix(file.Path, ".claude/rules/") {
+			scoped = file
+		}
+	}
+	if scoped.Path == "" {
+		t.Fatalf("compiled scoped Claude output missing: %#v", plan.Files)
+	}
+	if strings.Contains(plan.Diff["CLAUDE.md"], "Use service conventions") {
+		t.Fatal("scoped rule leaked into global CLAUDE.md")
+	}
+	if scoped.AdapterVersion != "2" || scoped.Capabilities["scope"] != "native-path-frontmatter;glob-parity-unverified" {
+		t.Fatalf("scoped Claude adapter metadata = %#v", scoped)
+	}
+	for _, file := range plan.Files {
+		if file.Path == "CLAUDE.md" && file.Capabilities["scope"] != "global-only" {
+			t.Fatalf("CLAUDE.md capability should be global-only: %#v", file)
+		}
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "check"); err != nil {
+		t.Fatalf("applied Claude rules failed check: %v", err)
+	}
+
+	var owned GeneratedManifest
+	data, err := os.ReadFile(filepath.Join(root, generatedManifest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &owned); err != nil {
+		t.Fatal(err)
+	}
+	if !containsGeneratedPath(owned.Files, scoped.Path) {
+		t.Fatalf("manifest doesn't own scoped rule: %#v", owned.Files)
+	}
+
+	// Removing the rule makes its generated file stale. A human edit must stop
+	// apply and preserve bytes rather than silently deleting the file.
+	rulePath := filepath.Join(root, filepath.FromSlash(scoped.Path))
+	generatedRule, err := os.ReadFile(rulePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manual := []byte("human rule edit\n")
+	if err := os.WriteFile(rulePath, manual, 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifest, err = os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = []byte(strings.Replace(string(manifest), "    - id: scoped\n      path: .forge/knowledge/items/scoped.md\n", "", 1))
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err == nil || !strings.Contains(err.Error(), "manually edited generated file "+scoped.Path) {
+		t.Fatalf("edited stale Claude rule was removed: %v", err)
+	}
+	if got, err := os.ReadFile(rulePath); err != nil || !bytes.Equal(got, manual) {
+		t.Fatalf("human rule edit changed: %q err=%v", got, err)
+	}
+	if err := os.WriteFile(rulePath, generatedRule, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatalf("intact stale Claude rule was not cleaned up: %v", err)
+	}
+	if _, err := os.Stat(rulePath); !os.IsNotExist(err) {
+		t.Fatalf("intact stale Claude rule remains after apply: %v", err)
+	}
+	if _, err := SyncForge(context.Background(), root, "check"); err != nil {
+		t.Fatalf("stale Claude rule cleanup left output out of sync: %v", err)
+	}
+}
+
+func TestClaudeRuleAllowlistRejectsUnsafeNamesAndSymlinkParents(t *testing.T) {
+	valid := ".claude/rules/" + strings.Repeat("a", 64) + ".md"
+	if !isSupportedGeneratedPath(valid) {
+		t.Fatalf("expected supported Claude rule path: %s", valid)
+	}
+	for _, path := range []string{".claude/rules/x.md", ".claude/rules/" + strings.Repeat("A", 64) + ".md", ".claude/rules/" + strings.Repeat("a", 64) + ".md/child", ".claude/rules/../CLAUDE.md", ".claude/rules\\" + strings.Repeat("a", 64) + ".md"} {
+		if isSupportedGeneratedPath(path) {
+			t.Errorf("unsafe Claude rule path supported: %q", path)
+		}
+	}
+	root := forgeSyncFixture(t)
+	addForgeSyncKnowledge(t, root, "scoped", "Use service conventions.", []string{"services/**"})
+	manifestPath := filepath.Join(root, ".forge", "forge.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = []byte(strings.Replace(string(manifest), "targets: [codex]", "targets: [claude]", 1))
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	claudeDir := filepath.Join(root, ".claude")
+	if err := os.Symlink(outside, claudeDir); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, err := SyncForge(context.Background(), root, "dry-run"); err == nil || !strings.Contains(err.Error(), "generated path parent") {
+		t.Fatalf("Claude rules followed a symlink parent: %v", err)
 	}
 }
 

@@ -103,6 +103,10 @@ func isSupportedGeneratedPath(value string) bool {
 		return true
 	}
 	clean := filepath.ToSlash(filepath.Clean(filepath.FromSlash(value)))
+	if strings.HasPrefix(value, ".claude/rules/") && clean == value && !strings.Contains(value, "\\") {
+		name := strings.TrimPrefix(value, ".claude/rules/")
+		return strings.HasSuffix(name, ".md") && len(name) == 64+len(".md") && strings.Trim(name[:64], "0123456789abcdef") == ""
+	}
 	for _, prefix := range []string{".agents/skills/", ".claude/skills/"} {
 		if strings.HasPrefix(clean, prefix) && clean == value && !strings.Contains(value, "\\") {
 			parts := strings.Split(strings.TrimPrefix(value, prefix), "/")
@@ -427,11 +431,7 @@ func CompileForge(root string) (SyncResult, error) {
 		case "codex":
 			docs, err = (CodexAdapter{}).RenderDocuments(targetInput)
 		case "claude":
-			var doc domain.Document
-			doc, err = (ClaudeAdapter{}).Render(targetInput)
-			if err == nil {
-				docs = []domain.Document{doc}
-			}
+			docs, err = (ClaudeAdapter{}).RenderDocuments(targetInput)
 		default:
 			return SyncResult{}, fmt.Errorf("unsupported target %q", target)
 		}
@@ -453,6 +453,13 @@ func CompileForge(root string) (SyncResult, error) {
 				adapterVersion = "2"
 				if strings.Contains(string(doc.Content), "(native Codex directory scope:") {
 					scopeCapability = "native-directory-cwd-and-textual"
+				}
+			} else if target == "claude" {
+				adapterVersion = "2"
+				if strings.HasPrefix(doc.Path, ".claude/rules/") {
+					scopeCapability = "native-path-frontmatter;glob-parity-unverified"
+				} else {
+					scopeCapability = "global-only"
 				}
 			}
 			entry := GeneratedFile{Path: doc.Path, SHA256: hex.EncodeToString(sum[:]), Target: target, AdapterVersion: adapterVersion, Capabilities: map[string]string{"scope": scopeCapability, "skills": "native", "quality_gates": "advisory", "policy": policyCapability}}

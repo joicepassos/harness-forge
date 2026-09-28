@@ -45,24 +45,26 @@ func (m Markdown) renderAt(input domain.Input, outputPath string, nativeScopes m
 		out.WriteByte('\n')
 	}
 	if len(rules) > 0 {
-		out.WriteString("## Scope and precedence\n\n")
 		if m.Agent == "codex" {
+			out.WriteString("## Scope and precedence\n\n")
 			out.WriteString("- Rules without path scopes apply globally.\n")
 			out.WriteString("- Directory subtree scopes are emitted as nested `AGENTS.md` files and are loaded when Codex runs with its current directory in that subtree. Codex combines ancestor instructions; HarnessForge does not resolve conflicts between them.\n")
 			out.WriteString("- Other path globs retain their exact authored text and are advisory; Codex does not enforce file-glob matching from this export.\n")
 			out.WriteString("- Global and directory-scoped rules coexist; conflicting rules require explicit reconciliation.\n\n")
-		} else {
-			out.WriteString("- Rules without path scopes apply globally.\n")
-			out.WriteString("- Path scopes retain their exact authored globs and are advisory in this static export; the agent does not enforce glob matching.\n")
-			out.WriteString("- Matching global and scoped rules coexist with no implicit precedence; conflicting rules require explicit reconciliation.\n\n")
 		}
-		out.WriteString("## Approved rules\n\n")
+		if m.Agent == "codex" {
+			out.WriteString("## Approved rules\n\n")
+		} else {
+			out.WriteString("## Global rules\n\n")
+		}
 		for _, r := range rules {
 			fmt.Fprintf(&out, "- [%s] %s", r.ID, r.Description)
 			if len(r.Paths) == 0 {
 				out.WriteString(" (global)")
 			} else if scope, ok := nativeScopes[r.ID]; ok {
 				fmt.Fprintf(&out, " (native Codex directory scope: `%s`)", scope)
+			} else if m.Agent == "claude" {
+				return domain.Document{}, fmt.Errorf("Claude path-scoped rule %q requires RenderDocuments", r.ID)
 			} else {
 				fmt.Fprintf(&out, " (advisory; applies only to paths matching: %s)", formatScopeGlobs(r.Paths))
 			}
