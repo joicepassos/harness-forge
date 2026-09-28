@@ -63,9 +63,15 @@ func selectWithBudget(ctx context.Context, candidates []domain.Excerpt, prompt s
 	if reserve <= 0 {
 		reserve = framingTokens
 	}
+	var fallbackReasons []string
 	count := func(payload string) int {
 		value, err := counter.Count(ctx, budget.Model, []byte(payload))
-		if err != nil || value < 0 {
+		if err != nil {
+			fallbackReasons = appendUnique(fallbackReasons, "counter error")
+			return EstimateTokens(payload)
+		}
+		if value < 0 {
+			fallbackReasons = appendUnique(fallbackReasons, "counter returned negative value")
 			return EstimateTokens(payload)
 		}
 		return value
@@ -200,10 +206,14 @@ func selectWithBudget(ctx context.Context, candidates []domain.Excerpt, prompt s
 	if relevantTotal > 0 {
 		recall = relevantIncluded * 100 / relevantTotal
 	}
+	estimator := counter.Name()
+	if len(fallbackReasons) > 0 {
+		estimator += "; fallback=" + estimatorName + " (" + strings.Join(fallbackReasons, ", ") + ")"
+	}
 	return &domain.Plan{
 		BudgetTokens:         budget.MaxInputTokens,
 		EstimatedTokens:      used,
-		Estimator:            counter.Name(),
+		Estimator:            estimator,
 		PayloadReserveTokens: reserve,
 		Included:             included,
 		Excluded:             excluded,

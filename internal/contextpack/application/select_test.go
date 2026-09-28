@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"harnessforge/internal/contextpack/domain"
 	"strings"
 	"testing"
@@ -10,12 +11,41 @@ import (
 
 type testTokenCounter struct {
 	model string
+	err   error
+	value int
+	force bool
 }
 
 func (c *testTokenCounter) Name() string { return "test-counter-v1" }
 func (c *testTokenCounter) Count(_ context.Context, model string, payload []byte) (int, error) {
 	c.model = model
+	if c.err != nil {
+		return 0, c.err
+	}
+	if c.force {
+		return c.value, nil
+	}
 	return (len(payload) + 3) / 4, nil
+}
+
+func TestSelectWithBudgetDeclaresCounterErrorFallback(t *testing.T) {
+	counter := &testTokenCounter{err: errors.New("counter unavailable")}
+	plan := SelectWithBudget(context.Background(), []domain.Excerpt{{
+		ID: "a", Source: "a", Text: "authentication", Relevance: 1,
+	}}, "authentication", Budget{MaxInputTokens: 500, Counter: counter}, domain.Metrics{})
+	if want := "test-counter-v1; fallback=payload-byte-upper-bound-v1 (counter error)"; plan.Estimator != want {
+		t.Fatalf("estimator = %q, want %q", plan.Estimator, want)
+	}
+}
+
+func TestSelectWithBudgetDeclaresNegativeCounterFallback(t *testing.T) {
+	counter := &testTokenCounter{force: true, value: -1}
+	plan := SelectWithBudget(context.Background(), []domain.Excerpt{{
+		ID: "a", Source: "a", Text: "authentication", Relevance: 1,
+	}}, "authentication", Budget{MaxInputTokens: 500, Counter: counter}, domain.Metrics{})
+	if want := "test-counter-v1; fallback=payload-byte-upper-bound-v1 (counter returned negative value)"; plan.Estimator != want {
+		t.Fatalf("estimator = %q, want %q", plan.Estimator, want)
+	}
 }
 
 func TestConservativeByteEstimatorDeclaresItsApproximation(t *testing.T) {
