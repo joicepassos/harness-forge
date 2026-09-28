@@ -51,9 +51,10 @@ type GeneratedManifest struct {
 	Files   []GeneratedFile `json:"files"`
 }
 type SyncResult struct {
-	Files   []GeneratedFile   `json:"files"`
-	Diff    map[string]string `json:"diff"`
-	Changed bool              `json:"changed"`
+	Files     []GeneratedFile   `json:"files"`
+	Diff      map[string]string `json:"diff"`
+	Changed   bool              `json:"changed"`
+	Conflicts []string          `json:"conflicts,omitempty"`
 }
 
 func containsGeneratedPath(files []GeneratedFile, path string) bool {
@@ -532,6 +533,14 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 		}
 	}
 	if mode == "dry-run" {
+		conflicts, err := syncOwnershipConflicts(abs, result)
+		if err != nil {
+			return result, err
+		}
+		result.Conflicts = conflicts
+		if len(conflicts) > 0 {
+			return result, fmt.Errorf("generated output conflicts: %s", strings.Join(conflicts, ", "))
+		}
 		return result, nil
 	}
 	if mode == "check" {
@@ -566,6 +575,7 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 			info, err := os.Lstat(path)
 			if err != nil || !info.Mode().IsRegular() {
 				result.Changed = true
+				stalePaths = append(stalePaths, owned.Path)
 				continue
 			}
 			content, err := os.ReadFile(path)
@@ -596,6 +606,11 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 			for _, old := range recorded.Files {
 				if !containsGeneratedPath(result.Files, old.Path) {
 					stalePaths = append(stalePaths, old.Path)
+				}
+			}
+			for _, current := range result.Files {
+				if !seen[current.Path] {
+					stalePaths = append(stalePaths, current.Path)
 				}
 			}
 		}
@@ -836,6 +851,71 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 		return result, fmt.Errorf("sync completed but recovery journal removal was not durable: %w", err)
 	}
 	return result, nil
+}
+
+// syncOwnershipConflicts diagnoses preview collisions using the recorded hashes
+// without modifying outputs or ownership metadata.
+func syncOwnershipConflicts(root string, result SyncResult) ([]string, error) {
+	path := filepath.Join(root, filepath.FromSlash(generatedManifest))
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		info = nil
+	} else if err != nil {
+		return nil, err
+	} else if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("generated manifest must be a regular non-symlink file")
+	}
+	owned := map[string]string{}
+	if info != nil {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		var manifest GeneratedManifest
+		if err := json.Unmarshal(data, &manifest); err != nil || manifest.Version != 1 {
+			return nil, fmt.Errorf("invalid generated manifest")
+		}
+		for _, file := range manifest.Files {
+			if !isSupportedGeneratedPath(file.Path) || owned[file.Path] != "" || len(file.SHA256) != sha256.Size*2 {
+				return nil, fmt.Errorf("invalid generated manifest file entry")
+			}
+			if _, err := hex.DecodeString(file.SHA256); err != nil {
+				return nil, fmt.Errorf("invalid generated manifest hash for %s", file.Path)
+			}
+			owned[file.Path] = file.SHA256
+		}
+	}
+	var conflicts []string
+	for _, file := range result.Files {
+		rel := filepath.Join(root, filepath.FromSlash(file.Path))
+		if err := validateOutputParents(root, file.Path); err != nil {
+			return nil, err
+		}
+		fileInfo, err := os.Lstat(rel)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		if fileInfo.Mode()&os.ModeSymlink != 0 || !fileInfo.Mode().IsRegular() {
+			conflicts = append(conflicts, file.Path+" (unsafe output)")
+			continue
+		}
+		content, err := os.ReadFile(rel)
+		if err != nil {
+			return nil, err
+		}
+		sum := sha256.Sum256(content)
+		actual := hex.EncodeToString(sum[:])
+		if owned[file.Path] == "" {
+			conflicts = append(conflicts, file.Path+" (unmanaged output)")
+		} else if owned[file.Path] != actual {
+			conflicts = append(conflicts, file.Path+" (manually edited managed output)")
+		}
+	}
+	sort.Strings(conflicts)
+	return conflicts, nil
 }
 
 // CheckForge reports generated drift without writing any project files.

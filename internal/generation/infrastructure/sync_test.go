@@ -462,6 +462,78 @@ func TestSyncForgeProtectsUnownedAndEditedFiles(t *testing.T) {
 	}
 }
 
+func TestSyncDryRunReportsOwnershipConflictsWithoutWriting(t *testing.T) {
+	t.Run("unmanaged collision", func(t *testing.T) {
+		root := forgeSyncFixture(t)
+		target := filepath.Join(root, "AGENTS.md")
+		if err := os.WriteFile(target, []byte("human instructions\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		result, err := SyncForge(context.Background(), root, "dry-run")
+		if err == nil || !strings.Contains(err.Error(), "unmanaged output") {
+			t.Fatalf("missing collision diagnostic: %v", err)
+		}
+		if len(result.Conflicts) != 1 || !strings.Contains(result.Conflicts[0], "AGENTS.md") {
+			t.Fatalf("unexpected conflicts: %#v", result.Conflicts)
+		}
+		if data, e := os.ReadFile(target); e != nil || string(data) != "human instructions\n" {
+			t.Fatalf("dry-run changed target: %q %v", data, e)
+		}
+		if _, e := os.Stat(filepath.Join(root, generatedManifest)); !os.IsNotExist(e) {
+			t.Fatalf("dry-run wrote ownership manifest: %v", e)
+		}
+	})
+	t.Run("manual edit", func(t *testing.T) {
+		root := forgeSyncFixture(t)
+		if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+			t.Fatal(err)
+		}
+		target := filepath.Join(root, "AGENTS.md")
+		if err := os.WriteFile(target, []byte("manual edit\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		result, err := SyncForge(context.Background(), root, "dry-run")
+		if err == nil || !strings.Contains(err.Error(), "manually edited managed output") {
+			t.Fatalf("missing ownership diagnostic: %v", err)
+		}
+		if len(result.Conflicts) != 1 || !strings.Contains(result.Conflicts[0], "AGENTS.md") {
+			t.Fatalf("unexpected conflicts: %#v", result.Conflicts)
+		}
+		if data, e := os.ReadFile(target); e != nil || string(data) != "manual edit\n" {
+			t.Fatalf("dry-run changed target: %q %v", data, e)
+		}
+	})
+}
+
+func TestSyncCheckListsMissingCurrentTarget(t *testing.T) {
+	root := forgeSyncFixture(t)
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	manifest := filepath.Join(root, ".forge", "forge.yaml")
+	if err := os.WriteFile(manifest, []byte(`layout_version: 1
+ir_version: 2
+project: {name: demo, languages: [Go]}
+targets: [codex, claude]
+references:
+  knowledge:
+    - id: rule-a
+      path: .forge/knowledge/items/rule.md
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := SyncForge(context.Background(), root, "check")
+	if err == nil || !strings.Contains(err.Error(), "CLAUDE.md") {
+		t.Fatalf("missing target path in diagnostic: %v", err)
+	}
+	if !result.Changed {
+		t.Fatal("check did not mark missing current target as drift")
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "CLAUDE.md")); !os.IsNotExist(statErr) {
+		t.Fatalf("check wrote missing target: %v", statErr)
+	}
+}
+
 func TestCompileForgeRejectsCollidingSkillTargets(t *testing.T) {
 	root := forgeSyncFixture(t)
 	skillDir := filepath.Join(root, ".forge", "skills", "review")
