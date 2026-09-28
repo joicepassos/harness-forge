@@ -1,0 +1,23 @@
+layout_version: 1
+ir_version: 2
+project:
+  name: windows-workspaces
+  languages:
+    - Go
+targets:
+  - codex
+references:
+  knowledge:
+    - id: windows-paths
+      path: .forge/knowledge/windows-paths.md
+  skills:
+    - id: windows-build
+      description: Build and test the Windows service workspace.
+      path: .forge/skills/windows-build/SKILL.md
+quality_gates:
+  - id: service-tests
+    command: go test ./...
+    workspace: apps/windows-service
+    workspaces:
+      - apps/windows-service
+      - libs/shared

@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -74,6 +75,44 @@ func TestResolveReferenceRejectsTraversalAndPreservesProjectRelativePaths(t *tes
 	for _, invalid := range []string{"../outside.md", "C:/outside.md", "\\\\host\\share", ""} {
 		if _, err := layout.ResolveReference(invalid); err == nil {
 			t.Errorf("accepted unsafe reference %q", invalid)
+		}
+	}
+}
+
+func TestWindowsWorkspaceFixtureLoadsPortableReferences(t *testing.T) {
+	_, source, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	root := filepath.Join(filepath.Dir(source), "..", "..", "..", "testdata", "fixtures", "windows-workspaces")
+	project, err := LoadProject(root, "forge")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if project.Manifest == nil || project.Manifest.Project.Name != "windows-workspaces" {
+		t.Fatalf("fixture did not load as a Forge project: %#v", project)
+	}
+	if len(project.Manifest.QualityGates) != 1 {
+		t.Fatalf("fixture quality gates = %#v", project.Manifest.QualityGates)
+	}
+	gate := project.Manifest.QualityGates[0]
+	if gate.Workspace != "apps/windows-service" || len(gate.Workspaces) != 2 || gate.Workspaces[1] != "libs/shared" {
+		t.Fatalf("fixture lost workspace roots: %#v", gate)
+	}
+	references := []string{".forge/knowledge/windows-paths.md", ".forge/skills/windows-build/SKILL.md"}
+	references = append(references, gate.Workspaces...)
+	for _, reference := range references {
+		resolved, err := project.Layout.ResolveReference(reference)
+		if err != nil {
+			t.Fatalf("resolve portable reference %q: %v", reference, err)
+		}
+		if _, err := os.Stat(resolved); err != nil {
+			t.Fatalf("fixture reference %q does not exist at %q: %v", reference, resolved, err)
+		}
+	}
+	for _, windowsPath := range []string{`C:/repo/src/main.go`, `C:\repo\src\main.go`, `\\server\share\main.go`} {
+		if _, err := project.Layout.ResolveReference(windowsPath); err == nil {
+			t.Errorf("accepted non-portable Windows path %q", windowsPath)
 		}
 	}
 }
