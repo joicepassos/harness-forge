@@ -26,11 +26,17 @@ func TestScanGoSingleFixtureMatchesCharacterization(t *testing.T) {
 		Path      string `json:"path"`
 		Kind      string `json:"kind"`
 		Workspace string `json:"workspace"`
-		Size      int64  `json:"size"`
 	}
 	got := make([]entry, 0, len(snapshot.Files))
 	for _, file := range snapshot.Files {
-		got = append(got, entry{file.Path, file.Kind, file.Workspace, file.Size})
+		got = append(got, entry{file.Path, file.Kind, file.Workspace})
+		info, err := os.Stat(filepath.Join(root, filepath.FromSlash(file.Path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if file.Size != info.Size() {
+			t.Errorf("%s size = %d, want actual checkout size %d", file.Path, file.Size, info.Size())
+		}
 	}
 	sort.Slice(got, func(i, j int) bool { return got[i].Path < got[j].Path })
 	golden, err := os.ReadFile(filepath.Join(filepath.Dir(root), "go-single.snapshot.json"))
