@@ -40,11 +40,17 @@ func (m Markdown) Render(input domain.Input) (domain.Document, error) {
 		out.WriteByte('\n')
 	}
 	if len(rules) > 0 {
+		out.WriteString("## Scope and precedence\n\n")
+		out.WriteString("- Rules without path scopes apply globally.\n")
+		out.WriteString("- Path scopes retain their exact authored globs and are advisory in this static export; the agent does not enforce glob matching.\n")
+		out.WriteString("- Matching global and scoped rules coexist with no implicit precedence; conflicting rules require explicit reconciliation.\n\n")
 		out.WriteString("## Approved rules\n\n")
 		for _, r := range rules {
 			fmt.Fprintf(&out, "- [%s] %s", r.ID, r.Description)
-			if len(r.Paths) > 0 {
-				fmt.Fprintf(&out, " (scope: %v)", r.Paths)
+			if len(r.Paths) == 0 {
+				out.WriteString(" (global)")
+			} else {
+				fmt.Fprintf(&out, " (advisory; applies only to paths matching: %s)", formatScopeGlobs(r.Paths))
 			}
 			out.WriteByte('\n')
 		}
@@ -83,6 +89,10 @@ func (m Markdown) Render(input domain.Input) (domain.Document, error) {
 		}
 	}
 	return domain.Document{Path: path, Content: out.Bytes()}, nil
+}
+
+func formatScopeGlobs(paths []string) string {
+	return "`" + strings.Join(paths, "`, `") + "`"
 }
 
 type FileWriter struct{}
