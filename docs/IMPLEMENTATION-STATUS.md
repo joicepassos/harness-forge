@@ -122,10 +122,13 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   interruption; pending items survive and repeated collection is idempotent.
   Capture, review, and GC serialize cross-process read-modify-write operations
   with OS file locks so concurrent mutations do not lose observations or reviews.
-- T8.1: the official-doc behavior matrix exists; Cursor release/runtime
-  acceptance remains open. T8.2: a local-mock runtime check on Windows with
-  `@opencode/cli@2.0.18` confirms the effective system context for global and
-  project-root `AGENTS.md`, ancestor inclusion from `packages/api`, and
+- T8.1: the official-doc matrix was refreshed on 2026-09-28. No Cursor editor
+  or CLI runtime is available here; current CLI docs promise root
+  `AGENTS.md`/`CLAUDE.md`, while nested CLI discovery remains unverified.
+  Cursor release/runtime acceptance remains open. T8.2: a local-mock runtime
+  check on Windows with `@opencode/cli@2.0.18` confirms the effective system
+  context for global and project-root `AGENTS.md`, ancestor inclusion from
+  `packages/api`, and
   `OPENCODE_DISABLE_PROJECT_CONFIG=1` retaining only global instructions. In
   V2, `CLAUDE.md` alone is ignored and the two-file case loads only `AGENTS.md`;
   a local path in config `instructions` is also absent from captured requests.
