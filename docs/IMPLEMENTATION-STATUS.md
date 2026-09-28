@@ -13,7 +13,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   fixtures cover repository paths, portable references, and workspace roots.
 - T0.5: [ADR 0001](adr/0001-layout-cli-contracts.md) defines independent layout,
   IR, JSON diagnostic, and build versions, compatibility behavior, and CLI exit
-  codes, aligned with the current implementation.
+  codes, aligned with the current implementation. A subprocess contract test
+  now verifies all three CLI exit classes (0/1/2) against the built executable.
 - T0.6: the OS test matrix runs uncached deterministic tests with provider API
   keys blanked; no paid provider calls are enabled by this workflow.
 - T0.4: synthetic single-module, monorepo, and Windows-workspace development

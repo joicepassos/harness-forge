@@ -69,8 +69,7 @@ versioned contract rather than changing the meaning of existing fields.
 
 Acceptance fixtures cover one layout, both layouts with an explicit selection,
 both layouts without a selection, relative references, JSON version 1, and the
-exit-code classes. `cmd/harnessforge/exitcode_test.go` exercises failed checks
-(1) and configuration errors (2). Successful command execution returns
-normally (0); the process-level helper currently does not assert that class.
-Check command tests cover JSON serialization and check status. Schema and
-resolver tests are deterministic and make no provider calls.
+exit-code classes. `cmd/harnessforge/exitcode_test.go` builds the CLI and
+exercises successful checks (0), failed checks (1), and configuration errors
+(2) as subprocesses. Check command tests cover JSON serialization and check
+status. Schema and resolver tests are deterministic and make no provider calls.
