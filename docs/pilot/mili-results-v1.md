@@ -39,6 +39,14 @@ does not count as a valid Forge condition run. A fresh Forge retry also stopped
 before inspection because the CLI executor was effectively read-only. Detailed evidence is in [the
 repetition 2 log](mli01-repetition-2.md).
 
+| Condition | Independent acceptance evaluator | Post-run focused verification | Changed files | Tracked insertions/deletions |
+| --- | ---: | ---: | ---: | ---: |
+| Team instructions | 3/3 pass | 12/12 pass | 9 | +75 / -29 |
+
+The Team measurements exclude frozen overlay/evaluator files and diagnostic
+logs from the task diff. Duration, tokens, review quality, rule violations, and
+instruction-source discovery were not captured.
+
 ## Limits and follow-up
 
 One task with one valid repetition is far below the frozen sample plan and

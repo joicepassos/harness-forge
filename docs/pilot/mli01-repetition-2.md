@@ -16,7 +16,9 @@ three-condition comparison can be made from this repetition.
   v3 evaluator passed 3/3 checks. A post-run focused verification of the existing
   webhook service/domain/cache suites plus the independent evaluator passed
   12/12 tests. The agent did not run Gradle during its task session because the
-  Java 25 toolchain was not configured then.
+  Java 25 toolchain was not configured then. The task changed 9 source/test
+  files (+75/-29 tracked lines); duration, tokens, rule violations, and
+  instruction-source discovery were not captured.
 - Forge used two Codex sessions in one clone; the second inspected and continued
   after task changes existed, so Forge is invalidated for clone/session reuse.
   A later diagnostic compilation in that clone failed at

@@ -142,7 +142,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   measured, while duration, tokens, review quality, rule violations and
   instruction-source discovery were not captured. Repetition 2 has one valid
   Team attempt: its independent evaluator passed 3/3 and later focused
-  verification passed 12/12. Baseline and Forge reused clones across multiple
+  verification passed 12/12; the Team task changed 9 source/test files (+75/-29
+  tracked lines). Baseline and Forge reused clones across multiple
   agent sessions and are invalid; a diagnostic Forge build on that clone failed
   at `InboundEventRepository.java:76`. A fresh Forge retry also could not run:
   the CLI executor remained read-only despite the requested workspace-write
