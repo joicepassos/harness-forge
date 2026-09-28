@@ -63,7 +63,7 @@ does not prove that OpenCode loaded a file.
 | --- | --- | --- | --- |
 | A | Root `AGENTS.md`; run from root | Root instruction is included | Pass on V2 2.0.18 |
 | B | Root `AGENTS.md` plus `packages/api/AGENTS.md`; run from `packages/api` | V1 upward-discovery and V2 ancestor inclusion | Pass on V2 2.0.18; V1 still required |
-| C | Root `AGENTS.md` plus `packages/api/AGENTS.md`; start at root, then read/list `packages/api` | V2 nested rule is discovered as area is explored | Required V2 test |
+| C | Root `AGENTS.md` plus `packages/api/AGENTS.md`; start at root, then read/list `packages/api` | V2 nested rule is discovered as area is explored | Pass on V2 2.0.18 |
 | D | Only project `CLAUDE.md` | V1 fallback loads; V2 does not use this fallback | Required test per major version |
 | E | Project `AGENTS.md` and `CLAUDE.md`, contradictory sentinels | V1 chooses AGENTS over CLAUDE; V2 AGENTS-only contract | Required test per major version |
 | F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | Required test per major version |
@@ -98,14 +98,18 @@ provided no evidence about model instruction-following.
 | --- | --- | --- | --- |
 | A | Project root | Global, project root | Pass |
 | B | `packages/api` | Global, `packages/api`, project root, in that order | Pass |
+| C | Project root, then successfully read `packages/api/probe.txt` | Nested rule absent initially; `packages/api/AGENTS.md` appears in the next request's instruction entry | Pass |
 | G | Project root with `OPENCODE_DISABLE_PROJECT_CONFIG=1` | Global only | Pass |
 
-The V2 documentation's dynamic nested-discovery scenario (start at the project
-root, then read/list `packages/api`) remains untested. This runtime result does
-not establish V1 behavior, `CLAUDE.md` fallback, config `instructions`
-resolution, outside-root behavior, conflict resolution, or any Forge adapter
-publication behavior. The mock returned a fixed local response; this validates
-the effective request context only, not model compliance or task quality.
+For case C, the recorded first request did not contain the nested sentinel. The
+mock then issued a controlled `read` call for `packages/api/probe.txt`; after
+that successful read, the next request contained an instruction entry sourced
+from `packages/api/AGENTS.md`. This confirms dynamic discovery for this exact
+build and read path. The result does not establish V1 behavior, `CLAUDE.md`
+fallback, config `instructions` resolution, outside-root behavior, conflict
+resolution, or any Forge adapter publication behavior. The mock returned a
+fixed local response; this validates effective request context only, not model
+compliance or task quality.
 
 ## Adapter and test work still required
 
