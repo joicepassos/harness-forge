@@ -118,12 +118,22 @@ Date: 2026-09-27. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   pinned MLI-02 baseline therefore fails pagination completeness. The MLI-05
   JsonPath probe confirms the frozen malformed expression is rejected. These
   evaluator checks are not coding-agent pilot runs. The user-approved MLI-01
-  repetition-1 runs are now complete on three isolated clones: baseline, team,
-  and Forge each passed 3/3 independent v3 acceptance checks; 42 of 45 runs
-  remain. The original v1/v2 MLI-01 evaluator failures were instrument defects
-  and excluded. See
-  [the database result](pilot/mili-postgres-keyset-v1.json).
-  T9.2–T9.5 remain pending; T9.6 awaits comparative evidence.
+  repetition-1 runs are complete on three isolated clones: baseline, team, and
+  Forge each passed 3/3 independent v3 acceptance checks. The agent-authored
+  focused test suites were not run according to retained CLI reports; earlier
+  contradictory summaries claiming success are superseded. Diff sizes were
+  measured, while duration, tokens, review quality, rule violations and
+  instruction-source discovery were not captured. Repetition 2 is explicitly
+  excluded because the purported baseline clone was modified, a Team focused
+  test failed, Forge did not compile, and Forge had a duplicate agent run. See
+  [the database result](pilot/mili-postgres-keyset-v1.json), [partial pilot
+  results](pilot/mili-results-v1.md), and the [repetition 2 exclusion](pilot/mli01-repetition-2.md).
+  T9.1 protocol is versioned. T9.2 has one valid task/repetition with three
+  conditions; T9.3 records available measures and missing-data limits. T9.5
+  publishes descriptive partial outcomes only. T9.6 provisionally defers a
+  custom runtime pending the complete pilot and T7/T8 runtime evidence; see
+  [ADR 0002](adr/0002-runtime-executor-decision.md). The remaining 42 valid
+  agent runs are outstanding, so neither T9.5 nor T9.6 has final acceptance.
 
 ## Verification
 
@@ -148,8 +158,8 @@ paid provider calls were made.
 - T9.2–T9.5 need completion of the frozen run matrix and outcome measurements.
   Mili's clean HEAD, approved tasks, run configuration, instruction bundles,
   and PostgreSQL keyset finding are versioned; the original modified working
-  tree is excluded. Synthetic Go and Windows fixtures remain development data,
-  not pilot evidence.
+  tree is excluded. Only one valid task/repetition exists so far. Synthetic Go
+  and Windows fixtures remain development data, not pilot evidence.
 - T6.2 now supports explicit knowledge keywords and task paths through the
   context API and `context explain --task-path`; glob matching is segment-aware
   with `**`, and backend/frontend scope fixtures pass. T6.3 reports early
