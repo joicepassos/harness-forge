@@ -19,6 +19,13 @@ func Print(writer io.Writer, analysis *Analysis) {
 	printSection(writer, "Database", analysis.Database)
 	printSection(writer, "Tests", analysis.Tests)
 	printSection(writer, "Git", analysis.Git)
+	if len(analysis.QualityGates) > 0 {
+		fmt.Fprintln(writer, "Quality gates")
+		for _, gate := range analysis.QualityGates {
+			fmt.Fprintf(writer, "- %s: %s\n", gate.ID, gate.Command)
+		}
+		fmt.Fprintln(writer)
+	}
 
 	fmt.Fprintln(writer, "Summary")
 	fmt.Fprintf(writer, "Files: %d\n", analysis.Files)

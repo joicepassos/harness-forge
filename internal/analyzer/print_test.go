@@ -13,6 +13,7 @@ func TestPrintJSONIncludesStructuredFindings(t *testing.T) {
 			{
 				Value:      "Go",
 				Confidence: 1.0,
+				Strength:   "medium",
 				Evidence:   []string{"main.go"},
 			},
 		},
