@@ -44,13 +44,15 @@ establish statistical generalization.
 Store one JSON object per attempted run with this shape (extend only with
 versioned fields). Missing or unmeasured values are `null`, never zero; a
 separate status distinguishes valid runs from excluded attempts. Version 2
-adds explicit run status, exclusion reason, and nullable measurements. The
+adds a unique attempt ID, explicit run status, exclusion reason, and nullable
+measurements. The
 initial ledger contains only evidence already retained in the pilot records;
 it does not impute missing values.
 
 ```json
 {
   "schema_version": 2,
+  "attempt_id": "<unique attempt ID>",
   "task_id": "go-01",
   "repository": "go-service",
   "commit": "<immutable git SHA>",
@@ -76,9 +78,10 @@ Use an empty array only when collection was performed and found no entries;
 use `null` when collection was not performed or the value is unknown.
 
 The backfilled [run ledger](pilot/mili-run-ledger-v2.jsonl) records four valid
-condition runs and the three excluded repetition-2 attempts from available
-reports. It intentionally leaves unrecorded timings, tokens, cost, human review,
-rule violations and instruction discovery as `null`/`unknown`. This ledger is
+condition runs and four excluded repetition-2 attempts, including a fresh
+retry blocked while reading project instructions. It intentionally leaves
+unrecorded timings, tokens, cost, human review, rule violations and instruction
+discovery as `null`/`unknown`. This ledger is
 an audit aid, not completion of T9.2/T9.3 or a substitute for the 45-run matrix.
 
 ## Release gate and current status
