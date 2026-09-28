@@ -314,7 +314,12 @@ mock provider; no paid model provider was contacted.
   prompt-envelope overflow with the same configured estimator and an explicit
   excluded-prompt reason. T6.4 now has a paired five-task Mili capture, but its
   token and selection metrics are retrieval proxies without adjudicated source
-  relevance or measured task quality.
+  relevance or measured task quality. The offline
+  [integrity validator](pilot/verify-context-selection.ps1) rechecks the frozen
+  task text, source hashes, paired raw captures, and aggregate arithmetic; it
+  does not calculate relevance or task-quality scores. The raw captures do not
+  embed the source commit or executed prompt, so those are checked against the
+  separately frozen report inputs.
 - T1.7/T2/T3/T4/T5 also retain acceptance gaps listed in their status entries;
   static fixtures and repository-level tests are not external runtime evidence.
 - This checkout contains pre-existing repository-context/retrieval changes;
