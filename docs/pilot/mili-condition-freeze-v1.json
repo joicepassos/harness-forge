@@ -148,7 +148,7 @@
     "rubric_file": "mili-evaluator-v1.md",
     "rubric_sha256": "eb0212c488b7647c61b537100c08021cb366f4d6e204d26c7518c2acf11d8049",
     "evaluator_source": "Five task evaluators and PostgreSQL probe retained with hashes. MLI-01 source v3 supersedes the incompatible v1/v2 measurement and is used identically for baseline, team and Forge repetition 1.",
-    "status": "running: MLI-01 repetition 1 in progress/completed; remaining matrix pending",
+    "status": "running: MLI-01 repetition 1 complete; remaining approved matrix pending",
     "baseline_smoke_file": "baseline-mili-v1.json",
     "baseline_smoke_status": "passed: 8 tests, 0 failures, 0 skipped, no Docker",
     "inventory_file": "inventory-v1.json",
