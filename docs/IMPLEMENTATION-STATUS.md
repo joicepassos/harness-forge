@@ -251,7 +251,12 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   not execute repository commands under the frozen workspace-write environment
   policy. Evaluator-only checks confirmed all three MLI-01 failures on the
   untouched baseline, Team overlay, and Forge overlay; these are baseline
-  characterization results, not agent outcomes. T9.2 remains incomplete, so
+  characterization results, not agent outcomes. A further direct CLI retry on
+  a fresh pinned baseline clone was blocked by the same host policy before any
+  repository read or write; it remains an invalid run and did not change the
+  0/45 score. See the
+  [blocked retry record](pilot/mili-mli01-v2-r1-baseline-blocked-20260928.md).
+  T9.2 remains incomplete, so
   neither T9.5 nor T9.6 has final acceptance. See [the MLI-01 repetition 1
   attempt record](pilot/mili-mli01-r1-attempt-v2.md).
   The 2026-09-28 v1 freeze audit recovered the historical partial-approval
