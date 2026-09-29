@@ -23,9 +23,11 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   18.3 probe found the MLI-02 cursor precision defect; comparative agent-task
   baselines remain part of T9.2. An offline paired context-selection baseline
   now covers the five approved Mili task prompts on the pinned validation
-  commit, but it is a retrieval proxy rather than agent-task outcomes.
-  Comparative baseline metrics are partial, so T0.4's validation-corpus
-  metrics acceptance remains open.
+  commit, but it is a retrieval proxy rather than agent-task outcomes. A
+  provisional single-analyst path-judgment set now records 80/80 high/medium
+  annotated-path coverage across the ten task-condition captures. This is not
+  ground-truth recall, evidence of an improvement, or agent-task outcome data;
+  T0.4's comparative validation metrics remain partial.
 - T1.1–T1.5: generation preserves skills and structured workspaces; generated
   files use ownership hashes; approval records bind rule/evidence fingerprints;
   discovery rejects conflicting IDs; drift reports evidence presence and
@@ -137,10 +139,15 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   task-level quality remains unmeasured. A provider-free paired capture for
   MLI-01–05 on the pinned Mili commit records selected source paths and
   estimated tokens at a fixed 131,072-token budget; the mean delta is +1,799
-  estimated tokens. Source relevance labels are not adjudicated, so this is
-  not ground-truth recall or task-quality evidence. See the
+  estimated tokens. A separate provisional analyst judgment set and exact-path
+  coverage report find 80/80 high/medium annotated paths in both conditions
+  across all five tasks; this is path coverage of a non-exhaustive candidate
+  set, not ground-truth recall or an improvement claim, and task quality is
+  unmeasured. See the
   [Mili context-selection report](pilot/mili-context-selection-v1.json) and its
-  [provenance sidecar](pilot/mili-context-selection-provenance-v1.json). The
+  [provenance sidecar](pilot/mili-context-selection-provenance-v1.json), the
+  [provisional relevance judgments](pilot/mili-source-relevance-judgments-v1.json),
+  and the [coverage output](pilot/mili-relevance-coverage-v1.json). The
   original runner binary reports `vcs.modified=true`, leaving its build-tree
   cleanliness uncertain. A clean offline rebuild from the pinned HarnessForge
   commit reproduced all five report-linked raw JSON captures byte-for-byte; the
@@ -333,13 +340,17 @@ mock provider; no paid model provider was contacted.
   context API and `context explain --task-path`; glob matching is segment-aware
   with `**`, and backend/frontend scope fixtures pass. T6.3 reports early
   prompt-envelope overflow with the same configured estimator and an explicit
-  excluded-prompt reason. T6.4 now has a paired five-task Mili capture, but its
-  token and selection metrics are retrieval proxies without adjudicated source
-  relevance or measured task quality. The offline
+  excluded-prompt reason. T6.4 has a paired five-task Mili capture and
+  provisional analyst-judgment coverage (80/80 annotated high/medium paths in
+  both conditions); the labels are non-exhaustive and not ground truth, and the
+  metric is not task-quality evidence or proof of improvement. The offline
   [integrity validator](pilot/verify-context-selection.ps1) rechecks the frozen
   task text, source hashes, paired raw captures, clean-run reproduction, source
-  snapshot digest, and aggregate arithmetic; it does not calculate relevance or
-  task-quality scores. The raw captures do not embed the source commit or
+  snapshot digest, and aggregate arithmetic. The separate
+  [provisional path-coverage scorer](pilot/score-mili-relevance-coverage.ps1)
+  checks the report/judgment/evaluator/capture hashes and scores only the
+  annotated path set; it does not calculate precision, NDCG, ground-truth recall,
+  or task quality. The raw captures do not embed the source commit or
   executed prompt, so the sidecar binds those declarations to capture hashes
   without claiming a signed execution attestation. Original runner cleanliness
   remains uncertain (`vcs.modified=true`); the clean rebuild produced matching
