@@ -66,7 +66,7 @@ does not prove that OpenCode loaded a file.
 | C | Root `AGENTS.md` plus `packages/api/AGENTS.md`; start at root, then read/list `packages/api` | V2 nested rule is discovered as area is explored | Pass on V2 2.0.18 |
 | D | Only project `CLAUDE.md` | V1 fallback loads; V2 does not use this fallback | V1 fallback passes on 1.18.33; V2 negative case passes on 2.0.18 |
 | E | Project `AGENTS.md` and `CLAUDE.md`, contradictory sentinels | V1 chooses AGENTS over CLAUDE; V2 AGENTS-only contract | V1 precedence passes on 1.18.33; V2 case passes on 2.0.18 |
-| F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | V1 precedence and fallback pass on 1.18.33; V2 Claude-only negative case passes on 2.0.18; combined precedence pending |
+| F | Global OpenCode AGENTS plus global Claude CLAUDE, then remove one at a time | V1 chooses OpenCode global over Claude global; V2 only claims OpenCode AGENTS | V1 precedence and fallback pass on 1.18.33; V2 both-global case loads OpenCode AGENTS and omits Claude; after removing OpenCode AGENTS, V2 still omits Claude (no Claude fallback) on 2.0.18 |
 | G | `OPENCODE_DISABLE_PROJECT_CONFIG=1` with project and global AGENTS | V2 omits project, retains global | Pass on V2 2.0.18 |
 | H | V1 `opencode.json` `instructions` local file, glob and URL, each isolated | Entries contribute to V1 context; remote timeout is bounded by documented 5 sec | Path, glob, and URL inclusion pass on 1.18.33; slow URL probe reached the task request 5.145 sec after fetch start |
 | I | V2 `opencode.json` `instructions` local file, glob and URL | Current docs state resolver does not add these entries to model context | All three negative cases pass on V2 2.0.18 |
@@ -112,8 +112,8 @@ and its request body capture.
 
 This establishes only that the global Claude file was absent from requests in
 this exact Claude-only V2 configuration. Precedence when both global files are
-present remains pending; the V1 precedence case above does not establish V2
-behavior.
+present is recorded separately below; the V1 precedence case above does not
+establish V2 behavior.
 
 Evidence fingerprints: request bodies
 `9e3f6db1eaa32680ba0a644a0e1339e1e74b4b2ba87cb4c652af9f40e981d7bc`;
@@ -202,6 +202,37 @@ documentation statement that only global instructions load in this setup.
 The result does not establish V1 behavior or cross-version `CLAUDE.md` fallback parity,
 or conflict resolution. The mock returned a fixed local response; this
 validates effective request context only, not model compliance or task quality.
+
+## Runtime validation: OpenCode V2 global file comparison
+
+On 2026-09-28, `@opencode/cli@2.0.18` was run from the npm cache on Windows
+(`win32`) with an isolated `HOME` and `XDG_CONFIG_HOME`. The isolated global
+Claude file contained `GLOBAL_CLAUDE_ONLY_SENTINEL:
+CLAUDE_GLOBAL_SOURCE`; the OpenCode global file contained
+`GLOBAL_OPENCODE_ONLY_SENTINEL: OPEN_CODE_GLOBAL_SOURCE`. There were no project
+instruction files or ancestor `AGENTS.md` files in the fixture. The only
+configured model was `mock/test`, pointed at the local loopback mock on
+`127.0.0.1:8765`; both invocations returned `LOCAL_MOCK_OK`.
+
+Both cases used the neutral prompt “Summarize the top-level files in this
+project.” Each produced two captured requests: OpenCode's title-generation
+request and the task request. All message roles in both requests were scanned
+for both sentinels. With both global files present, the OpenCode global
+sentinel appeared once and the Claude sentinel did not appear. After removing
+only global `AGENTS.md`, neither sentinel appeared, so V2 did not fall back to
+the global Claude file in this run. This is consistent with the V2 contract;
+it is a request-context observation for this exact binary and fixture, not a
+test of model obedience or task quality.
+
+The combined four-request JSONL capture is
+[`opencode-v2-global-precedence-2026-09-28.jsonl`](acceptance/evidence/opencode-v2-global-precedence-2026-09-28.jsonl)
+with SHA-256
+`ea04c2e0dc8d0e9098d606b28bf823226a7cf8009f790bee8879d675e820eb99`. The
+hash-recorded case metadata is
+[`opencode-v2-global-precedence-2026-09-28.json`](acceptance/evidence/opencode-v2-global-precedence-2026-09-28.json),
+SHA-256 `d14d307034bf605c3664481221ba91d480e9dd0206ab4cfc223fd9de3407a94e`.
+No external model provider was configured or called in these two invocations;
+this does not make a claim about unrelated account billing.
 
 ## Forge-generated Codex export in OpenCode V2
 
