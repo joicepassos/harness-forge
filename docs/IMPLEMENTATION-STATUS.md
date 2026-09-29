@@ -139,7 +139,13 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   estimated tokens at a fixed 131,072-token budget; the mean delta is +1,799
   estimated tokens. Source relevance labels are not adjudicated, so this is
   not ground-truth recall or task-quality evidence. See the
-  [Mili context-selection report](pilot/mili-context-selection-v1.json).
+  [Mili context-selection report](pilot/mili-context-selection-v1.json) and its
+  [provenance sidecar](pilot/mili-context-selection-provenance-v1.json). The
+  original runner binary reports `vcs.modified=true`, leaving its build-tree
+  cleanliness uncertain. A clean offline rebuild from the pinned HarnessForge
+  commit reproduced all five report-linked raw JSON captures byte-for-byte; the
+  sidecar records both binary/archive hashes and clearly treats this as a clean
+  reproduction, not proof of the original invocation's arguments.
 - T7.1–T7.5: local observation capture, review, candidate publication,
   audit provenance, and checkout isolation are implemented and covered. Generated
   indexes use the OS user cache keyed by canonical checkout/worktree path;
@@ -331,10 +337,13 @@ mock provider; no paid model provider was contacted.
   token and selection metrics are retrieval proxies without adjudicated source
   relevance or measured task quality. The offline
   [integrity validator](pilot/verify-context-selection.ps1) rechecks the frozen
-  task text, source hashes, paired raw captures, and aggregate arithmetic; it
-  does not calculate relevance or task-quality scores. The raw captures do not
-  embed the source commit or executed prompt, so those are checked against the
-  separately frozen report inputs.
+  task text, source hashes, paired raw captures, clean-run reproduction, source
+  snapshot digest, and aggregate arithmetic; it does not calculate relevance or
+  task-quality scores. The raw captures do not embed the source commit or
+  executed prompt, so the sidecar binds those declarations to capture hashes
+  without claiming a signed execution attestation. Original runner cleanliness
+  remains uncertain (`vcs.modified=true`); the clean rebuild produced matching
+  bytes for all five captures.
 - T1.7/T2/T3/T4/T5 also retain acceptance gaps listed in their status entries;
   static fixtures and repository-level tests are not external runtime evidence.
 - This checkout contains pre-existing repository-context/retrieval changes;

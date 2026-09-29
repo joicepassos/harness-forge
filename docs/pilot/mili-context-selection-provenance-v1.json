@@ -1,0 +1,290 @@
+{
+  "schema_version": 1,
+  "artifact_id": "mili-context-selection-provenance-v1",
+  "report": {
+    "path": "docs/pilot/mili-context-selection-v1.json",
+    "sha256": "3ac4399759584baea90f31617689c0958cd8dc4716baf085801e4c2abe568a1f",
+    "report_id": "mili-context-selection-v1"
+  },
+  "provenance_strength": {
+    "statement": "The sidecar binds the report task/prompt and frozen input declarations to capture SHA-256 values, and records an exact-output reproduction from a clean archive of the declared runner commit. The original context JSON format does not embed argv, prompt, repository commit, or executable identity.",
+    "classification": "reproducible_declared_provenance_not_signed_execution_attestation"
+  },
+  "inputs": {
+    "forge": {
+      "knowledge_path": "docs/pilot/mili-forge-source/.forge/knowledge/items/9cc3e8f34f895854f301a94a6fe88a42407c2f7c15bb3965784f59217153aaca.md",
+      "evidence_sha256": "7d55a0151c11af967f43f2ff5daf4cbc4f9642f0f0fcf590f52ad4b392b39c2b",
+      "manifest_path": "docs/pilot/mili-forge-source/.forge/forge.yaml",
+      "knowledge_id": "import-agents-09e217e70d1f",
+      "manifest_sha256": "d91e319b7559b9d3b4c46dba0cc47132a826074f557d7490d04bc07973d0fe22",
+      "knowledge_sha256": "3bc761b36936a404c03c3ebc1d844690bb3d8000456f86a2d429774080fe04d2"
+    },
+    "source_repository": {
+      "tree_manifest_sha256": "315765fd296acd1ddebc94c701a825314899b3fccbaf54a6b099f5fe1ab4c170",
+      "includes_frozen_forge_evaluation_metadata": true,
+      "id": "mili",
+      "tree_hash_algorithm": "SHA-256 over UTF-8 lines: file_sha256<TAB>byte_length<TAB>slash_relative_path<LF>, sorted by ordinal relative path",
+      "total_bytes": 560310.0,
+      "snapshot_path": ".pilot-runs/mili-context-eval-v1/repo",
+      "file_count": 198,
+      "commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+      "copy_method": "git archive of the pinned Mili HEAD plus the frozen evaluation .forge metadata/evidence"
+    },
+    "task_corpus": {
+      "path": "docs/pilot/tasks-draft-v1.md",
+      "sha256": "b54814e4b9c37c3e242ad051472037c9dabc220086f0209d8f34b062afa6348f",
+      "task_ids": [
+        "MLI-01",
+        "MLI-02",
+        "MLI-03",
+        "MLI-04",
+        "MLI-05"
+      ],
+      "freeze_sha256": "229545a0aa9494ed9102f9842943b0954c8c2a0c773b29b3053ede71249566c6",
+      "freeze_path": "docs/pilot/mili-condition-freeze-v2.json",
+      "approval_snapshot_path": "mili-task-approval-v2-snapshot.json",
+      "approval_snapshot_sha256": "78b3923414cc008d8746478b79b8d1ff8e92b9e8b5e37805bfa2e023fb51a9c2"
+    }
+  },
+  "original_report_runner": {
+    "build_vcs_modified": true,
+    "note": "The binary metadata reports vcs.modified=true, so this is not treated as a clean-build attestation.",
+    "build_vcs_revision": "c97b44213079c0545024c308bdf2838a9e17a82d",
+    "reported_checkout": "git archive of HEAD, excluding uncommitted worktree changes",
+    "binary_path": ".pilot-runs/mili-context-eval-v1/harnessforge-head.exe",
+    "commit": "c97b44213079c0545024c308bdf2838a9e17a82d",
+    "binary_sha256": "577c54d5f7b8c82433a9f78297602efe822fcd76c598223eceacded5104a8163",
+    "go_version": "go1.26.2"
+  },
+  "clean_reproduction": {
+    "go_version": "go1.26.2",
+    "runner_source_archive_path": ".pilot-runs/mili-context-eval-v1/runner-c97b442.tar",
+    "binary_sha256": "7b0606bf2b3873a1eefcf7da40f283d6633433c7526aca21f8873ebd9da7b09a",
+    "runner_source_archive_sha256": "0194c3158b3ad9a0d624a4e584eb07b152e2bf1c0c90109c21a15e7df23e263b",
+    "runner_source_commit": "c97b44213079c0545024c308bdf2838a9e17a82d",
+    "binary_path": ".pilot-runs/mili-context-eval-v1/harnessforge-c97b442-clean.exe",
+    "network_access": "disabled (GOPROXY=off, GOSUMDB=off, GOTOOLCHAIN=local)",
+    "build_command": "go build -buildvcs=false -o harnessforge-c97b442-clean.exe ./cmd/harnessforge",
+    "build_vcs_mode": "disabled; source is pinned by the Git archive commit and digest",
+    "cases_byte_identical_to_report": true
+  },
+  "cases": [
+    {
+      "task_id": "MLI-01",
+      "prompt": "Replace client-selected tenant identity with the authenticated API-key tenant for list, detail, and reprocess. Add tests proving tenant A cannot list, inspect, or reprocess tenant B events; cross-tenant detail/reprocess must be indistinguishable from not found. Avoid database-backed tests in the primary acceptance command; use isolated controller/service tests.",
+      "prompt_sha256": "12f73c1878bbf73e92c4aa8ab6f6d63cccc052eb80f0312dff374a508490bbf8",
+      "repository_argument_relative_to_worktree": ".pilot-runs/mili-context-eval-v1/repo",
+      "argv_template": [
+        "context",
+        "explain",
+        ".pilot-runs/mili-context-eval-v1/repo",
+        "{prompt}",
+        "--model",
+        "gpt-6-luna",
+        "--budget",
+        "131072",
+        "--compare-knowledge"
+      ],
+      "command_flags": {
+        "compare_knowledge": true,
+        "budget": 131072,
+        "model": "gpt-6-luna",
+        "bm25": false,
+        "mmr": false,
+        "task_paths": []
+      },
+      "report_capture": {
+        "sha256": "d89b2d17b9feb1dbf876371607839c41679f9c5ea851cdb44d135601ef586e5f",
+        "path": ".pilot-runs/mili-context-eval-v1/MLI-01-clean-head.json"
+      },
+      "clean_reproduction_capture": {
+        "path": ".pilot-runs/mili-context-eval-v1/c97b442-clean-rerun/MLI-01.json",
+        "sha256": "d89b2d17b9feb1dbf876371607839c41679f9c5ea851cdb44d135601ef586e5f",
+        "byte_identical_to_report_capture": true
+      },
+      "expected_context_result": {
+        "baseline_estimated_tokens": 79068,
+        "with_approved_knowledge_estimated_tokens": 80867,
+        "estimated_token_delta": 1799,
+        "selected_knowledge_ids": [
+          "import-agents-09e217e70d1f"
+        ]
+      }
+    },
+    {
+      "task_id": "MLI-02",
+      "prompt": "Missing or blank cursors start the first page. A cursor with malformed timestamp, missing separator, or empty event ID returns HTTP 400. A cursor produced by the API continues the next page without duplicates. Add service and controller tests.",
+      "prompt_sha256": "7cf3735d90850f5752e8cd1ce5c5462aad2b7aef06727a9832e100fc0b591ea5",
+      "repository_argument_relative_to_worktree": ".pilot-runs/mili-context-eval-v1/repo",
+      "argv_template": [
+        "context",
+        "explain",
+        ".pilot-runs/mili-context-eval-v1/repo",
+        "{prompt}",
+        "--model",
+        "gpt-6-luna",
+        "--budget",
+        "131072",
+        "--compare-knowledge"
+      ],
+      "command_flags": {
+        "compare_knowledge": true,
+        "budget": 131072,
+        "model": "gpt-6-luna",
+        "bm25": false,
+        "mmr": false,
+        "task_paths": []
+      },
+      "report_capture": {
+        "sha256": "8425d914e34d345615570a160477df3c7c8596803eca44da95513f405e3178d3",
+        "path": ".pilot-runs/mili-context-eval-v1/MLI-02-clean-head.json"
+      },
+      "clean_reproduction_capture": {
+        "path": ".pilot-runs/mili-context-eval-v1/c97b442-clean-rerun/MLI-02.json",
+        "sha256": "8425d914e34d345615570a160477df3c7c8596803eca44da95513f405e3178d3",
+        "byte_identical_to_report_capture": true
+      },
+      "expected_context_result": {
+        "baseline_estimated_tokens": 78350,
+        "with_approved_knowledge_estimated_tokens": 80149,
+        "estimated_token_delta": 1799,
+        "selected_knowledge_ids": [
+          "import-agents-09e217e70d1f"
+        ]
+      }
+    },
+    {
+      "task_id": "MLI-03",
+      "prompt": "After pausing or deleting a webhook, the next lookup of its ingest token must reflect the new state immediately rather than serving the prior cached configuration. Preserve cache hits while the webhook is unchanged. Add deterministic cache/service tests and a non-database request test.",
+      "prompt_sha256": "106a03c18aa0bf8b9d9e2e7e51fc33f0b515b5f7335caf6c5de7188e2ca4d13f",
+      "repository_argument_relative_to_worktree": ".pilot-runs/mili-context-eval-v1/repo",
+      "argv_template": [
+        "context",
+        "explain",
+        ".pilot-runs/mili-context-eval-v1/repo",
+        "{prompt}",
+        "--model",
+        "gpt-6-luna",
+        "--budget",
+        "131072",
+        "--compare-knowledge"
+      ],
+      "command_flags": {
+        "compare_knowledge": true,
+        "budget": 131072,
+        "model": "gpt-6-luna",
+        "bm25": false,
+        "mmr": false,
+        "task_paths": []
+      },
+      "report_capture": {
+        "sha256": "941356e5736bbfbaadaa95cee1da117d94ba304c102fb1a17bb6d7e94b496913",
+        "path": ".pilot-runs/mili-context-eval-v1/MLI-03-clean-head.json"
+      },
+      "clean_reproduction_capture": {
+        "path": ".pilot-runs/mili-context-eval-v1/c97b442-clean-rerun/MLI-03.json",
+        "sha256": "941356e5736bbfbaadaa95cee1da117d94ba304c102fb1a17bb6d7e94b496913",
+        "byte_identical_to_report_capture": true
+      },
+      "expected_context_result": {
+        "baseline_estimated_tokens": 82344,
+        "with_approved_knowledge_estimated_tokens": 84143,
+        "estimated_token_delta": 1799,
+        "selected_knowledge_ids": [
+          "import-agents-09e217e70d1f"
+        ]
+      }
+    },
+    {
+      "task_id": "MLI-04",
+      "prompt": "Reprocessing an unknown ID returns 404; a FAILED event still returns 204 and moves to PENDING; a non-FAILED event returns 409. Add service and MVC tests that do not require Testcontainers.",
+      "prompt_sha256": "0f9355ea3651a63cb84df94351037f0b048ac3ed0a73b886eb344eb8f8626425",
+      "repository_argument_relative_to_worktree": ".pilot-runs/mili-context-eval-v1/repo",
+      "argv_template": [
+        "context",
+        "explain",
+        ".pilot-runs/mili-context-eval-v1/repo",
+        "{prompt}",
+        "--model",
+        "gpt-6-luna",
+        "--budget",
+        "131072",
+        "--compare-knowledge"
+      ],
+      "command_flags": {
+        "compare_knowledge": true,
+        "budget": 131072,
+        "model": "gpt-6-luna",
+        "bm25": false,
+        "mmr": false,
+        "task_paths": []
+      },
+      "report_capture": {
+        "sha256": "742e0b72d4124a1fb896a0a195cb1327df5b20e0f0cfa9ebe6964d60ca42da55",
+        "path": ".pilot-runs/mili-context-eval-v1/MLI-04-clean-head.json"
+      },
+      "clean_reproduction_capture": {
+        "path": ".pilot-runs/mili-context-eval-v1/c97b442-clean-rerun/MLI-04.json",
+        "sha256": "742e0b72d4124a1fb896a0a195cb1327df5b20e0f0cfa9ebe6964d60ca42da55",
+        "byte_identical_to_report_capture": true
+      },
+      "expected_context_result": {
+        "baseline_estimated_tokens": 67540,
+        "with_approved_knowledge_estimated_tokens": 69339,
+        "estimated_token_delta": 1799,
+        "selected_knowledge_ids": [
+          "import-agents-09e217e70d1f"
+        ]
+      }
+    },
+    {
+      "task_id": "MLI-05",
+      "prompt": "Reject malformed event-type expressions before persistence with HTTP 400; accept a valid expression such as $.type. Add domain and controller/service tests. Keep persistence tests outside the no-Docker acceptance path.",
+      "prompt_sha256": "9af6d8c39402249bfd2015f6593ff44ffba5e351be12be463cf55a9ce14592f1",
+      "repository_argument_relative_to_worktree": ".pilot-runs/mili-context-eval-v1/repo",
+      "argv_template": [
+        "context",
+        "explain",
+        ".pilot-runs/mili-context-eval-v1/repo",
+        "{prompt}",
+        "--model",
+        "gpt-6-luna",
+        "--budget",
+        "131072",
+        "--compare-knowledge"
+      ],
+      "command_flags": {
+        "compare_knowledge": true,
+        "budget": 131072,
+        "model": "gpt-6-luna",
+        "bm25": false,
+        "mmr": false,
+        "task_paths": []
+      },
+      "report_capture": {
+        "sha256": "71d385ed5e6c0824efdf14f47b454428bb61657a4f743d66e44e58c4227618ee",
+        "path": ".pilot-runs/mili-context-eval-v1/MLI-05-clean-head.json"
+      },
+      "clean_reproduction_capture": {
+        "path": ".pilot-runs/mili-context-eval-v1/c97b442-clean-rerun/MLI-05.json",
+        "sha256": "71d385ed5e6c0824efdf14f47b454428bb61657a4f743d66e44e58c4227618ee",
+        "byte_identical_to_report_capture": true
+      },
+      "expected_context_result": {
+        "baseline_estimated_tokens": 75875,
+        "with_approved_knowledge_estimated_tokens": 77674,
+        "estimated_token_delta": 1799,
+        "selected_knowledge_ids": [
+          "import-agents-09e217e70d1f"
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Capture SHA-256 verifies bytes, not that a particular command or prompt caused those bytes.",
+    "Prompt, source commit, and argv are attached by this sidecar; they are not fields in the raw context explain JSON.",
+    "The Mili snapshot tree digest identifies the local evaluation input copy, which combines pinned source with Forge evaluation metadata; it does not independently establish the Git ancestry of every file.",
+    "Original runner build metadata was vcs.modified=true; exact clean-source reproduction yielded byte-identical JSON for all five cases, but does not retroactively prove the original invocation environment.",
+    "No relevance qrels, generated answer, task correctness, human review, agent run, or quality score is asserted. Token values remain conservative payload-byte upper-bound estimates."
+  ]
+}
