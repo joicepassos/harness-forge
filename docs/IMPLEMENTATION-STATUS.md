@@ -1,6 +1,6 @@
 # Implementation status
 
-Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
+Date: 2026-09-30. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 
 ## Completed in this implementation
 
@@ -70,6 +70,10 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   legacy `generate` directs Forge projects to native `sync` rather than emitting
   a partial document. Explicit `review --layout forge` also fails closed when
   Forge is missing and cannot fall through to mutate a Harness file.
+  Preview now hashes and parses the same bounded source bytes through a
+  root-confined read. Preview and apply reject observed source/parent symlinks,
+  and root identity is checked after opening it. Regression tests cover a
+  changed source during parsing and post-preview symlink replacement.
 - T4.1–T4.6: deterministic Codex/Claude compile adapters, shared ownership
   manifest, architecture metadata in both native exports, dry-run/check/apply,
   collision and edit protection, staging, clone
@@ -218,6 +222,8 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   write operations. Protocol behavior is covered locally; remote transport,
   authentication, and client-specific discovery remain out of scope. See
   [MCP context contract](MCP-CONTEXT.md).
+  Malformed task-query escapes are rejected, and escaped JSON-RPC responses
+  remain within the advertised message limit.
 - T8.4: sync validates and publishes portable Agent Skills bundles under
   `.agents/skills/` and `.claude/skills/`; generated instruction files link to
   skills without duplicating their bodies. Updates and stale-file cleanup use
@@ -321,6 +327,8 @@ across index-cache rebuild, linked-worktree index isolation, and preservation of
 all concurrent cross-process captures.
 The OpenCode V2 Forge-export capture used the npm cache offline and a local-only
 mock provider; no paid model provider was contacted.
+On 2026-09-30, `go test ./...` passed on the active checkout after the T3.2
+source-read and T8.3 response-bound fixes.
 
 ## Remaining validation
 
