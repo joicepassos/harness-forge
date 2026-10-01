@@ -332,6 +332,109 @@ func TestApplyForgeMigrationRejectsChangedSourceAndRollbackRejectsUnownedDirecto
 	}
 }
 
+func TestPreviewToForgeRejectsSymlinkedSourceAndParent(t *testing.T) {
+	for _, component := range []string{"source", "parent"} {
+		t.Run(component, func(t *testing.T) {
+			root, source := writeLegacyMigrationProject(t)
+			outside := t.TempDir()
+			if component == "source" {
+				target := filepath.Join(outside, "harness.yaml")
+				if err := os.WriteFile(target, []byte(legacyHarnessForForgeMigration), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Remove(source); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, source); err != nil {
+					t.Skipf("symlink unavailable: %v", err)
+				}
+			} else {
+				if err := os.Rename(filepath.Join(root, ".harness"), filepath.Join(outside, ".harness")); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(filepath.Join(outside, ".harness"), filepath.Join(root, ".harness")); err != nil {
+					t.Skipf("symlink unavailable: %v", err)
+				}
+			}
+			if _, err := application.PreviewToForge(infrastructure.YAMLLoader{}, root, source, []string{"codex"}, domain.KnowledgeConvention); err == nil || !strings.Contains(err.Error(), "symlink") {
+				t.Fatalf("symlinked %s was accepted: %v", component, err)
+			}
+			if _, err := os.Stat(filepath.Join(root, ".forge")); !os.IsNotExist(err) {
+				t.Fatal("failed preview created target layout")
+			}
+		})
+	}
+}
+
+func TestApplyForgeMigrationRejectsPostPreviewSymlinkSwap(t *testing.T) {
+	for _, component := range []string{"source", "parent"} {
+		t.Run(component, func(t *testing.T) {
+			root, source := writeLegacyMigrationProject(t)
+			plan, err := application.PreviewToForge(infrastructure.YAMLLoader{}, root, source, []string{"codex"}, domain.KnowledgeConvention)
+			if err != nil {
+				t.Fatal(err)
+			}
+			outside := t.TempDir()
+			if component == "source" {
+				target := filepath.Join(outside, "harness.yaml")
+				if err := os.WriteFile(target, []byte(legacyHarnessForForgeMigration), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Remove(source); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, source); err != nil {
+					t.Skipf("symlink unavailable: %v", err)
+				}
+			} else {
+				if err := os.Rename(filepath.Join(root, ".harness"), filepath.Join(outside, ".harness")); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(filepath.Join(outside, ".harness"), filepath.Join(root, ".harness")); err != nil {
+					t.Skipf("symlink unavailable: %v", err)
+				}
+			}
+			if err := application.ApplyForgeMigration(root, plan, plan.PlanSHA256); err == nil || !strings.Contains(err.Error(), "symlink") {
+				t.Fatalf("post-preview %s symlink was accepted: %v", component, err)
+			}
+			if _, err := os.Stat(filepath.Join(root, ".forge")); !os.IsNotExist(err) {
+				t.Fatal("failed apply created target layout")
+			}
+		})
+	}
+}
+
+type swappingMigrationLoader struct {
+	source string
+}
+
+func (loader swappingMigrationLoader) LoadBytes(data []byte) (domain.Harness, error) {
+	replacement := strings.Replace(legacyHarnessForForgeMigration, "payment-service", "swapped-service", 1)
+	if err := os.WriteFile(loader.source, []byte(replacement), 0600); err != nil {
+		return domain.Harness{}, err
+	}
+	return (infrastructure.YAMLLoader{}).LoadBytes(data)
+}
+
+func TestPreviewToForgeParsesTheHashedSourceBytes(t *testing.T) {
+	root, source := writeLegacyMigrationProject(t)
+	original := []byte(legacyHarnessForForgeMigration)
+	plan, err := application.PreviewToForge(swappingMigrationLoader{source: source}, root, source, []string{"codex"}, domain.KnowledgeConvention)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(original)
+	if plan.SourceHash != hex.EncodeToString(sum[:]) {
+		t.Fatalf("plan hash differs from bytes parsed: %s", plan.SourceHash)
+	}
+	if !strings.Contains(planFileContent(t, plan, ".forge/forge.yaml"), "payment-service") {
+		t.Fatal("preview parsed the swapped pathname instead of the bounded bytes")
+	}
+	if err := application.ApplyForgeMigration(root, plan, plan.PlanSHA256); err == nil || !strings.Contains(err.Error(), "changed after preview") {
+		t.Fatalf("changed source was applied: %v", err)
+	}
+}
+
 func planFileContent(t *testing.T, plan application.ForgeMigrationPlan, path string) string {
 	t.Helper()
 	for _, file := range plan.Files {

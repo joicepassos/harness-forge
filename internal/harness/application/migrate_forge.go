@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"go.yaml.in/yaml/v3"
 	"harnessforge/internal/harness/domain"
+	"harnessforge/internal/inputlimits"
 	"harnessforge/schemas"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -39,9 +41,68 @@ type forgeMigrationReport struct {
 	Files      map[string]string `json:"files"`
 }
 
+// readMigrationSource rejects observed symlink components and confines the
+// opened source to the project root, including when paths change during a read.
+func readMigrationSource(root, relative string) ([]byte, error) {
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		return nil, err
+	}
+	if rootInfo.Mode()&os.ModeSymlink != 0 || !rootInfo.IsDir() {
+		return nil, fmt.Errorf("migration root must be a non-symlink directory")
+	}
+	parts := strings.Split(filepath.Clean(relative), string(filepath.Separator))
+	current := root
+	for i, part := range parts {
+		current = filepath.Join(current, part)
+		info, err := os.Lstat(current)
+		if err != nil {
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil, fmt.Errorf("migration source must not contain a symlink: %s", relative)
+		}
+		if i < len(parts)-1 && !info.IsDir() {
+			return nil, fmt.Errorf("migration source parent must be a directory: %s", relative)
+		}
+		if i == len(parts)-1 && !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("migration source must be a regular file: %s", relative)
+		}
+	}
+	boundedRoot, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, err
+	}
+	defer boundedRoot.Close()
+	openedRootInfo, err := boundedRoot.Stat(".")
+	if err != nil {
+		return nil, err
+	}
+	if !os.SameFile(rootInfo, openedRootInfo) {
+		return nil, fmt.Errorf("migration root changed while opening source")
+	}
+	file, err := boundedRoot.Open(relative)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, inputlimits.HarnessYAMLBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > inputlimits.HarnessYAMLBytes {
+		return nil, fmt.Errorf("migration source exceeds %d bytes", inputlimits.HarnessYAMLBytes)
+	}
+	return data, nil
+}
+
+type migrationSourceLoader interface {
+	LoadBytes([]byte) (domain.Harness, error)
+}
+
 // PreviewToForge builds a deterministic file plan without writing to disk.
 // A rule kind must be supplied when legacy rules have no equivalent type.
-func PreviewToForge(loader Loader, root, source string, targets []string, defaultRuleKind domain.KnowledgeKind) (ForgeMigrationPlan, error) {
+func PreviewToForge(loader migrationSourceLoader, root, source string, targets []string, defaultRuleKind domain.KnowledgeKind) (ForgeMigrationPlan, error) {
 	var plan ForgeMigrationPlan
 	root, err := filepath.Abs(root)
 	if err != nil {
@@ -60,14 +121,7 @@ func PreviewToForge(loader Loader, root, source string, targets []string, defaul
 	} else if !os.IsNotExist(err) {
 		return plan, err
 	}
-	info, err := os.Lstat(source)
-	if err != nil {
-		return plan, err
-	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-		return plan, fmt.Errorf("migration source must be a regular non-symlink file")
-	}
-	sourceBytes, err := os.ReadFile(source)
+	sourceBytes, err := readMigrationSource(root, relativeSource)
 	if err != nil {
 		return plan, err
 	}
@@ -75,7 +129,7 @@ func PreviewToForge(loader Loader, root, source string, targets []string, defaul
 	plan.SourcePath = filepath.ToSlash(relativeSource)
 	plan.SourceHash = hex.EncodeToString(sourceSum[:])
 	plan.ToLayout = 1
-	h, err := loader.Load(source)
+	h, err := loader.LoadBytes(sourceBytes)
 	if err != nil {
 		return plan, err
 	}
@@ -209,7 +263,7 @@ func ApplyForgeMigration(root string, plan ForgeMigrationPlan, expectedPlanSHA25
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("migration source is outside project root")
 	}
-	sourceBytes, err := os.ReadFile(source)
+	sourceBytes, err := readMigrationSource(root, relative)
 	if err != nil {
 		return err
 	}
