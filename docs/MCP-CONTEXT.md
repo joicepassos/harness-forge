@@ -15,7 +15,8 @@ context plan. The server also lists the parameterized resource template
 `forge://context/task/{prompt}{?path*}`. Clients can percent-encode the task prompt and
 provide one or more `path` query parameters, such as
 `forge://context/task/Find%20JWT%20validation?path=internal%2Fauth%2Fmiddleware.go`.
-Task paths must be repository-relative. The `application/json` body contains
+Task paths must be repository-relative; malformed query escapes are rejected.
+The `application/json` body contains
 source IDs, evidence paths, inclusion/exclusion reasons, estimated input size,
 and overflow information. For MCP stdio, each JSON-RPC message occupies one
 line. Embedders can use `mcp.Server.Serve` with their own reader/writer without
@@ -24,8 +25,10 @@ adopting a client library.
 The service reads the checkout and approved Forge knowledge. It does not apply
 sync output, change review state, execute project commands, expose tools, or
 push content to clients. The positive token budget controls the resolver's
-selection estimate; it is not an exact provider tokenizer. Requests are limited
-to 1 MiB and resource bodies to slightly less to leave room for JSON-RPC framing.
+selection estimate; it is not an exact provider tokenizer. Requests and responses
+are limited to 1 MiB. Raw resource bodies have a slightly lower cap; if JSON
+escaping would make the response exceed 1 MiB, the server returns a bounded
+JSON-RPC error instead.
 An invalid repository or resolver failure returns a generic JSON-RPC internal
 error without disclosing local filesystem details.
 

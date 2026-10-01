@@ -12,10 +12,10 @@ import (
 	"strings"
 )
 
-// MaxMessageBytes bounds each newline-delimited JSON-RPC message accepted by Serve.
+// MaxMessageBytes bounds each newline-delimited JSON-RPC message received or emitted by Serve.
 const MaxMessageBytes = 1 << 20
 
-// MaxResourceBytes caps serialized resource bodies before JSON-RPC framing.
+// MaxResourceBytes caps resource bodies before JSON-RPC string escaping.
 const MaxResourceBytes = MaxMessageBytes - 4096
 
 const contextResourceURI = "forge://context/current"
@@ -154,7 +154,11 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 					rpcErr = &rpcError{Code: -32602, Message: "task prompt is invalid or too large"}
 					break
 				}
-				query := parsed.Query()
+				query, parseErr := url.ParseQuery(parsed.RawQuery)
+				if parseErr != nil {
+					rpcErr = &rpcError{Code: -32602, Message: "invalid context resource query"}
+					break
+				}
 				for key := range query {
 					if key != "path" {
 						rpcErr = &rpcError{Code: -32602, Message: "unsupported context resource query parameter"}
@@ -232,6 +236,17 @@ func writeResponse(w *bufio.Writer, response rpcResponse) error {
 	data, err := json.Marshal(response)
 	if err != nil {
 		return err
+	}
+	if len(data)+1 > MaxMessageBytes {
+		response.Result = nil
+		response.Error = &rpcError{Code: -32603, Message: "response exceeds message size limit"}
+		data, err = json.Marshal(response)
+		if err != nil {
+			return err
+		}
+		if len(data)+1 > MaxMessageBytes {
+			return fmt.Errorf("MCP response exceeds %d byte limit", MaxMessageBytes)
+		}
 	}
 	if _, err := w.Write(append(data, '\n')); err != nil {
 		return err

@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -135,6 +136,62 @@ func TestServeRejectsInvalidJSON(t *testing.T) {
 	}
 	if response.Error == nil || response.Error.Code != -32700 {
 		t.Fatalf("expected parse error: %s", fmt.Sprint(out.String()))
+	}
+}
+
+func TestServeRejectsMalformedTaskQuery(t *testing.T) {
+	for _, uri := range []string{
+		"forge://context/task/Find?path=%ZZ",
+		"forge://context/task/Find?path=src%2Fmain.go&path=%ZZ",
+	} {
+		t.Run(uri, func(t *testing.T) {
+			input := strings.Join([]string{
+				`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}`,
+				`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
+				fmt.Sprintf(`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":%q}}`, uri),
+			}, "\n")
+			var out strings.Builder
+			if err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(input), &out); err != nil {
+				t.Fatal(err)
+			}
+			lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+			if len(lines) != 2 {
+				t.Fatalf("responses=%d: %s", len(lines), out.String())
+			}
+			var response rpcResponse
+			if err := json.Unmarshal([]byte(lines[1]), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Error == nil || response.Error.Code != -32602 || response.Result != nil {
+				t.Fatalf("malformed query must be rejected before context resolution: %s", lines[1])
+			}
+		})
+	}
+}
+
+func TestWriteResponseBoundsEscapedResource(t *testing.T) {
+	resource := strings.Repeat(`\u0000`, (MaxResourceBytes-100)/6)
+	if len(resource) > MaxResourceBytes {
+		t.Fatal("fixture exceeds raw resource limit")
+	}
+	var out strings.Builder
+	response := rpcResponse{
+		JSONRPC: "2.0",
+		ID:      1,
+		Result:  map[string]any{"contents": []any{map[string]any{"text": resource}}},
+	}
+	if err := writeResponse(bufio.NewWriter(&out), response); err != nil {
+		t.Fatal(err)
+	}
+	if out.Len() > MaxMessageBytes {
+		t.Fatalf("framed response has %d bytes; limit is %d", out.Len(), MaxMessageBytes)
+	}
+	var bounded rpcResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &bounded); err != nil {
+		t.Fatal(err)
+	}
+	if bounded.Error == nil || bounded.Error.Code != -32603 || bounded.Result != nil {
+		t.Fatalf("expected bounded JSON-RPC error, got %#v", bounded)
 	}
 }
 
