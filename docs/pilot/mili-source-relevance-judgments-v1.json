@@ -26,6 +26,14 @@
     "low": "Plausible background or lexical-neighbor source; may aid orientation but should not count as a primary relevant path.",
     "coverage_rule": "Coverage counts unique high- and medium-graded paths present in a paired capture divided by all high- and medium-graded paths listed for that task. This is provisional annotated-path coverage only, not ground-truth recall."
   },
+  "independent_review": {
+    "reviewed_on": "2026-09-30",
+    "reviewer_role": "independent-agent-review",
+    "scope": "All five task annotations checked against the pinned source, frozen prompts, evaluator contracts, and paired selected paths.",
+    "finding": "MLI-03 WebhookInboundConfigRepository was downgraded from high to medium: it supplies cache refresh data but need not change for the invalidation behavior. No other clearly missing essential source path or high/medium grade issue was identified. MLI-05 still has only a parser probe as frozen evaluator source; its broader HTTP/no-save contract remains uncovered by that probe.",
+    "is_human_adjudication": false,
+    "is_ground_truth": false
+  },
   "frozen_evaluator_sources": [
     {
       "task_id": "MLI-01",
@@ -228,8 +236,8 @@
         },
         {
           "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/WebhookInboundConfigRepository.java",
-          "grade": "high",
-          "rationale": "Supplies auth config/status to the token cache; cache refreshes read this repository.",
+          "grade": "medium",
+          "rationale": "Supplies auth config/status when the token cache refreshes after invalidation, but the repository itself need not change to implement the frozen invalidation behavior.",
           "pinned_head_git_blob_oid": "9f0da92745850b4bfbd6c57945595e78319d2406",
           "pinned_head_file_sha256": "d5e5f1e6b0a17ff8fa4545fb6bf6a3e9a41ab8c85010a1293ea152f080bc4beb"
         },
@@ -441,7 +449,7 @@
     }
   ],
   "limitations": [
-    "This is one analyst-agent's provisional path-level judgment. It is not independently adjudicated and is not ground truth.",
+    "This is one analyst-agent's provisional path-level judgment, with a separate agent review informing one MLI-03 grade downgrade. It has not been formally adjudicated by domain experts and is not ground truth.",
     "The candidate path pool is not exhaustive. Do not calculate precision, NDCG, or claim recall against all relevant source files.",
     "Any coverage calculated from these labels is limited to annotated high/medium paths present in each frozen paired context capture; it is not task-quality evidence.",
     "No agent task execution, model/provider call, answer correctness review, or paid service was used."

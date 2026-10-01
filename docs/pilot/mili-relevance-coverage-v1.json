@@ -2,7 +2,7 @@
   "schema_version": 1,
   "report_id": "mili-relevance-coverage-v1",
   "status": "provisional_annotated_path_coverage_only",
-  "generated_on": "2026-09-28",
+  "generated_on": "2026-09-30",
   "is_ground_truth": false,
   "metric": "annotated_high_medium_path_coverage",
   "formula": "unique selected paths labeled high or medium divided by the number of unique high or medium paths annotated for that task",
@@ -19,18 +19,18 @@
     "selection_provenance_sidecar_sha256": "7b7ac49a7503bbac283654c67bd580f644fe69b985b5317093c6bff1b635ebfd"
   },
   "inputs": {
+    "paired_report": {
+      "path": "docs/pilot/mili-context-selection-v1.json",
+      "sha256": "3ac4399759584baea90f31617689c0958cd8dc4716baf085801e4c2abe568a1f"
+    },
     "provenance_sidecar": {
       "path": "docs/pilot/mili-context-selection-provenance-v1.json",
       "sha256": "7b7ac49a7503bbac283654c67bd580f644fe69b985b5317093c6bff1b635ebfd",
       "source_tree_manifest_sha256": "315765fd296acd1ddebc94c701a825314899b3fccbaf54a6b099f5fe1ab4c170"
     },
-    "paired_report": {
-      "path": "docs/pilot/mili-context-selection-v1.json",
-      "sha256": "3ac4399759584baea90f31617689c0958cd8dc4716baf085801e4c2abe568a1f"
-    },
     "provisional_judgments": {
       "path": "docs/pilot/mili-source-relevance-judgments-v1.json",
-      "sha256": "de4157ce56626b7cf42098b9f8bf3af11dcca2c7e72a34a1d8cd94d15b878552"
+      "sha256": "003e8250fc0cd91e2ce19b65f6bdfc6bf3e95d3931c3e0f5f6fe0a2eb4ec4031"
     }
   },
   "aggregate": {
