@@ -202,8 +202,9 @@ Date: 2026-09-30. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   body loading. Neutral V2 global-instruction probes on `@opencode/cli@2.0.18`
   show the Claude sentinel absent when it is the only global file; with both
   global files present, only OpenCode `AGENTS.md` appears, and after removing
-  it the Claude fallback remains absent. Hash-recorded request evidence is in
-  `docs/acceptance/evidence/opencode-v2-global-precedence-2026-09-28.*`. V1
+  it the Claude fallback remains absent. Summary observations are in
+  `docs/acceptance/evidence/opencode-v2-global-precedence-2026-09-28.json`; raw
+  request captures are withheld from this published evidence set. V1
   disable controls were tested on `opencode-ai@1.18.33` with the local mock:
   `OPENCODE_DISABLE_CLAUDE_CODE=1` removed project and global Claude markers as
   documented, but `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` unexpectedly removed
@@ -214,9 +215,10 @@ Date: 2026-09-30. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   matching the documented skills-only scope on that build. Prompt-only
   semantics are not tied to a release in the docs, so that behavior remains
   unresolved; V1 docs do not document a general project `AGENTS.md` disable
-  switch. Hash-recorded captures are in
-  `docs/acceptance/evidence/opencode-v1-disable-controls-2026-09-28.*` and
-  `docs/acceptance/evidence/opencode-v1-skills-disable-2026-09-30.*`. An external-root probe
+  switch. Summary observations are in
+  `docs/acceptance/evidence/opencode-v1-disable-controls-2026-09-28.json` and
+  `docs/acceptance/evidence/opencode-v1-skills-disable-2026-09-30.json`; raw
+  request captures are withheld from this published evidence set. An external-root probe
   with a neutral query found the parent `AGENTS.md` in system instructions
   outside an inner Git root, contrary to the V2 docs' “global only” statement.
   V2 local-file, glob, and loopback URL entries in config `instructions` were

@@ -40,7 +40,6 @@
         "global_claude_expected": 1,
         "global_claude_observed": 1,
         "output": "LOCAL_MOCK_OK",
-        "capture_sha256": "721028ec413c5554348809459c9001cdb2bf0d023ac90f278b6de8a707f3bf6c",
         "run_sha256": "639b8f49da0f771928c042af1e19cde52b82bc45d73809f3318c8c2706b93c01"
       },
       "disable_all_claude_support": {
@@ -51,7 +50,6 @@
         "global_claude_observed": 0,
         "matches_current_v1_docs": true,
         "output": "LOCAL_MOCK_OK",
-        "capture_sha256": "a3abf8c8b109a98c3d27ffeb9aba94d3e32fd93eafc6a43deb138dedbdb2b6aa",
         "run_sha256": "8a826626b839261007dcc1ea707bf95ab1ae4522f935ff678360a81630ff361d"
       },
       "disable_global_claude_prompt": {
@@ -62,12 +60,14 @@
         "global_claude_observed": 0,
         "matches_current_v1_docs": false,
         "output": "LOCAL_MOCK_OK",
-        "capture_sha256": "c109c5aac16112e2f7303ca76ead9a1d5661753aaa79160ebdf7156758bbe68b",
         "run_sha256": "8c29c66c27461e86220a15efec0d2a003b3d57e60f323f1c4b3817fa3a14eef6"
       }
     },
-    "request_capture_sha256": "3284a9b8796e3b44764bd7e19e39db2fa8d2e3c6d70991b85cf107c65d57fa41",
-    "opencode_log_sha256": "1e527768915f37aa65ea5972ef6fb8c4a82c39fbe439af069111e2c5b4046e6d"
+    "opencode_log_sha256": "1e527768915f37aa65ea5972ef6fb8c4a82c39fbe439af069111e2c5b4046e6d",
+    "raw_request_capture": {
+      "status": "withheld-from-published-evidence",
+      "request_count": 6
+    }
   },
   "documentation": {
     "v1_rules_url": "https://opencode.ai/docs/rules/",

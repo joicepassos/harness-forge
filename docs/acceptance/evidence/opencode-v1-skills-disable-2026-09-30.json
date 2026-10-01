@@ -69,8 +69,10 @@
       "global_skill_description": false
     },
     "fixed_output": "LOCAL_MOCK_OK",
-    "capture_path": "docs/acceptance/evidence/opencode-v1-skills-disable-2026-09-30.jsonl",
-    "capture_sha256": "532c876baba281b2574ae2e28c42ac2c0b248a42b40e4328169ebd75b4a5f873"
+    "raw_request_capture": {
+      "status": "withheld-from-published-evidence",
+      "request_count": 4
+    }
   },
   "documentation": {
     "rules_url": "https://opencode.ai/docs/rules/",

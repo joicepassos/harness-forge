@@ -38,7 +38,6 @@
       "opencode_sentinel_message_occurrences": 1,
       "claude_sentinel_message_occurrences": 0,
       "output": "LOCAL_MOCK_OK",
-      "request_capture_sha256": "89400a3bb8989e930544816a8b0fca408192b166a9206d39ae469ced070a94ee",
       "run_output_sha256": "639dc7c0bfe63928d1e0fc25bb91e5a1f4666585bc50041d2603fcb6919e2600"
     },
     "after_removing_only_global_opencode_agents": {
@@ -51,15 +50,13 @@
       "opencode_sentinel_message_occurrences": 0,
       "claude_sentinel_message_occurrences": 0,
       "output": "LOCAL_MOCK_OK",
-      "request_capture_sha256": "5e1f8783c9f1047568be9304db1a96888d4ce60ba15aef42dbbabb9399b8b3af",
       "run_output_sha256": "bbb3ed1622c4e1580b2f1b5478337a54c592f5c97e7de5c3c8e9136008c59415"
     },
     "opencode_log_sha256": "f978fa10e45188ce754dbbe6b955805b41171e4702d69e09d49851d3a7f7c633"
   },
   "request_capture": {
-    "path": "opencode-v2-global-precedence-2026-09-28.jsonl",
-    "sha256": "ea04c2e0dc8d0e9098d606b28bf823226a7cf8009f790bee8879d675e820eb99",
-    "request_order": "two JSONL requests for both-globals run followed by two for Claude-only run"
+    "status": "withheld-from-published-evidence",
+    "request_count": 4
   },
   "interpretation": "For @opencode/cli@2.0.18 on this isolated Windows configuration, when both global files were present the OpenCode AGENTS sentinel appeared in a captured model request and the Claude sentinel did not. After removing only the OpenCode global AGENTS file, neither sentinel appeared, showing no global Claude fallback in this V2 run.",
   "limitations": [

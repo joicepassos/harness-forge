@@ -87,7 +87,7 @@ the custom provider uses the [documented provider configuration](https://opencod
 Each run used the OpenCode CLI against a local OpenAI-compatible mock bound to
 `127.0.0.1:8765`. Temporary XDG config/data/state/cache directories and a
 temporary Windows user profile isolated the global OpenCode and Claude files;
-the normal profile was not modified. Captured JSONL request bodies were
+the normal profile was not modified. Captured request bodies were
 inspected in the system-message role for unique sentinels. There were 11 CLI
 runs and 22 captured requests, including OpenCode's title-generation requests.
 The mock returned only `LOCAL_MOCK_OK`; no external model provider was called.
@@ -108,20 +108,18 @@ global `~/.claude/CLAUDE.md` containing a unique sentinel, no global OpenCode
 `AGENTS.md`, no project instruction files, and a local mock model provider.
 The neutral prompt asked for a summary of top-level project files. Both captured
 model requests (including title generation) omitted the Claude sentinel. The
-mock returned a fixed response; no external provider was called. The capture and
-fixture hashes are recorded in
-[`opencode-v2-global-claude-negative-2026-09-28.json`](acceptance/evidence/opencode-v2-global-claude-negative-2026-09-28.json)
-and its request body capture.
+mock returned a fixed response; no external provider was called. Summary observations
+and fixture hashes are recorded in
+[`opencode-v2-global-claude-negative-2026-09-28.json`](acceptance/evidence/opencode-v2-global-claude-negative-2026-09-28.json);
+the raw request capture is withheld from this published evidence set.
 
 This establishes only that the global Claude file was absent from requests in
 this exact Claude-only V2 configuration. Precedence when both global files are
 present is recorded separately below; the V1 precedence case above does not
 establish V2 behavior.
 
-Evidence fingerprints: request bodies
-`9e3f6db1eaa32680ba0a644a0e1339e1e74b4b2ba87cb4c652af9f40e981d7bc`;
-URL access log `e84f03d113e02557e886e8e3f06f7899315e8d6e23c727c8f164ebf16bae1f5f`;
-mock server source `71b49173363f5f162a749d0c945e403c287c2e73721fa25bd705e17f31eb0928`.
+The raw request-body and URL-log fingerprints are omitted because their source
+captures are withheld. Fixture hashes remain recorded below.
 Fixture hashes: project root AGENTS
 `e2033aa72c4c8b9eed8bd97c122eb352839df9c319f00d8362a422e698898338`, nested
 AGENTS `0715d17a932244beeedc5fa214c2954280dfbdc3b095f3d0cd75a71adb1ab0b8`,
@@ -134,17 +132,16 @@ The slow-URL probe used a separate local mock on `127.0.0.1:8766`; it logged
 fetch start at Unix ms `1790632181350`, fetch completion at `1790632193352`,
 and the first task request at `1790632186495`. The task request therefore began
 5,145 ms after fetch start, before the 12,002 ms response completed. The
-`V1_SLOW_URL_SENTINEL` was absent from captured requests. The JSONL request
-fingerprint for this probe is
-`493ddd79af0f9028715654f53cb530f41a3caffae61c484c12cbf6cc0329e471`.
+`V1_SLOW_URL_SENTINEL` was absent from captured requests. The raw request capture for this probe is withheld from this published evidence
+set.
 
 This evidence applies only to V1 `1.18.33` and the listed cases. The
 `OPENCODE_DISABLE_CLAUDE_CODE` control behaved as documented; the
 `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT` result conflicts with the current docs'
 project-file scope and remains unresolved. Actual HarnessForge-published
 outputs remain unverified. Captured runtime files and mock binaries were kept
-under ignored `.pilot-runs/`; only the hash-recorded request capture and
-metadata are retained in acceptance evidence.
+under ignored `.pilot-runs/`; only summary metadata is retained in acceptance evidence; the raw request capture is
+withheld from this published evidence set.
 
 The V1 file-discovery disable-control probe ran on Windows on 2026-09-28 using cached
 `opencode-ai@1.18.33`, an isolated home/config, a neutral task prompt, and only
@@ -159,14 +156,10 @@ semantics, so the mismatch cannot be attributed to a documented version
 boundary. The V1 Rules page does not list `OPENCODE_DISABLE_PROJECT_CONFIG`;
 that variable remains a V2-specific project-config control here.
 
-The six-request JSONL capture (two requests per case, including title
-generation) is
-[`opencode-v1-disable-controls-2026-09-28.jsonl`](acceptance/evidence/opencode-v1-disable-controls-2026-09-28.jsonl),
-SHA-256
-`3284a9b8796e3b44764bd7e19e39db2fa8d2e3c6d70991b85cf107c65d57fa41`. Case
-metadata with fixture, config, run-output, log and per-case request hashes is
-[`opencode-v1-disable-controls-2026-09-28.json`](acceptance/evidence/opencode-v1-disable-controls-2026-09-28.json),
-SHA-256 `3ed733103fe0c9db00de37cf0d215b9d96ed7a4882a457bfeb3288a5041a773e`.
+The six-request capture (two requests per case, including title generation) is
+withheld from this published evidence set. Case metadata with fixture, config,
+run-output and log hashes is
+[`opencode-v1-disable-controls-2026-09-28.json`](acceptance/evidence/opencode-v1-disable-controls-2026-09-28.json).
 The fixed mock response validates request context only, not model behavior.
 
 A follow-up V1 skills probe ran on Windows on 2026-09-30 with cached
@@ -180,10 +173,7 @@ while both skill descriptions disappeared from the available-skills tool
 description. This matches the documented skills-only scope for this exact
 build. The mock returned a fixed response and did not call the skill tool, so
 the test verifies discovery metadata, not skill-body loading or model behavior.
-The four-request capture is
-[`opencode-v1-skills-disable-2026-09-30.jsonl`](acceptance/evidence/opencode-v1-skills-disable-2026-09-30.jsonl),
-SHA-256
-`532c876baba281b2574ae2e28c42ac2c0b248a42b40e4328169ebd75b4a5f873`; fixture
+The four-request capture is withheld from this published evidence set; fixture
 and config hashes are in the accompanying
 [`metadata`](acceptance/evidence/opencode-v1-skills-disable-2026-09-30.json).
 
@@ -194,7 +184,7 @@ The instruction-discovery cases below were executed on 2026-09-28 using
 was run from the npm cache. A temporary XDG config home supplied the global
 `AGENTS.md` and a custom OpenAI-compatible provider pointing only to a mock
 HTTP server on `127.0.0.1`; no external model provider or paid API was used.
-The mock recorded each request body as JSONL, so the assertions inspect the
+The mock recorded each request body, so the assertions inspect the
 actual messages sent by OpenCode, not filesystem presence or the mock response.
 The fixture was a temporary Git repository with distinct sentinels
 in the global, root, and `packages/api` instruction files.
@@ -271,13 +261,9 @@ the global Claude file in this run. This is consistent with the V2 contract;
 it is a request-context observation for this exact binary and fixture, not a
 test of model obedience or task quality.
 
-The combined four-request JSONL capture is
-[`opencode-v2-global-precedence-2026-09-28.jsonl`](acceptance/evidence/opencode-v2-global-precedence-2026-09-28.jsonl)
-with SHA-256
-`ea04c2e0dc8d0e9098d606b28bf823226a7cf8009f790bee8879d675e820eb99`. The
-hash-recorded case metadata is
-[`opencode-v2-global-precedence-2026-09-28.json`](acceptance/evidence/opencode-v2-global-precedence-2026-09-28.json),
-SHA-256 `d14d307034bf605c3664481221ba91d480e9dd0206ab4cfc223fd9de3407a94e`.
+The combined four-request capture is withheld from this published evidence
+set. The case metadata is
+[`opencode-v2-global-precedence-2026-09-28.json`](acceptance/evidence/opencode-v2-global-precedence-2026-09-28.json).
 No external model provider was configured or called in these two invocations;
 this does not make a claim about unrelated account billing.
 
@@ -294,14 +280,12 @@ native skill at `.agents/skills/payment-provider-change/SKILL.md` had SHA-256
 The command was `npm exec --offline --yes --package=@opencode/cli@2.0.18 --
 opencode run --standalone --model mock/test --format json 'Respond briefly to
 this request.'`. An isolated XDG config supplied the global instruction and a
-provider whose only endpoint was the local mock on `127.0.0.1`. The actual
-request capture contained the global sentinel, generated `PAY-001` rule, and
+provider whose only endpoint was the local mock on `127.0.0.1`. The recorded
+observation found the global sentinel, generated `PAY-001` rule, and
 native skill reference. The V2 `instructions` file, glob, and URL sentinels
 were absent, and the URL handler was not contacted. OpenCode returned the
-mock's fixed `LOCAL_MOCK_OK` response. The capture SHA-256 was
-`7cb9575641a39acc83a963f320dfe1c1aa5d07fa4c74944e4371b4095e192560`; the
-two-request JSONL capture is checked in at
-[`acceptance/evidence/opencode-forge-v2-requests-2026-09-28.jsonl`](acceptance/evidence/opencode-forge-v2-requests-2026-09-28.jsonl).
+mock's fixed `LOCAL_MOCK_OK` response. The two-request raw capture is withheld
+from this published evidence set.
 
 This verifies that this exact OpenCode V2 build exposes the Forge-synced
 Codex-format instructions and skill reference to a request from a consumer

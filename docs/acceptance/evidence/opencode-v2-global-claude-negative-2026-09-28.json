@@ -30,8 +30,8 @@
     "run_output_sha256": "73ec2ce6418601c5acd5688bb0a8f15edcb8dbf2d08084f110199f369973b566"
   },
   "request_capture": {
-    "path": "opencode-v2-global-claude-negative-2026-09-28.jsonl",
-    "sha256": "f2ffadda749da9ac152fabbf68f70ae02e66dc92ca09c7fc124ef4df69ce0c0f"
+    "status": "withheld-from-published-evidence",
+    "request_count": 2
   },
   "interpretation": "For this exact V2 build, a global ~/.claude/CLAUDE.md by itself was not added to the captured model requests when no global OpenCode AGENTS.md existed.",
   "limitations": [
