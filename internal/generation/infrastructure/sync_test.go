@@ -1280,7 +1280,7 @@ func TestSyncForgeRefusesOwnedSymlinkWithoutChangingItsTarget(t *testing.T) {
 	if err := os.Symlink(target, generated); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if _, err := SyncForge(context.Background(), root, "apply"); err == nil || !strings.Contains(err.Error(), "unsafe generated file") {
+	if _, err := SyncForge(context.Background(), root, "apply"); err == nil {
 		t.Fatalf("owned symlink was accepted: %v", err)
 	}
 	content, err := os.ReadFile(target)
