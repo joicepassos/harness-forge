@@ -43,7 +43,13 @@ func (g *Generate) Execute(ctx context.Context, harnessPath, repository string) 
 	if err != nil {
 		return err
 	}
-	input := domain.Input{Project: h.Project.Name, Architecture: append([]string(nil), h.Architecture.Styles...)}
+	input := domain.Input{
+		Project:      h.Project.Name,
+		Summary:      h.Context.Summary,
+		Notes:        h.Context.Notes,
+		Documents:    append([]string(nil), h.Context.Documents...),
+		Architecture: append([]string(nil), h.Architecture.Styles...),
+	}
 	for _, r := range h.Rules {
 		if r.Status == "approved" {
 			if r.Review != nil {

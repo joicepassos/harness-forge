@@ -35,6 +35,22 @@ func (m Markdown) renderAt(input domain.Input, outputPath string, nativeScopes m
 	sort.Slice(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
 	var out bytes.Buffer
 	fmt.Fprintf(&out, "%s\n# %s agent instructions\n\n", marker, input.Project)
+	if input.Summary != "" || input.Notes != "" || len(input.Documents) > 0 {
+		out.WriteString("## Project context\n\n")
+		if input.Summary != "" {
+			fmt.Fprintf(&out, "%s\n\n", input.Summary)
+		}
+		if input.Notes != "" {
+			fmt.Fprintf(&out, "Team observations:\n\n%s\n\n", input.Notes)
+		}
+		if len(input.Documents) > 0 {
+			out.WriteString("Additional documents considered during setup:\n\n")
+			for _, document := range input.Documents {
+				fmt.Fprintf(&out, "- `%s`\n", document)
+			}
+			out.WriteByte('\n')
+		}
+	}
 	if len(input.Architecture) > 0 {
 		styles := append([]string(nil), input.Architecture...)
 		sort.Strings(styles)
@@ -83,7 +99,7 @@ func (m Markdown) renderAt(input domain.Input, outputPath string, nativeScopes m
 			out.WriteByte('\n')
 		}
 	}
-	if len(input.Gates) > 0 {
+	if len(input.Gates) > 0 || len(input.Commands) > 0 {
 		out.WriteString("\n## Quality commands\n\n")
 		for _, gate := range input.Gates {
 			fmt.Fprintf(&out, "- [%s] `%s`", gate.ID, gate.Command)
@@ -94,6 +110,9 @@ func (m Markdown) renderAt(input domain.Input, outputPath string, nativeScopes m
 				fmt.Fprintf(&out, " (workspaces: `%s`)", strings.Join(gate.Workspaces, "`, `"))
 			}
 			out.WriteByte('\n')
+		}
+		for _, command := range input.Commands {
+			fmt.Fprintf(&out, "- `%s`\n", command)
 		}
 	}
 	if len(input.Policies) > 0 {
@@ -264,9 +283,6 @@ func (FileWriter) Write(ctx context.Context, root string, document domain.Docume
 	if document.Path != "AGENTS.md" && document.Path != "CLAUDE.md" {
 		return fmt.Errorf("unsupported generated document path")
 	}
-	if len(document.Content) > 1<<20 {
-		return fmt.Errorf("generated document exceeds 1 MiB")
-	}
 	path := filepath.Join(root, document.Path)
 	if target, err := os.Lstat(path); err == nil && target.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("refusing to replace symlink %s", document.Path)
@@ -281,11 +297,22 @@ func (FileWriter) Write(ctx context.Context, root string, document domain.Docume
 	existing, readErr := os.ReadFile(path)
 	if readErr == nil {
 		hash := sha256.Sum256(existing)
-		if previousHash == "" || previousHash != hex.EncodeToString(hash[:]) {
+		if previousHash != "" && previousHash != hex.EncodeToString(hash[:]) {
 			return fmt.Errorf("refusing to overwrite manually edited or unowned %s", document.Path)
+		}
+		if previousHash == "" {
+			boundary := bytes.Index(existing, []byte("\n\n"+marker))
+			if boundary < 0 {
+				return fmt.Errorf("refusing to overwrite manually edited or unowned %s", document.Path)
+			}
+			prefix := append([]byte(nil), existing[:boundary+2]...)
+			document.Content = append(prefix, document.Content...)
 		}
 	} else if !os.IsNotExist(readErr) {
 		return readErr
+	}
+	if len(document.Content) > 1<<20 {
+		return fmt.Errorf("generated document exceeds 1 MiB")
 	}
 	if err := ctx.Err(); err != nil {
 		return err

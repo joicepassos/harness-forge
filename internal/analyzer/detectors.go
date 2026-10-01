@@ -15,6 +15,12 @@ func (languageDetector) Detect(_ context.Context, repository Repository) []Findi
 		extensionRule{value: "TypeScript", extension: ".ts"},
 		extensionRule{value: "JavaScript", extension: ".js"},
 		extensionRule{value: "Python", extension: ".py"},
+		extensionRule{value: "Rust", extension: ".rs"},
+		extensionRule{value: "C#", extension: ".cs"},
+		extensionRule{value: "Kotlin", extension: ".kt"},
+		extensionRule{value: "Ruby", extension: ".rb"},
+		extensionRule{value: "PHP", extension: ".php"},
+		extensionRule{value: "Swift", extension: ".swift"},
 	})
 }
 
@@ -27,6 +33,13 @@ func (buildDetector) Detect(_ context.Context, repository Repository) []Finding 
 		fileRule{value: "Gradle", paths: []string{"build.gradle", "build.gradle.kts"}},
 		fileRule{value: "npm", paths: []string{"package.json"}},
 		fileRule{value: "Python packaging", paths: []string{"pyproject.toml"}},
+		fileRule{value: "Cargo", paths: []string{"Cargo.toml"}},
+		anyRule{rules: []Rule{suffixRule{value: ".NET", suffix: ".csproj"}, suffixRule{value: ".NET", suffix: ".sln"}}},
+		fileRule{value: "Bundler", paths: []string{"Gemfile"}},
+		fileRule{value: "Composer", paths: []string{"composer.json"}},
+		fileRule{value: "pnpm", paths: []string{"pnpm-lock.yaml"}},
+		fileRule{value: "Yarn", paths: []string{"yarn.lock"}},
+		fileRule{value: "Bun", paths: []string{"bun.lock", "bun.lockb"}},
 	})
 }
 
@@ -39,6 +52,19 @@ func (frameworkDetector) Detect(_ context.Context, repository Repository) []Find
 		contentRule{value: "Spring Boot", path: "build.gradle.kts", text: "spring-boot"},
 		contentRule{value: "React", path: "package.json", text: "react"},
 		contentRule{value: "Next.js", path: "package.json", text: "next"},
+		contentRule{value: "Vue", path: "package.json", text: "vue"},
+		contentRule{value: "Angular", path: "package.json", text: "@angular/core"},
+		contentRule{value: "Express", path: "package.json", text: "express"},
+		contentRule{value: "NestJS", path: "package.json", text: "@nestjs/core"},
+		contentRule{value: "Svelte", path: "package.json", text: "svelte"},
+		contentRule{value: "Django", path: "pyproject.toml", text: "django"},
+		contentRule{value: "Django", path: "requirements.txt", text: "django"},
+		contentRule{value: "FastAPI", path: "pyproject.toml", text: "fastapi"},
+		contentRule{value: "FastAPI", path: "requirements.txt", text: "fastapi"},
+		contentRule{value: "Flask", path: "pyproject.toml", text: "flask"},
+		contentRule{value: "Rails", path: "Gemfile", text: "rails"},
+		extensionContentRule{value: "ASP.NET Core", extension: ".csproj", text: "Microsoft.AspNetCore"},
+		contentRule{value: "Gin", path: "go.mod", text: "github.com/gin-gonic/gin"},
 	})
 }
 

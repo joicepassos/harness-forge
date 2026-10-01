@@ -13,7 +13,8 @@
   },
   "homepage": "https://github.com/joicepassos/harness-forge#readme",
   "bin": {
-    "harnessforge": "cli.js"
+    "harnessforge": "cli.js",
+    "harness-forge": "cli.js"
   },
   "files": [
     "cli.js",

@@ -6,11 +6,15 @@ type Document struct {
 }
 type Input struct {
 	Project      string
+	Summary      string
+	Notes        string
+	Documents    []string
 	Architecture []string
 	Rules        []Rule
 	Skills       []Skill
 	Gates        []QualityGate
 	Policies     []Policy
+	Commands     []string
 }
 type Rule struct {
 	ID, Description string

@@ -11,7 +11,6 @@ import (
 
 	"harnessforge/internal/analyzer"
 	"harnessforge/internal/config"
-	"harnessforge/internal/harness"
 	harnessdomain "harnessforge/internal/harness/domain"
 	"harnessforge/internal/onboarding"
 
@@ -103,33 +102,12 @@ func newRootCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cmd.Printf("harnessforge version %s\ncommit %s\nbuild date %s\n", config.Version, config.Commit, config.BuildDate)
-			return nil
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "harnessforge version %s\ncommit %s\nbuild date %s\n", config.Version, config.Commit, config.BuildDate)
+			return err
 		},
 	})
 
-	initCmd := &cobra.Command{
-		Use:   "init",
-		Short: "Create the initial harness configuration",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			l, err := newLocalizer(string(language))
-			if err != nil {
-				return err
-			}
-			path, err := harness.Init(".")
-			if err != nil {
-				if os.IsExist(err) {
-					return l.printf(cmd, "output.exists", ".harness/harness.yaml")
-				}
-				return err
-			}
-
-			if err := l.printf(cmd, "output.created", path); err != nil {
-				return err
-			}
-			return l.printf(cmd, "output.next_steps")
-		},
-	}
+	initCmd := newInitCommand()
 	var setupBudget int
 	var setupModel string
 	var setupNotes string
@@ -221,7 +199,7 @@ func newRootCommand() *cobra.Command {
 		if err == nil {
 			applyLanguage(rootCmd, l)
 		}
-		cmd.Print(presentationFor(cmd.OutOrStdout()).help(cmd.Short, cmd.UsageString()))
+		_, _ = fmt.Fprint(cmd.OutOrStdout(), presentationFor(cmd.OutOrStdout()).help(cmd.Short, cmd.UsageString()))
 	})
 	return rootCmd
 }

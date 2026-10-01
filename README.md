@@ -25,21 +25,21 @@ npm install -g harnessforge
 harnessforge version
 ```
 
-In the next release, the npm launcher downloads and verifies the release archive on first use, without an npm install script. Published v1.0.2 still downloads it during `npm install` and may show an `allow-scripts` warning; a successful `harnessforge version` confirms installation.
+Starting with v1.1.1, the npm launcher downloads and verifies the release archive on first use, without an npm install script. The first `harnessforge` command may take a few seconds.
 
 ### Direct download
 
 Download a pinned release and install it.
 
 ```sh
-curl -fsSLO https://github.com/joicepassos/harness-forge/releases/download/v1.0.2/install.sh
-sh install.sh --version 1.0.2 --install-dir "$HOME/.local/bin"
+curl -fsSLO https://github.com/joicepassos/harness-forge/releases/download/v1.1.1/install.sh
+sh install.sh --version 1.1.1 --install-dir "$HOME/.local/bin"
 ```
 
 For Windows, use the inspected PowerShell installer:
 
 ```powershell
-$Version = '1.0.2'
+$Version = '1.1.1'
 Invoke-WebRequest "https://github.com/joicepassos/harness-forge/releases/download/v$Version/install.ps1" -OutFile .\install-harnessforge.ps1
 Get-Content .\install-harnessforge.ps1
 .\install-harnessforge.ps1 -Version $Version -InstallDir "$env:USERPROFILE\bin"
@@ -51,21 +51,14 @@ Release binaries support macOS and Linux (`amd64`, `arm64`) and Windows (`amd64`
 
 ## Terminal appearance
 
-HarnessForge uses the blue and orange of its anvil logo in interactive terminal output. The help screen starts with `⚒ HarnessForge`; `install` shows a numbered menu and highlights the chosen action. For example:
+HarnessForge uses the blue and orange of its anvil logo in interactive terminal output. The help screen starts with `⚒ HarnessForge`; `init` and its `install` alias highlight each guided setup step. For example:
 
 ```text
 [HF] HarnessForge
-Guided setup
-Repository: /path/to/project
-Choose an action. Changes always require confirmation.
+HarnessForge setup
+Project: /path/to/project
 
-Actions
-  1)  Create harness
-  2)  Validate harness
-  3)  Generate AGENTS.md
-  4)  Generate CLAUDE.md
-  5)  Exit
-Choice [5]:
+Analyzing project...
 ```
 
 The example shows the plain-text form. Piped output, `NO_COLOR=1`, and `CLICOLOR=0` omit terminal colors. Set `HARNESSFORGE_ASCII=1` to use ASCII status symbols in a colored terminal. JSON output remains undecorated.
@@ -77,16 +70,13 @@ Open a terminal in the repository you want to configure:
 ```sh
 cd /path/to/project
 harnessforge init
-harnessforge validate --repository .
 ```
 
-`init` creates `.harness/harness.yaml` once. If it already exists, leave it in place and continue with `validate`; the next release will show this as a normal status message. Edit that file to add reviewed rules, then generate agent instructions:
+The guided `init` analyzes the project, shows its findings, asks for additional documents and observations, and offers an AI-assisted proposal. The provider key is requested only if AI is selected and no key is already in the environment. It previews every file and requires confirmation before writing `.harness/harness.yaml`, agent instructions, or proposed skills. A local proposal remains available without an AI provider.
 
-```sh
-harnessforge generate codex
-```
+If `AGENTS.md` or `CLAUDE.md` already contains your team's instructions, the preview preserves them and shows the generated section that will be appended.
 
-The guided `harnessforge install` command is present in source after v1.0.2 and will be available in a later release. Check `harnessforge --help` before using it. The commands above work with v1.0.2.
+The npm package also exposes `harness-forge init`. Existing `harnessforge install` and `harnessforge tui` commands lead to the same setup. Use v1.1.1 or newer for this guided workflow.
 
 HarnessForge stores approved rules in `.harness/harness.yaml` and produces reproducible `AGENTS.md` or `CLAUDE.md` files.
 

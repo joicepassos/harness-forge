@@ -35,6 +35,23 @@
         }
       }
     },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string" },
+        "documents": { "$ref": "#/$defs/texts" },
+        "notes": { "type": "string" }
+      }
+    },
+    "ai": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": { "$ref": "#/$defs/text" },
+        "model": { "$ref": "#/$defs/text" }
+      }
+    },
     "rules": {
       "type": "array",
       "items": {

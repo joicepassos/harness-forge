@@ -64,7 +64,7 @@ var presentationPT = map[string]string{
 var english = map[string]string{
 	"root.short":                 "HarnessForge creates and maintains coding-agent harnesses",
 	"version.short":              "Print the HarnessForge version",
-	"init.short":                 "Create the initial harness configuration",
+	"init.short":                 "Analyze and configure this project with a guided setup",
 	"analyze.short":              "Analyze a repository",
 	"ask.short":                  "Ask an AI provider",
 	"config.short":               "Manage user preferences (credentials stay in environment variables)",
@@ -100,7 +100,7 @@ var english = map[string]string{
 var portuguese = map[string]string{
 	"root.short":                 "HarnessForge cria e mantém configurações para agentes de programação",
 	"version.short":              "Exibir a versão do HarnessForge",
-	"init.short":                 "Criar a configuração inicial do harness",
+	"init.short":                 "Analisar e configurar o projeto com um assistente guiado",
 	"analyze.short":              "Analisar um repositório",
 	"ask.short":                  "Consultar um provedor de IA",
 	"config.short":               "Gerenciar preferências do usuário (credenciais ficam em variáveis de ambiente)",

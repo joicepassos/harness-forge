@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,40 @@ func TestEnglishIsTheDefaultLanguage(t *testing.T) {
 	output, err := executeRoot("--help")
 	if err != nil || !strings.Contains(output, "Analyze a repository") {
 		t.Fatalf("default help = %q, %v", output, err)
+	}
+}
+
+func TestHelpAndVersionWriteToStdoutByDefault(t *testing.T) {
+	for _, args := range [][]string{{"--help"}, {"version"}} {
+		stdoutReader, stdoutWriter, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		stderrReader, stderrWriter, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		previousOut, previousErr := os.Stdout, os.Stderr
+		os.Stdout, os.Stderr = stdoutWriter, stderrWriter
+		command := newRootCommand()
+		command.SetArgs(args)
+		executeErr := command.Execute()
+		os.Stdout, os.Stderr = previousOut, previousErr
+		stdoutWriter.Close()
+		stderrWriter.Close()
+		output, readErr := io.ReadAll(stdoutReader)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		errors, readErr := io.ReadAll(stderrReader)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		stdoutReader.Close()
+		stderrReader.Close()
+		if executeErr != nil || len(output) == 0 || len(errors) != 0 {
+			t.Fatalf("%v: stdout=%q stderr=%q error=%v", args, output, errors, executeErr)
+		}
 	}
 }
 

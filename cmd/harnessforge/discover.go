@@ -17,7 +17,11 @@ func newDiscoverCommand() *cobra.Command {
 	command := &cobra.Command{Use: "discover", Short: "Propose and apply evidence-backed rules"}
 	var model string
 	propose := &cobra.Command{Use: "propose [repository] [prompt]", Short: "Propose rules without changing the harness", Args: cobra.ExactArgs(2), RunE: func(cmd *cobra.Command, args []string) error {
-		provider, err := selectedProvider(cmd)
+		provider, err := selectedProviderFor(cmd, args[0])
+		if err != nil {
+			return err
+		}
+		model, err = selectedModelFor(args[0], model)
 		if err != nil {
 			return err
 		}

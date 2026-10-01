@@ -17,6 +17,9 @@ type Analysis struct {
 	Languages      []Finding     `json:"languages,omitempty"`
 	Build          []Finding     `json:"build,omitempty"`
 	Frameworks     []Finding     `json:"frameworks,omitempty"`
+	Structure      []Finding     `json:"structure,omitempty"`
+	Architecture   []Finding     `json:"architecture,omitempty"`
+	Conventions    []Finding     `json:"conventions,omitempty"`
 	Infrastructure []Finding     `json:"infrastructure,omitempty"`
 	Database       []Finding     `json:"database,omitempty"`
 	Tests          []Finding     `json:"tests,omitempty"`
