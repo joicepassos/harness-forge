@@ -1131,6 +1131,46 @@ references:
 	}
 }
 
+func TestSyncRecoveryPreservesHumanDeletionOfUntouchedFile(t *testing.T) {
+	root := forgeSyncFixture(t)
+	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".forge", "forge.yaml"), []byte(`layout_version: 1
+ir_version: 2
+project: {name: demo, languages: [Go]}
+targets: [claude]
+references:
+  knowledge:
+    - id: rule-a
+      path: .forge/knowledge/items/rule.md
+`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := syncForge(context.Background(), root, "apply", func(phase int) error {
+		if phase == 1 {
+			return errSyncInterrupted
+		}
+		return nil
+	})
+	if !errors.Is(err, errSyncInterrupted) {
+		t.Fatalf("expected interrupted stale-file removal, got %v", err)
+	}
+	manifest := filepath.Join(root, generatedManifest)
+	if err := os.Remove(manifest); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncForge(context.Background(), root, "apply"); err == nil || !strings.Contains(err.Error(), "externally removed file") {
+		t.Fatalf("expected conflict for human-deleted untouched manifest, got %v", err)
+	}
+	if _, err := os.Lstat(manifest); !os.IsNotExist(err) {
+		t.Fatalf("human-deleted manifest was recreated: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
+		t.Fatalf("transaction-deleted stale output was not recovered: %v", err)
+	}
+}
+
 func TestSyncRecoveryPreservesHumanEditMadeAfterInterruption(t *testing.T) {
 	root := forgeSyncFixture(t)
 	if _, err := SyncForge(context.Background(), root, "apply"); err != nil {

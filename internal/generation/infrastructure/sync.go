@@ -42,6 +42,30 @@ type syncFileSnapshot struct {
 	data   []byte
 }
 
+func stagedRemovalPath(stage, relative string) string {
+	sum := sha256.Sum256([]byte(relative))
+	return filepath.Join(stage, ".removed", hex.EncodeToString(sum[:]))
+}
+
+func stagedRemovalMatches(stage string, entry syncJournalEntry) bool {
+	stageInfo, err := os.Lstat(stage)
+	if err != nil || stageInfo.Mode()&os.ModeSymlink != 0 || !stageInfo.IsDir() {
+		return false
+	}
+	removedDir := filepath.Join(stage, ".removed")
+	dirInfo, err := os.Lstat(removedDir)
+	if err != nil || dirInfo.Mode()&os.ModeSymlink != 0 || !dirInfo.IsDir() {
+		return false
+	}
+	removed := stagedRemovalPath(stage, entry.Path)
+	info, err := os.Lstat(removed)
+	if err != nil || !info.Mode().IsRegular() {
+		return false
+	}
+	data, err := os.ReadFile(removed)
+	return err == nil && bytes.Equal(data, entry.Original)
+}
+
 func checkSyncSnapshot(path, relative string, expected syncFileSnapshot) error {
 	info, err := os.Lstat(path)
 	if os.IsNotExist(err) {
@@ -267,6 +291,10 @@ func recoverSyncJournal(root string) error {
 	}
 	seen := map[string]bool{}
 	var conflicts []error
+	stage := filepath.Join(root, journal.Stage)
+	if filepath.Base(journal.Stage) != journal.Stage || !strings.HasPrefix(journal.Stage, ".forge-sync-stage-") {
+		return fmt.Errorf("invalid staging path in sync recovery journal")
+	}
 	for i := len(journal.Entries) - 1; i >= 0; i-- {
 		entry := journal.Entries[i]
 		if seen[entry.Path] || (entry.Path != filepath.ToSlash(generatedManifest) && !isSupportedGeneratedPath(entry.Path)) {
@@ -281,6 +309,13 @@ func recoverSyncJournal(root string) error {
 		currentInfo, statErr := os.Lstat(dest)
 		if os.IsNotExist(statErr) {
 			if !entry.HadOriginal {
+				continue
+			}
+			// A missing replacement was deleted outside this transaction: the
+			// publish rename is atomic. A stale file is restored only when its
+			// original was moved into our durable staging directory.
+			if entry.NewSHA256 != "" || !stagedRemovalMatches(stage, entry) {
+				conflicts = append(conflicts, fmt.Errorf("refusing to recover externally removed file %s", entry.Path))
 				continue
 			}
 			if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
@@ -324,11 +359,7 @@ func recoverSyncJournal(root string) error {
 			return err
 		}
 	}
-	if journal.Stage != "" {
-		if filepath.Base(journal.Stage) != journal.Stage || !strings.HasPrefix(journal.Stage, ".forge-sync-stage-") {
-			return fmt.Errorf("invalid staging path in sync recovery journal")
-		}
-		stage := filepath.Join(root, journal.Stage)
+	if journal.Stage != "" && len(conflicts) == 0 {
 		if stageInfo, err := os.Lstat(stage); err == nil {
 			if stageInfo.Mode()&os.ModeSymlink != 0 || !stageInfo.IsDir() {
 				return fmt.Errorf("refusing to remove unsafe sync staging path")
@@ -816,7 +847,22 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 	if err != nil {
 		return result, err
 	}
-	defer os.RemoveAll(stage)
+	journalCreated := false
+	defer func() {
+		if !journalCreated {
+			_ = os.RemoveAll(stage)
+			return
+		}
+		if _, err := os.Lstat(filepath.Join(abs, syncJournal)); os.IsNotExist(err) {
+			_ = os.RemoveAll(stage)
+		}
+	}()
+	if err := os.Mkdir(filepath.Join(stage, ".removed"), 0700); err != nil {
+		return result, err
+	}
+	if err := syncDirectory(stage); err != nil {
+		return result, err
+	}
 	for _, f := range result.Files {
 		staged := filepath.Join(stage, filepath.FromSlash(f.Path))
 		if err := os.MkdirAll(filepath.Dir(staged), 0755); err != nil {
@@ -871,6 +917,7 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 	if err := createDurableFileExclusive(journalPath, append(journalData, '\n'), 0600); err != nil {
 		return result, fmt.Errorf("create sync recovery journal: %w", err)
 	}
+	journalCreated = true
 	rollbackOnError := func(cause error) error {
 		if recoveryErr := recoverSyncJournal(abs); recoveryErr != nil {
 			return errors.Join(cause, fmt.Errorf("sync recovery failed: %w", recoveryErr))
@@ -893,10 +940,14 @@ func syncForgeLocked(ctx context.Context, abs, mode string, afterMutation func(i
 		if err := checkSyncSnapshot(path, old, expectedFiles[old]); err != nil {
 			return result, rollbackOnError(err)
 		}
-		if err := os.Remove(path); err != nil {
+		removed := stagedRemovalPath(stage, old)
+		if err := os.Rename(path, removed); err != nil {
 			return result, rollbackOnError(err)
 		}
 		if err := syncDirectory(filepath.Dir(path)); err != nil {
+			return result, rollbackOnError(err)
+		}
+		if err := syncDirectory(filepath.Dir(removed)); err != nil {
 			return result, rollbackOnError(err)
 		}
 		if err := after(); err != nil {
