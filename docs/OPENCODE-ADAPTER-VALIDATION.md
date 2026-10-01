@@ -1,8 +1,9 @@
 # OpenCode adapter validation (T8.2)
 
 Status: documentation-based contract with narrow V1 and V2 runtime
-validation added on 2026-09-28. Official documentation was checked on
-2026-09-28; the V1 Rules page reported last updated 2026-09-28, while the V2
+validation added on 2026-09-28 and a V1 skills-control probe on 2026-09-30.
+Official documentation was checked on 2026-09-30; the V1 Rules page reported
+last updated 2026-09-29, while the V2
 pages do not specify an OpenCode release/build number for these semantics.
 “V1” and “V2” below label documentation contracts, not pinned binary versions.
 Runtime evidence is recorded separately and applies only to the exact tested
@@ -18,10 +19,10 @@ package versions and cases.
 | Precedence / combination | The first matching file wins within a category: `AGENTS.md` wins over `CLAUDE.md`; the OpenCode global file wins over the Claude global file. Local and global sources are listed as separate categories. | Loads the global file, then every project `AGENTS.md` from the current Location up to the project root. The displayed order is global, deepest nested, parent, root. Sources are combined; conflicts are not resolved by OpenCode. | The V1 and V2 contracts differ. Do not promise a single universal “last file wins” rule or collapse hierarchy into one flat precedence rule. |
 | Nested project rules | V1 documents upward traversal from the current directory; it does not specify discovery of all deeper rules while exploring. | Nested `AGENTS.md` below the workspace is discovered when the agent reads a file or lists a directory in that area. Newly discovered content is appended in discovery order. | Root export is discoverable at startup; nested scope behavior is version-dependent and must be tested with actual directory reads. |
 | Outside project root | V1 rules page identifies project and global categories but does not specify all worktree/outside-root boundary details. | If workspace is outside the project root, only the global file is loaded. | Treat external worktrees and `--directory` roots as an explicit test case; do not infer behavior from normal project-root cases. |
-| Disable controls | `OPENCODE_DISABLE_CLAUDE_CODE=1` disables all `.claude` support; `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` disables only global `~/.claude/CLAUDE.md`; `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` disables `.claude/skills`. The V1 Rules page does not document a general project `AGENTS.md` discovery switch. | `OPENCODE_DISABLE_PROJECT_CONFIG=1` skips project AGENTS discovery without disabling the global file. | On V1 `1.18.33`, `CLAUDE_CODE=1` hid project and global CLAUDE as documented; `CLAUDE_CODE_PROMPT=1` also hid project CLAUDE, contrary to the current docs. Do not promise the prompt flag's documented scope on that build. The V1 skills flag was not tested. |
+| Disable controls | `OPENCODE_DISABLE_CLAUDE_CODE=1` disables all `.claude` support; `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` disables only global `~/.claude/CLAUDE.md`; `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` disables `.claude/skills`. The V1 Rules page does not document a general project `AGENTS.md` discovery switch. | `OPENCODE_DISABLE_PROJECT_CONFIG=1` skips project AGENTS discovery without disabling the global file. | On V1 `1.18.33`, full Claude disable matched docs; prompt-only also hid project CLAUDE, contrary to docs. A separate skills-flag probe removed project/global skill descriptions while preserving both project/global CLAUDE sentinels. Keep each result version-scoped; do not promise prompt-only scope on this build. |
 | Config `instructions` | V1 supports local paths, globs and remote URLs; all are combined with AGENTS rules. Remote fetch timeout is documented as 5 seconds. | The V2 schema accepts `instructions`, but currently does not resolve files, globs, or URLs into model context. | Do not use V2 `instructions` as a delivery path until a tested release documents/implements resolution. |
 
-Sources: [V1 Rules](https://opencode.ai/docs/rules/) and [V2 Instructions](https://opencode.ai/v2/docs/instructions/). The V1 page reported last updated 2026-09-28 when checked. These docs distinguish V1 and V2 semantics but do not give an exact minimum released version for every AGENTS discovery or disable-control behavior. Therefore this document does not infer a version boundary from the URL or claim that all installed builds match the current docs.
+Sources: [V1 Rules](https://opencode.ai/docs/rules/) and [V2 Instructions](https://opencode.ai/v2/docs/instructions/). The V1 page reported last updated 2026-09-29 when checked on 2026-09-30. These docs distinguish V1 and V2 semantics but do not give an exact minimum released version for every AGENTS discovery or disable-control behavior. Therefore this document does not infer a version boundary from the URL or claim that all installed builds match the current docs.
 
 ## Version-qualified capability matrix
 
@@ -36,7 +37,7 @@ channel, OS, and test fixture revision with every result.
 | Project `CLAUDE.md` fallback | Documented only when no project `AGENTS.md` exists | Explicitly not supported as fallback | V1-only compatibility capability | Fixture with only CLAUDE; then both files with conflicting sentinel instructions; run on pinned V1 and V2. |
 | Global OpenCode `AGENTS.md` | Documented | Documented | Outside Forge file ownership | Test with a temporary isolated config home and prove it combines/loads as docs say. |
 | Global `~/.claude/CLAUDE.md` fallback | Documented if OpenCode global AGENTS absent | No fallback in V2 instructions contract | V1-only compatibility capability | Test with each global file alone and both together, including the disable env vars. |
-| V1 Claude disable controls | Global and project `.claude` controls documented; exact release applicability unspecified | Not a V2 fallback capability | On V1 `1.18.33`, full Claude disable matched docs; prompt-only disable also suppressed project CLAUDE, contrary to the current docs; skills flag untested | Keep version-scoped; resolve the observed prompt-only scope mismatch before promising that it preserves project CLAUDE. |
+| V1 Claude disable controls | Global and project `.claude` controls documented; exact release applicability unspecified | Not a V2 fallback capability | On V1 `1.18.33`, full Claude disable matched docs; prompt-only disable also suppressed project CLAUDE, contrary to docs; skills flag removed project/global skill descriptions while preserving both CLAUDE files | Keep version-scoped; resolve the observed prompt-only scope mismatch before promising that it preserves project CLAUDE. |
 | Ancestor and nested `AGENTS.md` | Upward traversal documented; exact multi-file conflict semantics are not fully specified | Every ancestor from current Location to root is loaded; deeper files are dynamic on read/list | V1 ordering details pending; V2 behavior documented, still runtime-tested | Distinct sentinel per directory; open/read/list paths in controlled order; inspect effective prompt/debug output. |
 | Conflict semantics among project files | First match per category; AGENTS preferred over CLAUDE | Files are combined; OpenCode does not resolve their conflicts | No guarantee that generated nested outputs override root outputs | Same rule with contradictory values at root/nested scopes; capture effective context and report user-visible outcome. |
 | `instructions` config paths/globs/URLs | Documented as supported and combined with AGENTS | Schema accepts field, but resolver currently does not load entries | Do not rely on it for V2 | Test local path, glob and URL separately only on the exact supported V1 version; verify no V2 context inclusion claim. |
@@ -156,9 +157,7 @@ Thus that second result is recorded as a mismatch, not a pass. The current
 documentation does not specify which OpenCode release implements these
 semantics, so the mismatch cannot be attributed to a documented version
 boundary. The V1 Rules page does not list `OPENCODE_DISABLE_PROJECT_CONFIG`;
-that variable remains a V2-specific project-config control here. The separate
-documented `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS` switch was outside this file
-discovery probe and remains untested.
+that variable remains a V2-specific project-config control here.
 
 The six-request JSONL capture (two requests per case, including title
 generation) is
@@ -169,6 +168,24 @@ metadata with fixture, config, run-output, log and per-case request hashes is
 [`opencode-v1-disable-controls-2026-09-28.json`](acceptance/evidence/opencode-v1-disable-controls-2026-09-28.json),
 SHA-256 `3ed733103fe0c9db00de37cf0d215b9d96ed7a4882a457bfeb3288a5041a773e`.
 The fixed mock response validates request context only, not model behavior.
+
+A follow-up V1 skills probe ran on Windows on 2026-09-30 with cached
+`opencode-ai@1.18.33`, a disposable Git fixture, an isolated home/XDG config,
+and a loopback-only mock provider. Two requests per condition were
+captured (title generation and task). In the task request, the baseline
+contained project and global `CLAUDE.md` sentinels plus the project and global
+Claude-skill descriptions. With
+`OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1`, both `CLAUDE.md` sentinels remained
+while both skill descriptions disappeared from the available-skills tool
+description. This matches the documented skills-only scope for this exact
+build. The mock returned a fixed response and did not call the skill tool, so
+the test verifies discovery metadata, not skill-body loading or model behavior.
+The four-request capture is
+[`opencode-v1-skills-disable-2026-09-30.jsonl`](acceptance/evidence/opencode-v1-skills-disable-2026-09-30.jsonl),
+SHA-256
+`532c876baba281b2574ae2e28c42ac2c0b248a42b40e4328169ebd75b4a5f873`; fixture
+and config hashes are in the accompanying
+[`metadata`](acceptance/evidence/opencode-v1-skills-disable-2026-09-30.json).
 
 ## Runtime validation: OpenCode V2 2.0.18
 

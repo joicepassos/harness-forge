@@ -196,11 +196,15 @@ Date: 2026-09-28. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   `OPENCODE_DISABLE_CLAUDE_CODE=1` removed project and global Claude markers as
   documented, but `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` unexpectedly removed
   the project marker too, although current V1 docs say it disables only the
-  global Claude prompt. Those semantics are not tied to a release in the
-  docs, so prompt-only behavior remains unresolved; V1 docs do not document a
-  general project `AGENTS.md` disable switch, and the separate
-  `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS` flag was not tested. Hash-recorded captures are in
-  `docs/acceptance/evidence/opencode-v1-disable-controls-2026-09-28.*`. An external-root probe
+  global Claude prompt. A follow-up skills probe confirmed
+  `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` removes both project and global skill
+  descriptions while preserving project and global `CLAUDE.md` sentinels,
+  matching the documented skills-only scope on that build. Prompt-only
+  semantics are not tied to a release in the docs, so that behavior remains
+  unresolved; V1 docs do not document a general project `AGENTS.md` disable
+  switch. Hash-recorded captures are in
+  `docs/acceptance/evidence/opencode-v1-disable-controls-2026-09-28.*` and
+  `docs/acceptance/evidence/opencode-v1-skills-disable-2026-09-30.*`. An external-root probe
   with a neutral query found the parent `AGENTS.md` in system instructions
   outside an inner Git root, contrary to the V2 docs' “global only” statement.
   V2 local-file, glob, and loopback URL entries in config `instructions` were
