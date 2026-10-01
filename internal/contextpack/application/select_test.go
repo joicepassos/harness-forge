@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"harnessforge/internal/contextpack/domain"
+	"maps"
 	"strings"
 	"testing"
 )
@@ -206,6 +207,9 @@ func TestSelectPreservesAndBudgetsExcerptsSharingSource(t *testing.T) {
 	sources := Sources(prompt, all)
 	if len(sources) != 3 || sources["repository-file:auth.go"] != candidates[0].Text || sources["repository-file:auth.go#second"] != candidates[1].Text {
 		t.Fatalf("same-source excerpts were lost: %#v", sources)
+	}
+	if discoverSources := LosslessSources(prompt, all); !maps.Equal(discoverSources, sources) {
+		t.Fatalf("discovery payload differs from budgeted sources: %#v", discoverSources)
 	}
 	encoded, actualSources, err := EncodePrompt(prompt, all)
 	if err != nil || len(actualSources) != 3 || !strings.Contains(encoded, candidates[0].Text) || !strings.Contains(encoded, candidates[1].Text) {

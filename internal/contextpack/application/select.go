@@ -363,15 +363,10 @@ func SourceList(prompt string, plan *domain.Plan) []domain.Source {
 	return sources
 }
 
-// LosslessSources adapts the new source envelope to the current provider
-// contract while retaining a unique key for every excerpt.
+// LosslessSources adapts the source envelope to the current provider contract
+// with the same keys used by selection's serialized budget.
 func LosslessSources(prompt string, plan *domain.Plan) map[string]string {
-	sources := map[string]string{"prompt": prompt}
-	for _, excerpt := range plan.Included {
-		key := excerpt.Source + "#" + excerpt.ID
-		sources[key] = excerpt.Text
-	}
-	return sources
+	return Sources(prompt, plan)
 }
 
 func excerptStartLine(text string) int {
