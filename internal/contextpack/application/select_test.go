@@ -195,3 +195,29 @@ func TestSelectBudgetUsesSerializedSourcesWithEscapedText(t *testing.T) {
 		t.Fatalf("estimated tokens = %d, want serialized estimate %d", plan.EstimatedTokens, actual)
 	}
 }
+
+func TestSelectPreservesAndBudgetsExcerptsSharingSource(t *testing.T) {
+	prompt := "authentication"
+	candidates := []domain.Excerpt{
+		{ID: "first", Source: "repository-file:auth.go", Path: "auth.go", Text: "authentication starts here", Relevance: 100},
+		{ID: "second", Source: "repository-file:auth.go", Path: "auth.go", Text: "authentication completes here", Relevance: 90},
+	}
+	all := &domain.Plan{Included: candidates}
+	sources := Sources(prompt, all)
+	if len(sources) != 3 || sources["repository-file:auth.go"] != candidates[0].Text || sources["repository-file:auth.go#second"] != candidates[1].Text {
+		t.Fatalf("same-source excerpts were lost: %#v", sources)
+	}
+	encoded, actualSources, err := EncodePrompt(prompt, all)
+	if err != nil || len(actualSources) != 3 || !strings.Contains(encoded, candidates[0].Text) || !strings.Contains(encoded, candidates[1].Text) {
+		t.Fatalf("encoded prompt lost an excerpt: %s, sources=%#v, err=%v", encoded, actualSources, err)
+	}
+	oneTokenCount := serializedEstimateWithCounterReserve(prompt, candidates[:1], EstimateTokens, framingTokens)
+	bothTokenCount := serializedEstimateWithCounterReserve(prompt, candidates, EstimateTokens, framingTokens)
+	if bothTokenCount <= oneTokenCount {
+		t.Fatalf("duplicate-source excerpt did not increase budget: one=%d both=%d", oneTokenCount, bothTokenCount)
+	}
+	plan := Select(candidates, prompt, oneTokenCount, domain.Metrics{})
+	if len(plan.Included) != 1 || plan.Included[0].ID != "first" || len(plan.OverflowExcerptIDs) != 1 || plan.OverflowExcerptIDs[0] != "second" {
+		t.Fatalf("second excerpt was not excluded by its actual payload size: %#v", plan)
+	}
+}

@@ -329,7 +329,17 @@ func minFloat(left, right float64) float64 {
 func Sources(prompt string, plan *domain.Plan) map[string]string {
 	sources := map[string]string{"prompt": prompt}
 	for _, excerpt := range plan.Included {
-		sources[excerpt.Source] = excerpt.Text
+		key := excerpt.Source
+		if _, exists := sources[key]; exists {
+			key += "#" + excerpt.ID
+			for suffix := 2; ; suffix++ {
+				if _, exists := sources[key]; !exists {
+					break
+				}
+				key = fmt.Sprintf("%s#%s-%d", excerpt.Source, excerpt.ID, suffix)
+			}
+		}
+		sources[key] = excerpt.Text
 	}
 	return sources
 }
@@ -427,10 +437,7 @@ func serializedEstimateWithCounter(prompt string, included []domain.Excerpt, cou
 }
 
 func serializedEstimateWithCounterReserve(prompt string, included []domain.Excerpt, count func(string) int, reserve int) int {
-	sources := map[string]string{"prompt": prompt}
-	for _, excerpt := range included {
-		sources[excerpt.Source] = excerpt.Text
-	}
+	sources := Sources(prompt, &domain.Plan{Included: included})
 	data, err := json.Marshal(sources)
 	if err != nil {
 		return reserve + count(prompt)
