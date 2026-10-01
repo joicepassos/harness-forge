@@ -80,7 +80,10 @@ Date: 2026-09-30. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   ownership, idempotence, and symlink checks are implemented. T4.5 now records a
   durable recovery journal before publishing files; interrupted transactions
   roll back on the next apply, and post-interruption human edits are preserved
-  with an explicit conflict. Concurrent `sync` writers now serialize through
+  with an explicit conflict. Recovery also preserves a human deletion of a
+  planned file that the interrupted transaction had not touched; stale-file
+  removals carry a matching staged backup before recovery may restore them.
+  Concurrent `sync` writers now serialize through
   an OS-backed repository lock stored in the user cache; lock waits honor
   cancellation, and dry-run remains read-only. Concurrent-apply, cross-process
   lock, and lock-cancellation tests pass on Windows. T4.2 emits nested Codex
@@ -104,7 +107,8 @@ Date: 2026-09-30. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
 - T5.1/T5.6: read-only aggregate `check`, static Forge/Harness output drift,
   explicit gate status (`not_run`/blocked/executed), optional gate execution,
   strict `--require-gates`, stale/missing approved knowledge failure, and CI
-  drift workflow are implemented.
+  drift workflow are implemented. Native sync now rejects approved knowledge
+  marked stale or missing as well; unknown and verified health remain eligible.
   `doctor` discovers either project layout, validates Forge references, and
   reports declared policies and gates without claiming to enforce or run them.
   Harness diagnostics remain supported.
@@ -135,7 +139,9 @@ Date: 2026-09-30. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   Counter failures and negative values declare the byte-estimator fallback in
   the result instead of silently reporting the requested counter; the entire
   selection is recomputed in bytes after an intermittent failure so values
-  from incompatible estimators are never mixed.
+  from incompatible estimators are never mixed. Excerpts sharing a source now
+  retain separate provider keys, and the budget counts the same serialized
+  payload sent to the provider.
   T6.4 adds `context explain --compare-knowledge`, which emits paired plans for
   the same prompt, model, estimator, budget, ranking options, and task paths,
   with and without approved knowledge. It reports selected knowledge IDs and
@@ -156,7 +162,9 @@ Date: 2026-09-30. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
   cleanliness uncertain. A clean offline rebuild from the pinned HarnessForge
   commit reproduced all five report-linked raw JSON captures byte-for-byte; the
   sidecar records both binary/archive hashes and clearly treats this as a clean
-  reproduction, not proof of the original invocation's arguments.
+  reproduction, not proof of the original invocation's arguments. The ten
+  included-excerpt lists in that frozen report contain no duplicate source
+  keys, so the later same-source fix does not alter those historical estimates.
 - T7.1–T7.5: local observation capture, review, candidate publication,
   audit provenance, and checkout isolation are implemented and covered. Generated
   indexes use the OS user cache keyed by canonical checkout/worktree path;
@@ -337,6 +345,9 @@ the fresh clone passed `go test -count=1 ./...`, `go vet ./...`,
 the complete `actions/setup-go` commit SHA verified against its upstream
 repository. GitHub's OS matrix remains unrun; the workflows trigger on a pull
 request or a push to `main`, so publishing this branch alone will not run them.
+After the T4.5, T5.1, and T6.3 fixes, a fresh clone of commit `e1ece75`
+passed `go test -count=1 ./...`, `go vet ./...`, `sync --check`, and
+`check --run-gates` on Windows.
 
 ## Remaining validation
 
