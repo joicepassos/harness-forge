@@ -329,6 +329,13 @@ The OpenCode V2 Forge-export capture used the npm cache offline and a local-only
 mock provider; no paid model provider was contacted.
 On 2026-09-30, `go test ./...` passed on the active checkout after the T3.2
 source-read and T8.3 response-bound fixes.
+An independent fresh Windows clone initially exposed a T1.7 parity failure:
+Git converted the canonical Forge skill to CRLF while the exported clone
+skills retained LF. After pinning LF for Forge skill sources in `.gitattributes`,
+the fresh clone passed `go test -count=1 ./...`, `go vet ./...`,
+`sync --check`, and `check --run-gates`. The T8.6 gate workflow also now pins
+the complete `actions/setup-go` commit SHA verified against its upstream
+repository. GitHub's OS matrix remains unrun until the branch is published.
 
 ## Remaining validation
 
