@@ -1,6 +1,6 @@
 # Cursor adapter validation matrix (T8.1)
 
-Research snapshot: 2026-09-28. This records the current public Cursor documentation and proposes a testable target contract for Forge. The official Rules and CLI pages are rolling and do not give minimum application/CLI versions for most rule features; they are product documentation, not a versioned specification. Therefore “current” below means the behavior stated by the official documentation on the snapshot date, not a compatibility guarantee for any particular installed build. No Cursor editor or CLI runtime is available in this environment; every executable scenario below remains unverified.
+Research snapshot: 2026-09-30. This records the current public Cursor documentation and proposes a testable target contract for Forge. The official Rules and CLI pages are rolling and do not give minimum application/CLI versions for most rule features; they are product documentation, not a versioned specification. Therefore “current” below means the behavior stated by the official documentation on the snapshot date, not a compatibility guarantee for any particular installed build. No Cursor editor or CLI runtime is available in this environment; every executable scenario below remains unverified.
 
 ## Verified from official documentation
 
@@ -40,6 +40,13 @@ Recommended stable adapter contract: emit only project-owned artifacts (`.cursor
 
 These tests require an installed Cursor build and a disposable repository. On the 2026-09-28 audit, `cursor-agent`, `agent`, and `cursor` were not available on PATH, so no runtime test could be run. Record exact Cursor editor version/build, CLI version (`agent --version` if available), OS, date, workspace root and outcome when a runtime is available. Public docs provide no minimum version baseline, so test at least the currently supported stable build at validation time and the oldest build Forge elects to support; if no oldest build is selected, mark the compatibility range unknown.
 
+The 2026-09-30 Windows recheck also found no Cursor executable or local
+installation. Official documentation now provides a native Windows CLI
+installer and `agent --version` verification. Cursor's Hobby tier is free,
+requires no credit card, and includes limited Agent requests; a real CLI
+Agent run still requires Cursor account authentication and available quota.
+No installation, login, or runtime request was made in this audit.
+
 | ID | Fixture / action | Evidence to collect |
 |---|---|---|
 | C-01 | Root `.cursor/rules/rule.mdc` with `alwaysApply: true`; ask Agent a neutral prompt. | Rule visible in Agent context / behavior; exact build and conversation transcript. |
@@ -62,4 +69,6 @@ Release gate for T8.1: check in runtime results with the exact versions and all 
 - [Cursor Rules documentation](https://cursor.com/docs/rules) — current project-rule formats, metadata behavior, globs, Team/User precedence, nested `AGENTS.md`, feature limitations and legacy context.
 - [Cursor CLI: Using Agent in CLI](https://prod.cursor.com/docs/cli/using) — CLI rule system, root `AGENTS.md`/`CLAUDE.md`, and relation to editor rules (checked 2026-09-28).
 - [Cursor CLI overview](https://cursor.com/docs/cli/overview) — current CLI install and modes.
+- [Cursor CLI installation](https://cursor.com/docs/cli/installation) — native Windows installer and version check (checked 2026-09-30).
+- [Cursor pricing](https://cursor.com/pricing) — Hobby tier and limited Agent use (checked 2026-09-30).
 - [Cursor changelog 0.45.x](https://cursor.com/changelog/0-45-x) — historical introduction of `.cursor/rules` (January 2025); not a current minimum-version guarantee.
