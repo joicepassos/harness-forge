@@ -414,6 +414,10 @@ func CompileForge(root string) (SyncResult, error) {
 		if item.Review != harnessdomain.KnowledgeApproved {
 			continue
 		}
+		switch item.Health {
+		case harnessdomain.KnowledgeStale, harnessdomain.KnowledgeMissing:
+			return SyncResult{}, fmt.Errorf("approved knowledge %q has %s evidence; refresh and review before sync", item.ID, item.Health)
+		}
 		if item.ContentSHA256 != harnessdomain.HashKnowledgeContent(item.Content) {
 			return SyncResult{}, fmt.Errorf("approved knowledge %q changed after review", item.ID)
 		}

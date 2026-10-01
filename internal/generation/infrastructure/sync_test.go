@@ -98,6 +98,48 @@ func addForgeSyncKnowledge(t *testing.T, root, id, content string, paths []strin
 	}
 }
 
+func TestSyncForgeRejectsApprovedKnowledgeWithStaleOrMissingHealth(t *testing.T) {
+	for _, test := range []struct {
+		health domain.KnowledgeHealth
+		reject bool
+	}{
+		{health: domain.KnowledgeUnknown},
+		{health: domain.KnowledgeVerified},
+		{health: domain.KnowledgeStale, reject: true},
+		{health: domain.KnowledgeMissing, reject: true},
+	} {
+		t.Run(string(test.health), func(t *testing.T) {
+			root := forgeSyncFixture(t)
+			itemPath := filepath.Join(root, ".forge", "knowledge", "items", "rule.md")
+			item, err := loadKnowledge(itemPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			item.Health = test.health
+			encoded, err := yaml.Marshal(item)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(itemPath, append(append([]byte("---\n"), encoded...), []byte("---\n")...), 0600); err != nil {
+				t.Fatal(err)
+			}
+			_, err = SyncForge(context.Background(), root, "apply")
+			if test.reject {
+				if err == nil || !strings.Contains(err.Error(), string(test.health)) {
+					t.Fatalf("expected %s health rejection, got %v", test.health, err)
+				}
+				if _, statErr := os.Stat(filepath.Join(root, "AGENTS.md")); !os.IsNotExist(statErr) {
+					t.Fatalf("rejected rule was published: %v", statErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected approved %s health to publish: %v", test.health, err)
+			}
+		})
+	}
+}
+
 func TestSyncForgePreviewApplyCheckAndCloneOwnership(t *testing.T) {
 	root := forgeSyncFixture(t)
 	preview, err := SyncForge(context.Background(), root, "dry-run")
