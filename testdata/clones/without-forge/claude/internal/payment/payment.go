@@ -10,8 +10,8 @@ type Request struct {
 }
 
 type Payment struct {
-	ID      string
-	Amount  int64
+	ID       string
+	Amount   int64
 	Currency string
 }
 
