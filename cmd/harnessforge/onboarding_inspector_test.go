@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"harnessforge/internal/llm/infrastructure/chatcompat"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -64,7 +66,7 @@ func TestInspectorDetachDoesNotCancelAndSupportsNarrowView(t *testing.T) {
 			if len(strings.Split(m.View().Content, "\n")) > height {
 				t.Fatalf("view exceeds height %d", height)
 			}
-			m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+			m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 			if m.section != 1 {
 				t.Fatal("navigation did not change section")
 			}
@@ -73,6 +75,95 @@ func TestInspectorDetachDoesNotCancelAndSupportsNarrowView(t *testing.T) {
 				t.Fatal("detach must only close view")
 			}
 		}
+	}
+}
+
+func TestInspectorFocusAndReviewActions(t *testing.T) {
+	m := &setupInspectorModel{run: setupBackgroundRun{Status: "ready"}, spinner: spinner.New(), viewport: viewport.New()}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	if m.section != 1 || m.focus != 0 {
+		t.Fatal("arrows should select sections without stealing focus")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if m.focus != 1 {
+		t.Fatal("enter should focus details")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	if m.section != 1 {
+		t.Fatal("scrolling details changed section")
+	}
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if m.focus != 0 || cmd != nil {
+		t.Fatal("escape should return to sections, not detach")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	_, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if m.focus != 2 || !m.review || cmd == nil {
+		t.Fatal("review action did not hand off to explicit review")
+	}
+	m = &setupInspectorModel{run: setupBackgroundRun{Status: "running"}}
+	_, cmd = m.Update(tea.KeyPressMsg{Code: 'r'})
+	if m.review || cmd != nil {
+		t.Fatal("running proposal must not be reviewable")
+	}
+}
+
+func TestInspectorCancellationRequiresConfirmation(t *testing.T) {
+	payload := setupBackgroundTestPayload(t)
+	run, err := loadSetupBackgroundRun(payload.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := &setupInspectorModel{run: run}
+	m.Update(tea.KeyPressMsg{Code: 'c'})
+	if !m.confirmCancel {
+		t.Fatal("missing cancel confirmation")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if m.confirmCancel {
+		t.Fatal("escape did not dismiss confirmation")
+	}
+	m.Update(tea.KeyPressMsg{Code: 'c'})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	path, _ := setupRunPath(run.ID)
+	if _, err := os.Stat(path + ".cancel"); err != nil {
+		t.Fatal("confirmed cancellation was not requested")
+	}
+}
+
+func TestInspectorUsesColorAndAlternateScreen(t *testing.T) {
+	m := &setupInspectorModel{run: setupBackgroundRun{Status: "ready", StartedAt: time.Now(), UpdatedAt: time.Now()}, width: 80, height: 24, spinner: spinner.New(), viewport: viewport.New()}
+	v := m.View()
+	if !v.AltScreen || !strings.Contains(v.Content, "\x1b[") || !strings.Contains(v.Content, "Review proposal") {
+		t.Fatal("missing styled full-screen inspector and visible actions")
+	}
+}
+
+func TestInspectorColorPolicyAndCommandPropagation(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	if setupInspectorColors(context.Background()) {
+		t.Fatal("automatic color ignored NO_COLOR")
+	}
+	if !setupInspectorColors(context.WithValue(context.Background(), setupInspectorColorKey{}, "always")) {
+		t.Fatal("explicit always did not override NO_COLOR")
+	}
+	if setupInspectorColors(context.WithValue(context.Background(), setupInspectorColorKey{}, "never")) {
+		t.Fatal("explicit never enabled colors")
+	}
+	setupBackgroundTestCache(t)
+	root := newRootCommand()
+	root.SetOut(&bytes.Buffer{})
+	root.SetArgs([]string{"init", "runs", "--color", "always"})
+	command, _, err := root.Find([]string{"init", "runs"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !setupInspectorColors(command.Context()) {
+		t.Fatal("root language hook lost the explicit color setting")
 	}
 }
 

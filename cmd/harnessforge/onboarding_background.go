@@ -407,6 +407,10 @@ func newSetupRunCommands() []*cobra.Command {
 }
 
 func resumeSetupBackgroundRun(ctx context.Context, input io.Reader, output io.Writer, id string, accessible bool) error {
+	return reviewSetupBackgroundRun(ctx, input, output, id, accessible, false)
+}
+
+func reviewSetupBackgroundRun(ctx context.Context, input io.Reader, output io.Writer, id string, accessible, preserveLanguage bool) error {
 	run, err := loadSetupBackgroundRun(id)
 	if err != nil {
 		return err
@@ -417,10 +421,12 @@ func resumeSetupBackgroundRun(ctx context.Context, input io.Reader, output io.Wr
 	if run.Status == "applied" {
 		return fmt.Errorf("this proposal has already been applied")
 	}
-	session := setupSession{reader: bufio.NewReader(input), input: input, output: output, ctx: ctx, interactive: setupInteractive(input, output, accessible)}
-	output, err = chooseSetupInterface(session.reader, output, session)
-	if err != nil {
-		return err
+	session := setupSession{reader: bufio.NewReader(input), input: input, output: output, ctx: ctx, interactive: setupInteractive(input, (setupSession{output: output}).uiOutput(), accessible)}
+	if !preserveLanguage {
+		output, err = chooseSetupInterface(session.reader, output, session)
+		if err != nil {
+			return err
+		}
 	}
 	session.output = output
 	analysis, err := analyzer.AnalyzeWithOptions(ctx, run.Root, analyzer.Options{})

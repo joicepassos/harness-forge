@@ -114,3 +114,26 @@ by the CLI. Context checks cover the analyzer's findings and the authorized
 document text (including the existing 16 KiB per-document cap), not an
 immutable snapshot of every project file. Citation validity still requires
 human review of the proposal's meaning.
+
+## Follow-up: inspector navigation and visual hierarchy
+
+The inspector now separates section navigation, detail scrolling and actions.
+Arrow keys select sections, Enter opens details, Escape returns to sections,
+and Tab moves focus. Review can be opened directly from the inspector without
+another command or language prompt; it still requires explicit file approval.
+Cancellation has its own confirmation. Selection backgrounds, state colors,
+HTTP-event colors, visible actions and alternate-screen rendering replace the
+previous mostly monochrome log layout.
+
+Windows terminal checks reopened the demo's applied DeepSeek run and verified
+section selection, detail focus, Escape, action-bar selection and detaching.
+The test environment had `TERM=dumb` and `NO_COLOR=1`; automatic rendering
+correctly remained uncolored. Explicit `--color always` produced actual ANSI
+colors and selected-background styling. Accessibility remains plain.
+
+Tests cover focus behavior, disabled review for running jobs, cancellation
+confirmation, language preservation during inline review, color overrides,
+root-command propagation and responsive viewport bounds. No additional paid
+provider call was needed. Inline review approval/refusal was checked through
+the shared guarded review implementation with deterministic project fixtures;
+the demo's existing generated files were left untouched in this UI round.

@@ -112,3 +112,18 @@ func TestBackgroundCancellationStopsActiveProvider(t *testing.T) {
 		t.Fatal("cancelled provider produced an accepted proposal")
 	}
 }
+
+func TestInspectorReviewPreservesLanguageWithoutPromptingAgain(t *testing.T) {
+	run := setupReviewFixture(t)
+	var output bytes.Buffer
+	err := reviewSetupBackgroundRun(context.Background(), strings.NewReader("1\nn\n"), setupLocalizedWriter{output: &output}, run.ID, true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(output.String(), "Idioma da interface") || !strings.Contains(output.String(), "Configuracao proposta") {
+		t.Fatal("inspector review lost the selected language")
+	}
+	if _, err := os.Stat(filepath.Join(run.Root, ".harness")); !os.IsNotExist(err) {
+		t.Fatal("declining inline review wrote files")
+	}
+}

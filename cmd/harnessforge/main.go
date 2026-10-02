@@ -93,6 +93,7 @@ func newRootCommand() *cobra.Command {
 		Short: "HarnessForge creates and maintains coding-agent harnesses",
 	}
 	rootCmd.PersistentFlags().Var(&language, "language", "Language for CLI help and common output (en, pt-BR or es)")
+	rootCmd.PersistentFlags().String("color", "auto", "Inspector colors: auto, always, or never (plain output remains unstyled)")
 	rootCmd.AddCommand(newSetupWorkerCommand())
 
 	rootCmd.AddCommand(&cobra.Command{
@@ -188,6 +189,11 @@ func newRootCommand() *cobra.Command {
 	rootCmd.AddCommand(newAskCommand(), newConfigCommand(), newValidateCommand(), newCheckCommand(), newMigrateCommand(), newReviewCommand(), newContextCommand(), newSkillCommand(), newEvalCommand(), newDoctorCommand(), newGitHubCommand(), newDriftCommand(), newEmbeddingCommand(), newSymbolsCommand(), newGenerateCommand(), newSyncCommand(), newDiscoverCommand(), newIndexCommand(), newSearchCommand(), newRAGCommand(), newPluginCommand(), newTUICommand(), newMemoryCommand(), newMCPCommand())
 	rootCmd.AddCommand(newOnboardCommand())
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		mode, _ := cmd.Flags().GetString("color")
+		if mode != "auto" && mode != "always" && mode != "never" {
+			return fmt.Errorf("color must be auto, always, or never")
+		}
+		cmd.SetContext(context.WithValue(cmd.Context(), setupInspectorColorKey{}, mode))
 		l, err := newLocalizer(string(language))
 		if err != nil {
 			return err

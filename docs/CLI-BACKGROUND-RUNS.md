@@ -32,6 +32,19 @@ selected files, checks they match the authorized context, verifies proposal
 citations, previews the generated files, and requires explicit confirmation.
 Provider failures retain the option of a local proposal.
 
+The interactive inspector also offers Review proposal directly, using the
+same guarded review path without an extra command or language prompt. It
+returns to the inspector after approval or refusal. Arrow keys select a
+section; Enter focuses its details; arrows then scroll. Escape returns to
+sections, while Tab cycles sections, details, and the action bar. Detach
+remains available with `d`; cancellation requires explicit confirmation.
+
+The inspector uses an alternate screen with highlighted selections and
+distinct status colors. `--color auto` respects `NO_COLOR` and `CLICOLOR=0`.
+Use `--color always` to explicitly enable colors even in such an environment,
+or `--color never` to disable them. Redirected and accessible inspector output
+remains plain regardless of this option.
+
 Run state is stored outside the project, in the user's cache. Credentials and
 full context documents are passed to the worker through a pipe, not command
 arguments or run-state files. The saved proposal can contain cited excerpts;
