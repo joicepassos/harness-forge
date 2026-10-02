@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"harnessforge/internal/analyzer"
-	"harnessforge/internal/llm"
 	"io"
 	"os"
 	"path/filepath"
@@ -217,13 +216,9 @@ func askSetupProvider(session setupSession, _ io.Reader) (setupProvider, bool, e
 	if variable == "?" {
 		return setupProvider{}, false, fmt.Errorf("unsupported provider %q", name)
 	}
-	defaultModel := llm.DefaultModel(name)
-	model, err := session.ask(fmt.Sprintf("Model (default %s): ", defaultModel))
+	model, err := session.chooseModel(name)
 	if err != nil {
 		return setupProvider{}, false, err
-	}
-	if model == "" {
-		model = defaultModel
 	}
 	if model == "" {
 		return setupProvider{}, false, fmt.Errorf("a model name is required for %s", name)
