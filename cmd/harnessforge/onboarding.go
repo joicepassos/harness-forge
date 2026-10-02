@@ -229,7 +229,11 @@ func askSetupProvider(session setupSession, _ io.Reader) (setupProvider, bool, e
 
 func ensureSetupKey(session setupSession, input io.Reader, config *setupProvider) error {
 	variable := setupKeyVariable(config.Name)
-	if variable != "" && os.Getenv(variable) == "" {
+	if variable != "" && strings.TrimSpace(os.Getenv(variable)) != "" {
+		fmt.Fprintf(session.output, "%s key found in the environment; it will be used only for this run.\n", config.Name)
+		return nil
+	}
+	if variable != "" {
 		terminal, ok := input.(*os.File)
 		if !ok || terminal != os.Stdin || !term.IsTerminal(int(os.Stdin.Fd())) {
 			return fmt.Errorf("%s is missing; set it in the environment before a scripted AI setup", variable)
@@ -303,3 +307,4 @@ func showSetupPlan(output io.Writer, plan setupPlan) {
 		fmt.Fprintf(output, "\n--- %s (%s) ---\n%s\n", file.Path, action, file.Content)
 	}
 }
+
