@@ -117,6 +117,10 @@ func (s setupSession) notes() (string, error) {
 }
 
 func (s setupSession) selectedDocuments(ctx context.Context, root string, existing []setupDocument) ([]setupDocument, error) {
+	return s.browseSetupDocuments(ctx, root, existing)
+}
+
+func (s setupSession) setupDocumentPaths(ctx context.Context, root string, existing []setupDocument) ([]setupDocument, error) {
 	fmt.Fprintln(s.output, "Add context files or directories (one path per line; empty line to continue).")
 	files := append([]setupDocument(nil), existing...)
 	seen := map[string]bool{}
@@ -316,3 +320,4 @@ func setupContextBytes(documents []setupDocument, notes string) error {
 	}
 	return nil
 }
+

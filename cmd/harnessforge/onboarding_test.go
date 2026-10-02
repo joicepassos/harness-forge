@@ -213,7 +213,7 @@ func TestSelectedContextAcceptsDirectoriesAndExternalFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	session := setupSession{reader: bufio.NewReader(strings.NewReader("team-docs\n" + external + "\n\n")), output: &output}
+	session := setupSession{reader: bufio.NewReader(strings.NewReader("p\nteam-docs\n" + external + "\n\n\n")), output: &output}
 	selected, err := session.selectedDocuments(context.Background(), root, nil)
 	if err != nil {
 		t.Fatal(err)
