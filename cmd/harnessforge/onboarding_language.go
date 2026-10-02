@@ -7,8 +7,18 @@ import (
 	"strings"
 )
 
-func chooseSetupInterface(reader *bufio.Reader, output io.Writer) (io.Writer, error) {
+func chooseSetupInterface(reader *bufio.Reader, output io.Writer, ui ...setupSession) (io.Writer, error) {
 	session := setupSession{reader: reader, output: output}
+	if len(ui) > 0 && ui[0].interactive {
+		language, err := ui[0].formSelect("Interface language / Idioma da interface", []string{"English", "Portugues"}, []string{"en", "pt"}, "en")
+		if err != nil {
+			return output, err
+		}
+		if language == "pt" {
+			return setupLocalizedWriter{output: output}, nil
+		}
+		return output, nil
+	}
 	for {
 		answer, err := session.ask("Interface language / Idioma da interface [1 English, 2 Portugues] (default 1): ")
 		if err != nil {

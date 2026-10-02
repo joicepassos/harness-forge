@@ -20,21 +20,28 @@ type setupProposer func(context.Context, setupProvider, *analyzer.Analysis, []se
 
 func newInitCommand() *cobra.Command {
 	var repository string
+	var accessible bool
 	command := &cobra.Command{
 		Use:   "init",
 		Short: "Analyze and configure this project with a guided setup",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runGuidedInit(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), repository, requestSetupProposal)
+			return runGuidedInitMode(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), repository, requestSetupProposal, accessible)
 		},
 	}
 	command.Flags().StringVar(&repository, "repository", ".", "Project directory to configure")
+	command.Flags().BoolVar(&accessible, "accessible", false, "Use plain prompts for screen readers and automation")
 	return command
 }
 
 func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repository string, propose setupProposer) (err error) {
+	return runGuidedInitMode(ctx, input, output, repository, propose, false)
+}
+
+func runGuidedInitMode(ctx context.Context, input io.Reader, output io.Writer, repository string, propose setupProposer, accessible bool) (err error) {
 	reader := bufio.NewReader(input)
-	output, err = chooseSetupInterface(reader, output)
+	session := setupSession{reader: reader, input: input, output: output, ctx: ctx, interactive: setupInteractive(input, output, accessible)}
+	output, err = chooseSetupInterface(reader, output, session)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return nil
@@ -68,7 +75,7 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	session := setupSession{reader: reader, output: output}
+	session.output = output
 	fmt.Fprintf(output, "%s\n%s\nProject: %s\n\n%s\n\n", style.brand(), style.heading("HarnessForge setup"), root, style.heading("Ready to analyze"))
 	allowed, err := session.confirmDefaultYes("Analyze this project now?")
 	if err != nil {
@@ -241,6 +248,9 @@ func ensureSetupKey(session setupSession, input io.Reader, config *setupProvider
 		return nil
 	}
 	if variable != "" {
+		if session.interactive {
+			return session.formKey(variable, config)
+		}
 		terminal, ok := input.(*os.File)
 		if !ok || terminal != os.Stdin || !term.IsTerminal(int(os.Stdin.Fd())) {
 			return fmt.Errorf("%s is missing; set it in the environment before a scripted AI setup", variable)

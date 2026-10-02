@@ -11,6 +11,25 @@ func (s setupSession) adjustDetectedLanguages(analysis *analyzer.Analysis) ([]st
 	for _, finding := range analysis.Languages {
 		detected = append(detected, finding.Value)
 	}
+	if s.interactive {
+		selected, err := s.selectLanguages([]string{"Go", "JavaScript/TypeScript", "Python", "Java", "Rust", "C/C++", "Other"}, detected)
+		if err != nil {
+			return nil, err
+		}
+		findings := make([]analyzer.Finding, 0, len(selected))
+		for _, value := range selected {
+			finding := analyzer.Finding{Value: value}
+			for _, existing := range analysis.Languages {
+				if existing.Value == value {
+					finding = existing
+					break
+				}
+			}
+			findings = append(findings, finding)
+		}
+		analysis.Languages = findings
+		return selected, nil
+	}
 	if len(detected) > 0 {
 		fmt.Fprintf(s.output, "Detected languages: %s\n", strings.Join(detected, ", "))
 		for {

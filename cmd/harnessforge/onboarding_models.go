@@ -27,6 +27,18 @@ func (s setupSession) chooseModel(provider string) (string, error) {
 	if len(models) == 0 {
 		return "", fmt.Errorf("unsupported provider %q", provider)
 	}
+	if s.interactive {
+		labels := append(append([]string(nil), models...), "Advanced: enter a model identifier")
+		values := append(append([]string(nil), models...), "advanced")
+		model, err := s.formSelect("Model", labels, values, models[0])
+		if err != nil {
+			return "", err
+		}
+		if model == "advanced" {
+			return s.formInput("Model identifier", false)
+		}
+		return model, nil
+	}
 	fmt.Fprintln(s.output, "Models (availability depends on your account or local installation):")
 	for i, model := range models {
 		fmt.Fprintf(s.output, "  %d) %s\n", i+1, model)
