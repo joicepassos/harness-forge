@@ -35,3 +35,11 @@ func TestSetupFormLabelsUsePortugueseWithoutChangingPayload(t *testing.T) {
 		t.Fatal("model identifier translated")
 	}
 }
+
+func TestLocalPlanSummaryDoesNotClaimAIWasUsed(t *testing.T) {
+	var output bytes.Buffer
+	showSetupPlan(&output, setupPlan{Summary: "Local project overview"})
+	if !strings.Contains(output.String(), "Summary: Local project overview") || strings.Contains(output.String(), "AI summary:") {
+		t.Fatalf("misleading local preview: %s", output.String())
+	}
+}

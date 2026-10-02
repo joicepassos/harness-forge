@@ -44,6 +44,7 @@ func runGuidedInitMode(ctx context.Context, input io.Reader, output io.Writer, r
 	output, err = chooseSetupInterface(reader, output, session)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
+			fmt.Fprintln(output, "Setup cancelled; no project files changed.")
 			return nil
 		}
 		return err
@@ -309,7 +310,7 @@ func askSetupAgents(session setupSession) ([]string, error) {
 func showSetupPlan(output io.Writer, plan setupPlan) {
 	fmt.Fprintln(output, "\n"+presentationFor(output).heading("Proposed setup (nothing has been written):"))
 	if plan.Summary != "" {
-		fmt.Fprintf(output, "AI summary: %s\n", plan.Summary)
+		fmt.Fprintf(output, "Summary: %s\n", plan.Summary)
 	}
 	fmt.Fprintf(output, "Languages: %s\n", strings.Join(plan.Harness.Project.Languages, ", "))
 	fmt.Fprintf(output, "Architecture: %s\n", strings.Join(plan.Harness.Architecture.Styles, ", "))

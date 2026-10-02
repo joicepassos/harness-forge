@@ -47,6 +47,7 @@ func (w setupLocalizedWriter) Write(data []byte) (int, error) {
 }
 
 var setupPortuguese = strings.NewReplacer(
+	"Summary:", "Resumo:",
 	"deepseek key found", "Chave do DeepSeek encontrada",
 	"openai key found", "Chave do OpenAI encontrada",
 	"gemini key found", "Chave do Gemini encontrada",
