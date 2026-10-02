@@ -28,16 +28,16 @@ type setupRunEvent struct {
 	At    time.Time
 }
 type setupBackgroundRun struct {
-	AppliedFiles                                    []string
-	ID, Root, Provider, Model, Status, Stage, Error string
-	StartedAt, UpdatedAt                            time.Time
-	Documents                                       []setupRunDocument
-	Languages                                       []string
-	Events                                          []setupRunEvent
-	Calls                                           []chatcompat.CallEvent
-	Proposal                                        *setupAIProposal
-	DiscardedRules, DiscardedSkills                 int
-	AnalysisHash                                    string
+	AppliedFiles                                                      []string
+	ID, Root, Provider, Model, ArtifactLanguage, Status, Stage, Error string
+	StartedAt, UpdatedAt                                              time.Time
+	Documents                                                         []setupRunDocument
+	Languages                                                         []string
+	Events                                                            []setupRunEvent
+	Calls                                                             []chatcompat.CallEvent
+	Proposal                                                          *setupAIProposal
+	DiscardedRules, DiscardedSkills                                   int
+	AnalysisHash                                                      string
 }
 type setupWorkerInput struct {
 	ID        string
@@ -139,7 +139,7 @@ func startSetupBackground(root string, config setupProvider, analysis *analyzer.
 	}
 	id := hex.EncodeToString(random)
 	now := time.Now().UTC()
-	run := setupBackgroundRun{ID: id, Root: root, Provider: config.Name, Model: config.Model, Status: "queued", Stage: "preparing_context", StartedAt: now, UpdatedAt: now, AnalysisHash: setupAnalysisHash(analysis)}
+	run := setupBackgroundRun{ID: id, Root: root, Provider: config.Name, Model: config.Model, ArtifactLanguage: config.ArtifactLanguage, Status: "queued", Stage: "preparing_context", StartedAt: now, UpdatedAt: now, AnalysisHash: setupAnalysisHash(analysis)}
 	for _, f := range analysis.Languages {
 		run.Languages = append(run.Languages, f.Value)
 	}
@@ -459,7 +459,7 @@ func reviewSetupBackgroundRun(ctx context.Context, input io.Reader, output io.Wr
 			return fmt.Errorf("selected context changed since this run; start a new setup before applying")
 		}
 	}
-	config := setupProvider{Name: run.Provider, Model: run.Model}
+	config := setupProvider{Name: run.Provider, Model: run.Model, ArtifactLanguage: run.ArtifactLanguage}
 	proposal := setupAIProposal{}
 	if run.Status != "ready" || run.Proposal == nil {
 		if run.Error != "" {
@@ -473,7 +473,7 @@ func reviewSetupBackgroundRun(ctx context.Context, input io.Reader, output io.Wr
 		if !allowed {
 			return nil
 		}
-		config = setupProvider{}
+		config = setupProvider{ArtifactLanguage: run.ArtifactLanguage}
 	} else {
 		proposal = *run.Proposal
 		proposal.DiscardedRules = run.DiscardedRules

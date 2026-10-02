@@ -113,10 +113,15 @@ func runGuidedInitOptions(ctx context.Context, input io.Reader, output io.Writer
 	fmt.Fprintf(output, "Languages selected: %s\n", strings.Join(languages, ", "))
 	printSetupDirectories(output, root)
 	fmt.Fprintln(output, style.status("info", "No project files have been changed."))
+	artifactLanguage, err := session.chooseArtifactLanguage()
+	if err != nil {
+		return err
+	}
 	config, useAI, err := askSetupProvider(session, input)
 	if err != nil {
 		return err
 	}
+	config.ArtifactLanguage = artifactLanguage
 	if useAI {
 		if err := ensureSetupKey(session, input, &config); err != nil {
 			return err
@@ -160,7 +165,7 @@ func runGuidedInitOptions(ctx context.Context, input io.Reader, output io.Writer
 		if !allowed {
 			fmt.Fprintln(output, style.status("warning", "AI call cancelled; continuing with a local proposal."))
 			useAI = false
-			config = setupProvider{}
+			config = setupProvider{ArtifactLanguage: artifactLanguage}
 		}
 	}
 	if useAI {
@@ -199,7 +204,7 @@ func runGuidedInitOptions(ctx context.Context, input io.Reader, output io.Writer
 			if !continueLocal {
 				return fmt.Errorf("setup stopped before changing project files")
 			}
-			config, suggestion = setupProvider{}, setupAIProposal{}
+			config, suggestion = setupProvider{ArtifactLanguage: artifactLanguage}, setupAIProposal{}
 		}
 		if suggestion.DiscardedRules+suggestion.DiscardedSkills > 0 {
 			fmt.Fprintln(output, style.status("warning", fmt.Sprintf("The AI generated %d rule(s) and %d skill(s) without valid project-file citations; these items were discarded. The remaining proposal has verified citations and still requires your review.", suggestion.DiscardedRules, suggestion.DiscardedSkills)))
