@@ -172,6 +172,9 @@ func runGuidedInitMode(ctx context.Context, input io.Reader, output io.Writer, r
 			}
 			config, suggestion = setupProvider{}, setupAIProposal{}
 		}
+		if suggestion.DiscardedRules+suggestion.DiscardedSkills > 0 {
+			fmt.Fprintln(output, style.status("warning", fmt.Sprintf("The AI generated %d rule(s) and %d skill(s) without valid project-file citations; these items were discarded. The remaining proposal has verified citations and still requires your review.", suggestion.DiscardedRules, suggestion.DiscardedSkills)))
+		}
 	}
 	agents, err := askSetupAgents(session)
 	if err != nil {

@@ -47,6 +47,11 @@ func (w setupLocalizedWriter) Write(data []byte) (int, error) {
 }
 
 var setupPortuguese = strings.NewReplacer(
+	"The AI proposal could not be accepted because a rule or skill did not correctly cite a project file.", "A proposta da IA nao pode ser aceita porque uma regra ou skill nao citou corretamente um arquivo do projeto.",
+	"The AI response did not match the expected proposal format.", "A resposta da IA nao seguiu o formato esperado para a proposta.",
+	"The AI generated", "A IA gerou",
+	"rule(s) and", "regra(s) e",
+	"skill(s) without valid project-file citations; these items were discarded. The remaining proposal has verified citations and still requires your review.", "skill(s) sem citacoes validas de arquivos do projeto; esses itens foram descartados. O restante da proposta tem citacoes verificadas e ainda precisa da sua revisao.",
 	"Preparing selected context...", "Preparando o contexto selecionado...",
 	"Context prepared.", "Contexto preparado.",
 	"Waiting for provider response...", "Aguardando a resposta do provedor...",

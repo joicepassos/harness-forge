@@ -39,3 +39,32 @@ commit `0dac6890254277b88a4a7190c5f2f0d93ec7cd20`.
   not exercised live because the provider key was already present.
 - No external API request was made in this UI verification round. Historical
   DeepSeek HTTP 400 diagnosis remains unchanged from the preceding correction.
+
+## Follow-up: feedback tasks 7 and 8
+
+The updated CLI was built and exercised on `demo-usuario-mvp` with DeepSeek
+`deepseek-flash`. After context consent, the interactive terminal showed
+context prepared, waiting for the provider with an animated indicator and
+elapsed seconds, response received, and proposal validation. The provider
+responded after approximately 40 seconds. No credentials or document content
+were included in these progress messages, and no percentages were displayed.
+
+One skill had invalid evidence and was discarded. Eight rules and two skills
+with verified citations survived and were presented for review. Generation
+of Codex and Claude instructions completed. Demo validation and the check
+with Go test gates passed. The demo's application code was not changed.
+
+Recovery validates the entire structure before filtering citations and
+validates the remaining proposal again. It does not rewrite sources or quotes,
+and it makes no additional paid request. If no cited item survives, the CLI
+explains that the AI failed to cite a project file correctly and offers local
+generation. Empty rule/skill arrays originally returned by the provider are
+still valid. Citation verification does not replace human semantic review.
+
+`go test ./...`, `go vet ./...`, and whitespace checks passed. Focused tests
+cover noninteractive progress without terminal sequences, elapsed time,
+cancellation and worker shutdown, partial recovery, all-invalid local fallback,
+nonexistent sources, fabricated quotes, duplicate IDs, and structural errors.
+The complete live rejection path was covered by deterministic tests; the live
+provider response exercised partial recovery instead. This follow-up's terminal
+verification was on Windows only.
