@@ -23,21 +23,22 @@ func TestGuidedInitLocalPlanRequiresConfirmation(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
+	// Include the generated-artifact language prompt before choosing local setup.
 	noAI := func(context.Context, setupProvider, *analyzer.Analysis, []setupDocument, string) (setupAIProposal, error) {
 		t.Fatal("unexpected AI call")
 		return setupAIProposal{}, nil
 	}
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\nn\n"), &output, root, noAI); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n"+"\n\n\n\n\n\nn\n"), &output, root, noAI); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "Proposed setup") || !strings.Contains(output.String(), "Go modules") {
+	if !strings.Contains(output.String(), "Setup review") || !strings.Contains(output.String(), "Go modules") {
 		t.Fatalf("missing analysis or preview: %s", output.String())
 	}
 	if _, err := os.Stat(filepath.Join(root, ".harness")); !os.IsNotExist(err) {
 		t.Fatalf("files changed before confirmation: %v", err)
 	}
 	output.Reset()
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\ny\n"), &output, root, noAI); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n"+"\n\n\n\n\n\ny\n"), &output, root, noAI); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
@@ -70,7 +71,7 @@ func TestGuidedInitUsesDocumentsNotesAndAIProposal(t *testing.T) {
 	}
 	var output bytes.Buffer
 	input := "\n\ny\nopenai\n\n\nTeam uses ports and adapters\n\ny\n3\ny\n"
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+input), &output, root, propose); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n"+input), &output, root, propose); err != nil {
 		t.Fatal(err)
 	}
 	if !called {
@@ -115,11 +116,11 @@ func TestGuidedInitPreservesManualAgentFile(t *testing.T) {
 	}
 	before, _ := os.ReadFile(filepath.Join(root, ".harness", "harness.yaml"))
 	var output bytes.Buffer
-	err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\nn\n"), &output, root, nil)
+	err := runGuidedInit(context.Background(), strings.NewReader("\n\n"+"\n\n\n\n\n\nn\n"), &output, root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "append to existing instructions") {
+	if !strings.Contains(output.String(), "Append to existing instructions") {
 		t.Fatalf("append was not previewed: %s", output.String())
 	}
 	after, _ := os.ReadFile(filepath.Join(root, ".harness", "harness.yaml"))
@@ -131,7 +132,7 @@ func TestGuidedInitPreservesManualAgentFile(t *testing.T) {
 		t.Fatalf("manual instructions changed before confirmation: %q", manual)
 	}
 	output.Reset()
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n"+"\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
 		t.Fatal(err)
 	}
 	manual, _ = os.ReadFile(path)
@@ -146,10 +147,10 @@ func TestGuidedInitReplacesOnlyStarterHarness(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n"+"\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "replace starter/generated file") {
+	if !strings.Contains(output.String(), "Replace generated starter file") {
 		t.Fatalf("starter replacement was not previewed: %s", output.String())
 	}
 	manual := filepath.Join(root, "AGENTS.md")
@@ -158,7 +159,7 @@ func TestGuidedInitReplacesOnlyStarterHarness(t *testing.T) {
 	}
 	before, _ := os.ReadFile(filepath.Join(root, ".harness", "harness.yaml"))
 	output.Reset()
-	err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\ny\n"), &output, root, nil)
+	err := runGuidedInit(context.Background(), strings.NewReader("\n\n"+"\n\n\n\n\n\ny\n"), &output, root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

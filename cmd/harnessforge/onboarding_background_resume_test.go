@@ -124,7 +124,7 @@ func TestInspectorReviewPreservesLanguageWithoutPromptingAgain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(output.String(), "Idioma da interface") || !strings.Contains(output.String(), "Configuracao proposta") {
+	if strings.Contains(output.String(), "Idioma da interface") || !strings.Contains(output.String(), "Revisao da configuracao") {
 		t.Fatal("inspector review lost the selected language")
 	}
 	if _, err := os.Stat(filepath.Join(run.Root, ".harness")); !os.IsNotExist(err) {

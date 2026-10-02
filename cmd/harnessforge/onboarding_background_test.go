@@ -180,7 +180,7 @@ func TestBackgroundResumeRequiresConfirmation(t *testing.T) {
 	if _, err = os.Stat(filepath.Join(root, ".harness")); !os.IsNotExist(err) {
 		t.Fatal("declined review wrote project files")
 	}
-	if !strings.Contains(output.String(), "nothing has been written") {
+	if !strings.Contains(output.String(), "No project files have been changed.") {
 		t.Fatal("no preview before confirmation")
 	}
 	output.Reset()

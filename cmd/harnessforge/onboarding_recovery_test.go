@@ -28,7 +28,7 @@ func TestGuidedInitExplainsEvidenceRecoveryAndLocalFallback(t *testing.T) {
 			propose := func(_ context.Context, _ setupProvider, _ *analyzer.Analysis, _ []setupDocument, _ string) (setupAIProposal, error) {
 				return recoverSetupProposal(proposal, map[string]string{"repository-file:go.mod": mod})
 			}
-			answers := []string{"2", "", "", "y", "deepseek", "", "", "", "y"}
+			answers := []string{"2", "", "", "", "y", "deepseek", "", "", "", "y"}
 			if !partial {
 				answers = append(answers, "s")
 			}

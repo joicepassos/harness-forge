@@ -18,7 +18,7 @@ func TestGuidedInitProviderFailureCanCompleteLocally(t *testing.T) {
 	}
 	t.Setenv("DEEPSEEK_API_KEY", "test-key")
 	var output bytes.Buffer
-	answers := []string{"1", "", "", "y", "deepseek", "", "", "", "y", "y", "3", "y", ""}
+	answers := []string{"1", "", "", "", "y", "deepseek", "", "", "", "y", "y", "3", "y", ""}
 	called := false
 	propose := func(context.Context, setupProvider, *analyzer.Analysis, []setupDocument, string) (setupAIProposal, error) {
 		called = true
