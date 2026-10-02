@@ -33,6 +33,14 @@ func newInitCommand() *cobra.Command {
 }
 
 func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repository string, propose setupProposer) (err error) {
+	reader := bufio.NewReader(input)
+	output, err = chooseSetupInterface(reader, output)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
+	}
 	style := presentationFor(output)
 	defer func() {
 		if errors.Is(err, io.EOF) {
@@ -60,7 +68,7 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	session := setupSession{reader: bufio.NewReader(input), output: output}
+	session := setupSession{reader: reader, output: output}
 	languages, err := session.chooseLanguages()
 	if err != nil {
 		return err
@@ -98,7 +106,6 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 		if err := ensureSetupKey(session, input, &config); err != nil {
 			return err
 		}
-		fmt.Fprintln(output, style.status("success", "AI token received for this run; it will not be written to project files."))
 	}
 	documents := defaultSetupDocuments(ctx, root)
 	if len(documents) > 0 {
@@ -304,7 +311,11 @@ func showSetupPlan(output io.Writer, plan setupPlan) {
 		} else if file.Replace {
 			action = "replace starter/generated file"
 		}
-		fmt.Fprintf(output, "\n--- %s (%s) ---\n%s\n", file.Path, action, file.Content)
+		fmt.Fprintf(output, "\n--- %s (%s) ---\n", file.Path, action)
+		contentOutput := output
+		if localized, ok := output.(setupLocalizedWriter); ok {
+			contentOutput = localized.output
+		}
+		fmt.Fprintf(contentOutput, "%s\n", file.Content)
 	}
 }
-

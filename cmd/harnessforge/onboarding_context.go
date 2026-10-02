@@ -85,7 +85,7 @@ func (s setupSession) confirm(question string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes"), nil
+	return strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes") || strings.EqualFold(answer, "s") || strings.EqualFold(answer, "sim"), nil
 }
 
 func (s setupSession) confirmDefaultYes(question string) (bool, error) {
@@ -93,7 +93,7 @@ func (s setupSession) confirmDefaultYes(question string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return !strings.EqualFold(answer, "n") && !strings.EqualFold(answer, "no"), nil
+	return answer == "" || strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes") || strings.EqualFold(answer, "s") || strings.EqualFold(answer, "sim"), nil
 }
 
 func (s setupSession) notes() (string, error) {
@@ -320,4 +320,3 @@ func setupContextBytes(documents []setupDocument, notes string) error {
 	}
 	return nil
 }
-
