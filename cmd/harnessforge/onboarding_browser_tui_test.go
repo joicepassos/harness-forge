@@ -69,7 +69,7 @@ func TestInteractiveBrowserCancelAndSensitiveContent(t *testing.T) {
 	}
 }
 
-func TestInteractiveBrowserStaysRootedAndHidesSymlink(t *testing.T) {
+func TestInteractiveBrowserStaysRootedInNarrowViewport(t *testing.T) {
 	root := t.TempDir()
 	m, err := newSetupBrowserModel(context.Background(), setupSession{output: io.Discard}, root, nil)
 	if err != nil {
@@ -83,6 +83,14 @@ func TestInteractiveBrowserStaysRootedAndHidesSymlink(t *testing.T) {
 	m.Update(tea.WindowSizeMsg{Width: 10, Height: 8})
 	if m.list.Width() > 10 {
 		t.Fatal("list exceeds narrow viewport")
+	}
+}
+
+func TestInteractiveBrowserHidesEscapeSymlink(t *testing.T) {
+	root := t.TempDir()
+	m, err := newSetupBrowserModel(context.Background(), setupSession{output: io.Discard}, root, nil)
+	if err != nil {
+		t.Fatal(err)
 	}
 	outside := t.TempDir()
 	if err := os.Symlink(outside, filepath.Join(root, "outside")); err != nil {
