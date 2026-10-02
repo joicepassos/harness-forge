@@ -99,8 +99,8 @@ func (provider *Client) send(ctx context.Context, request Request, stream bool) 
 		if response.StatusCode >= 200 && response.StatusCode < 300 {
 			return response, nil
 		}
+		failure := provider.responseError(response, request)
 		response.Body.Close()
-		failure := fmt.Errorf("%s request failed (HTTP %d)", provider.providerName(), response.StatusCode)
 		delay := time.Duration(1<<attempt) * 200 * time.Millisecond
 		if after, ok := retryAfter(response.Header.Get("Retry-After")); ok {
 			delay = after
