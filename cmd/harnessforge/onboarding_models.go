@@ -11,7 +11,7 @@ import (
 func setupModels(provider string) []string {
 	choices := map[string][]string{
 		"openai":   {"gpt-4o-mini", "gpt-4.1-mini"},
-		"deepseek": {"deepseek-v4-flash", "deepseek-v4.1-flash"},
+		"deepseek": {"deepseek-flash", "deepseek-v4-pro"},
 		"gemini":   {"gemini-2.5-flash", "gemini-2.5-pro"},
 		"groq":     {"openai/gpt-oss-120b", "openai/gpt-oss-20b"},
 		"ollama":   {"llama3.2", "qwen3"},

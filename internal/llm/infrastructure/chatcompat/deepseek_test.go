@@ -2,6 +2,7 @@ package chatcompat
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -14,10 +15,16 @@ func TestDeepSeekProvider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.model != "deepseek-v4-flash" {
+	if p.model != "deepseek-flash" {
 		t.Fatalf("unexpected default: %s", p.model)
 	}
 	p.client.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		var payload struct {
+			Model string `json:"model"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload.Model != "deepseek-flash" {
+			t.Fatalf("incorrect API model: %q (%v)", payload.Model, err)
+		}
 		if r.URL.String() != "https://api.deepseek.com/chat/completions" {
 			t.Fatalf("wrong endpoint: %s", r.URL)
 		}

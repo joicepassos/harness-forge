@@ -143,7 +143,7 @@ func defaults(options domain.Options, model string) domain.Options {
 		switch strings.ToLower(model) {
 		case "gpt-4o-mini":
 			options.BudgetTokens = 2400
-		case "deepseek-v4-flash":
+		case "deepseek-flash", "deepseek-v4-flash":
 			options.BudgetTokens = 2000
 		}
 	}

@@ -3,9 +3,16 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestDeepSeekChoicesMatchProviderSupportedNames(t *testing.T) {
+	if choices := setupModels("deepseek"); !reflect.DeepEqual(choices, []string{"deepseek-flash", "deepseek-v4-pro"}) {
+		t.Fatalf("unsupported DeepSeek choices: %v", choices)
+	}
+}
 
 func TestSetupModelSelections(t *testing.T) {
 	for _, provider := range []string{"openai", "deepseek", "gemini", "groq", "ollama"} {
