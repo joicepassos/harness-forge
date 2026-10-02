@@ -144,6 +144,7 @@ var setupPortuguese = strings.NewReplacer(
 	"AI proposal could not be validated:", "Nao foi possivel validar a proposta de IA:",
 	"Continue with a local proposal?", "Continuar com uma proposta local?",
 	"Agent instructions", "Instrucoes dos agentes",
+	"The AI provider creates the proposal; these agents read the generated project instructions. Codex and OpenCode both use AGENTS.md.", "O provedor de IA cria a proposta; estes agentes leem as instrucoes geradas para o projeto. Codex e OpenCode usam AGENTS.md.",
 	"3 both]", "3 ambos]",
 	"Proposed setup (nothing has been written):", "Configuracao proposta (nenhum arquivo foi gravado):",
 	"AI summary:", "Resumo da IA:",

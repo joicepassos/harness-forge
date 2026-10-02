@@ -493,7 +493,7 @@ func reviewSetupBackgroundRun(ctx context.Context, input io.Reader, output io.Wr
 	if err != nil {
 		return err
 	}
-	showSetupPlan(output, plan)
+	showSetupReview(output, plan)
 	var approved bool
 	if preserveLanguage && session.interactive {
 		choice, choiceErr := session.formSelect(session.uiText("Review complete: choose the next action"), []string{session.uiText("Apply these files"), session.uiText("Back without applying")}, []string{"apply", "back"}, "back")

@@ -10,6 +10,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 	"golang.org/x/term"
 )
 
@@ -54,11 +55,27 @@ func (s setupSession) runForm(field huh.Field) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	err := huh.NewForm(huh.NewGroup(field)).WithKeyMap(s.formKeyMap()).WithAccessible(false).WithInput(s.input).WithOutput(s.uiOutput()).RunWithContext(ctx)
+	err := huh.NewForm(huh.NewGroup(field)).WithTheme(setupFormTheme()).WithKeyMap(s.formKeyMap()).WithAccessible(false).WithInput(s.input).WithOutput(s.uiOutput()).RunWithContext(ctx)
 	if errors.Is(err, huh.ErrUserAborted) {
 		return io.EOF
 	}
 	return err
+}
+
+// Match guided forms to the colors used by the surrounding CLI presentation.
+func setupFormTheme() huh.Theme {
+	return huh.ThemeFunc(func(isDark bool) *huh.Styles {
+		styles := huh.ThemeCharm(isDark)
+		blue := lipgloss.Color("#00A8E8")
+		orange := lipgloss.Color("#FF7A00")
+		styles.Focused.Title = styles.Focused.Title.Foreground(blue)
+		styles.Focused.NoteTitle = styles.Focused.NoteTitle.Foreground(blue)
+		styles.Focused.SelectSelector = styles.Focused.SelectSelector.Foreground(orange)
+		styles.Focused.MultiSelectSelector = styles.Focused.MultiSelectSelector.Foreground(orange)
+		styles.Focused.FocusedButton = styles.Focused.FocusedButton.Background(orange)
+		styles.Blurred.Title = styles.Blurred.Title.Foreground(blue)
+		return styles
+	})
 }
 
 func (s setupSession) formKeyMap() *huh.KeyMap {
@@ -104,7 +121,7 @@ func (s setupSession) formQuestion(question string) (string, error) {
 	case strings.HasPrefix(question, "Provider ["):
 		return s.formSelect("Provider", []string{"OpenAI", "DeepSeek", "Gemini", "Groq", "Ollama"}, []string{"openai", "deepseek", "gemini", "groq", "ollama"}, "openai")
 	case strings.HasPrefix(question, "Agent instructions"):
-		return s.formSelect("Agent instructions", []string{"Codex", "Claude", "Codex + Claude"}, []string{"1", "2", "3"}, "1")
+		return s.formSelect("Agent instructions", []string{"Codex / OpenCode (AGENTS.md)", "Claude (CLAUDE.md)", "Codex / OpenCode + Claude"}, []string{"1", "2", "3"}, "1")
 	default:
 		return s.formInput(strings.TrimSuffix(strings.TrimSpace(question), ":"), false)
 	}

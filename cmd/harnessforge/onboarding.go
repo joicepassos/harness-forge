@@ -218,7 +218,7 @@ func runGuidedInitOptions(ctx context.Context, input io.Reader, output io.Writer
 	if err != nil {
 		return err
 	}
-	showSetupPlan(output, plan)
+	showSetupReview(output, plan)
 	approved, err := session.confirm("Create or update exactly these files?")
 	if err != nil {
 		return err
@@ -330,7 +330,8 @@ func setupKeyVariable(provider string) string {
 }
 
 func askSetupAgents(session setupSession) ([]string, error) {
-	answer, err := session.ask("Agent instructions [1 Codex, 2 Claude, 3 both] (default 1): ")
+	fmt.Fprintln(session.output, "The AI provider creates the proposal; these agents read the generated project instructions. Codex and OpenCode both use AGENTS.md.")
+	answer, err := session.ask("Agent instructions [1 Codex/OpenCode, 2 Claude, 3 both] (default 1): ")
 	if err != nil {
 		return nil, err
 	}
