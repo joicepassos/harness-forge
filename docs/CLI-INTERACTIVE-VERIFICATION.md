@@ -68,3 +68,49 @@ nonexistent sources, fabricated quotes, duplicate IDs, and structural errors.
 The complete live rejection path was covered by deterministic tests; the live
 provider response exercised partial recovery instead. This follow-up's terminal
 verification was on Windows only.
+
+## Follow-up: background call inspector
+
+The AI stage of interactive setup now runs in an independent process and
+opens the call inspector after context consent. Explicit `--background`
+returns immediately. The inspector has context, calls, validation and
+proposal sections, scrolling, elapsed time and real timestamped stages.
+HTTP events include actual attempts and status; response headers and completed
+response bodies are distinguished. Detaching does not cancel the worker.
+Applying requires a separate reviewed `init resume` confirmation.
+
+Windows live checks on the demo project:
+
+- Detached DeepSeek `deepseek-flash` generation returned the terminal before
+  completion. A separate inspector reopened the run successfully.
+- HTTP 200 headers arrived after 593 ms; the complete proposal arrived after
+  approximately 26 seconds. Seven rules and four skills survived strict
+  citation validation; one invalid rule was discarded.
+- Review refusal created no `.harness`. A later approved resume generated
+  the harness, four skills, Codex and Claude instructions. Validation and
+  `check --layout harness --run-gates --format json` passed.
+- Interactive Portuguese setup opened the inspector automatically with
+  Ollama. The unavailable local server produced a real transport failure;
+  detaching succeeded and resuming offered the local proposal. That local
+  review was declined, leaving the project unchanged at that point.
+- The saved DeepSeek run contained no provider credential. Document contents
+  did not appear in inspector output; accepted citation excerpts appear only
+  in explicit proposal review and the privately cached proposal.
+- Demo tests and execution passed: Estacao Aurora, average 22.0 C. No demo
+  application source was changed.
+
+Automated coverage includes per-attempt HTTP events and retries, privacy,
+malformed worker input, authorized-context integrity, active cancellation,
+stale-worker recovery, review refusal, local fallback, changed documents,
+fabricated citations, successful application and refusing reapplication.
+Inspector tests bound both width and height at 20/40/80 columns and 10/20
+rows, check timestamp ordering and distinguish headers from full responses.
+
+Limits: live verification was Windows-only; Linux/macOS were not exercised.
+Cancellation and HTTP retries were covered deterministically, not with extra
+paid calls. Crash recovery uses a six-minute stale threshold. Raw observations
+are not retained for resumed generation, and cache storage is not encrypted
+by the CLI. Context checks cover the analyzer's findings and the authorized
+document text (including the existing 16 KiB per-document cap), not an
+immutable snapshot of every project file. Citation validity still requires
+human review of the proposal's meaning.

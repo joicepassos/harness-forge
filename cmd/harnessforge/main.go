@@ -93,6 +93,7 @@ func newRootCommand() *cobra.Command {
 		Short: "HarnessForge creates and maintains coding-agent harnesses",
 	}
 	rootCmd.PersistentFlags().Var(&language, "language", "Language for CLI help and common output (en, pt-BR or es)")
+	rootCmd.AddCommand(newSetupWorkerCommand())
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",

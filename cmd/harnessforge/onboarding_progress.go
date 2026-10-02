@@ -57,6 +57,8 @@ type setupProgressModel struct {
 	completed, cancelled bool
 	cancel               context.CancelFunc
 	outcome              setupProposalOutcome
+	provider, model      string
+	documents            []setupDocument
 }
 
 func setupElapsedTick() tea.Cmd {
@@ -96,13 +98,21 @@ func (m *setupProgressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *setupProgressModel) View() tea.View {
-	lines := append([]string(nil), m.history...)
-	if !m.completed {
-		lines = append(lines, fmt.Sprintf("%s %s (%.0fs)", m.spinner.View(), m.session.uiText(m.phase), time.Since(m.started).Seconds()))
-	} else if m.outcome.err == nil && !m.cancelled {
+	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Bold(true)
+	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	lines := []string{accent.Render("HarnessForge / " + m.session.uiText("Call inspector")), ""}
+	lines = append(lines, fmt.Sprintf("%s %s | %.0fs", m.spinner.View(), m.session.uiText(m.phase), time.Since(m.started).Seconds()), "")
+	lines = append(lines, m.session.uiText("Provider")+"  "+setupInspectorSafe(m.provider), m.session.uiText("Model")+"    "+setupInspectorSafe(m.model), fmt.Sprintf("%s  %d", m.session.uiText("Selected context"), len(m.documents)), "")
+	for _, doc := range m.documents {
+		lines = append(lines, "  "+setupInspectorSafe(doc.Source))
+	}
+	lines = append(lines, "", muted.Render(m.session.uiText("Real events")))
+	lines = append(lines, m.history...)
+	if m.completed && m.outcome.err == nil && !m.cancelled {
 		lines = append(lines, m.session.uiText("AI proposal ready for review."))
 	}
-	return tea.NewView(lipgloss.NewStyle().Width(m.width).Render(strings.Join(lines, "\n")))
+	lines = append(lines, "", muted.Render(m.session.uiText("Esc: cancel request")))
+	return tea.NewView(lipgloss.NewStyle().Width(max(1, m.width)).Render(strings.Join(lines, "\n")))
 }
 
 func (s setupSession) generateProposal(ctx context.Context, config setupProvider, analysis *analyzer.Analysis, documents []setupDocument, notes string, propose setupProposer) (setupAIProposal, error) {
@@ -115,8 +125,8 @@ func (s setupSession) generateProposal(ctx context.Context, config setupProvider
 	defer cancel()
 	result := make(chan setupProposalOutcome, 1)
 	finished := make(chan struct{})
-	activity := spinner.New(spinner.WithSpinner(spinner.Line))
-	m := &setupProgressModel{session: s, started: time.Now(), spinner: activity, phase: "Preparing selected context...", width: 80, result: result, cancel: cancel}
+	activity := spinner.New(spinner.WithSpinner(spinner.Dot))
+	m := &setupProgressModel{session: s, started: time.Now(), spinner: activity, phase: "Preparing selected context...", width: 80, result: result, cancel: cancel, provider: config.Name, model: config.Model, documents: documents}
 	program := tea.NewProgram(m, tea.WithInput(s.input), tea.WithOutput(s.uiOutput()), tea.WithContext(ctx))
 	requestCtx = context.WithValue(requestCtx, setupStageKey{}, func(stage setupStage) { program.Send(stage) })
 	go func() {

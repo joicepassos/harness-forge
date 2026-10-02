@@ -21,16 +21,19 @@ type setupProposer func(context.Context, setupProvider, *analyzer.Analysis, []se
 func newInitCommand() *cobra.Command {
 	var repository string
 	var accessible bool
+	var background bool
 	command := &cobra.Command{
 		Use:   "init",
 		Short: "Analyze and configure this project with a guided setup",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runGuidedInitMode(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), repository, requestSetupProposal, accessible)
+			return runGuidedInitOptions(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), repository, requestSetupProposal, accessible, background)
 		},
 	}
 	command.Flags().StringVar(&repository, "repository", ".", "Project directory to configure")
 	command.Flags().BoolVar(&accessible, "accessible", false, "Use plain prompts for screen readers and automation")
+	command.Flags().BoolVar(&background, "background", false, "Generate the authorized AI proposal in a detached process; review it with init resume")
+	command.AddCommand(newSetupRunCommands()...)
 	return command
 }
 
@@ -39,6 +42,10 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 }
 
 func runGuidedInitMode(ctx context.Context, input io.Reader, output io.Writer, repository string, propose setupProposer, accessible bool) (err error) {
+	return runGuidedInitOptions(ctx, input, output, repository, propose, accessible, false)
+}
+
+func runGuidedInitOptions(ctx context.Context, input io.Reader, output io.Writer, repository string, propose setupProposer, accessible, background bool) (err error) {
 	reader := bufio.NewReader(input)
 	session := setupSession{reader: reader, input: input, output: output, ctx: ctx, interactive: setupInteractive(input, output, accessible)}
 	output, err = chooseSetupInterface(reader, output, session)
@@ -157,6 +164,24 @@ func runGuidedInitMode(ctx context.Context, input io.Reader, output io.Writer, r
 		}
 	}
 	if useAI {
+		if background || session.interactive {
+			fmt.Fprintln(output, "The proposal and cited excerpts will be saved in your user cache for later review; credentials and full documents will not be saved there.")
+			if notes != "" {
+				fmt.Fprintln(output, "Your observations guide this request but are not retained as raw notes when resuming the proposal.")
+			}
+			id, startErr := startSetupBackground(root, config, analysis, documents, notes)
+			if startErr != nil {
+				return startErr
+			}
+			fmt.Fprintf(output, "Background run started: %s\nReview later: harnessforge init resume %s\nNo project files have been changed.\n", id, id)
+			if session.interactive && !background {
+				if inspectErr := inspectSetupBackgroundRun(ctx, input, output, id, false); inspectErr != nil {
+					return inspectErr
+				}
+				fmt.Fprintf(output, "Review later: harnessforge init resume %s\n", id)
+			}
+			return nil
+		}
 		suggestion, err = session.generateProposal(ctx, config, analysis, documents, notes, propose)
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {

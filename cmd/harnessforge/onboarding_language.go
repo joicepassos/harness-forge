@@ -47,6 +47,14 @@ func (w setupLocalizedWriter) Write(data []byte) (int, error) {
 }
 
 var setupPortuguese = strings.NewReplacer(
+	"The background AI proposal is unavailable. Your observations were not stored; a local proposal uses the current project and selected files.", "A proposta de IA em segundo plano nao esta disponivel. Suas observacoes nao foram guardadas; a proposta local usa o projeto atual e os arquivos selecionados.",
+	"Call inspector", "Inspetor de chamadas",
+	"Real events", "Eventos reais",
+	"Esc: cancel request", "Esc: cancelar chamada",
+	"The proposal and cited excerpts will be saved in your user cache for later review; credentials and full documents will not be saved there.", "A proposta e os trechos citados serao salvos no cache do seu usuario para revisao posterior; credenciais e documentos completos nao serao salvos ali.",
+	"Your observations guide this request but are not retained as raw notes when resuming the proposal.", "Suas observacoes orientam esta chamada, mas nao sao guardadas como notas originais ao retomar a proposta.",
+	"Background run started:", "Execucao em segundo plano iniciada:",
+	"Review later:", "Revisar depois:",
 	"The AI proposal could not be accepted because a rule or skill did not correctly cite a project file.", "A proposta da IA nao pode ser aceita porque uma regra ou skill nao citou corretamente um arquivo do projeto.",
 	"The AI response did not match the expected proposal format.", "A resposta da IA nao seguiu o formato esperado para a proposta.",
 	"The AI generated", "A IA gerou",
