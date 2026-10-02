@@ -10,7 +10,7 @@ import (
 
 func TestInterfaceLanguageIsFirstAndPortugueseGuidesCancellation(t *testing.T) {
 	var output bytes.Buffer
-	err := runGuidedInit(context.Background(), strings.NewReader("2\n\nn\n"), &output, t.TempDir(), nil)
+	err := runGuidedInit(context.Background(), strings.NewReader("2\nn\n"), &output, t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -69,11 +69,7 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 		return err
 	}
 	session := setupSession{reader: reader, output: output}
-	languages, err := session.chooseLanguages()
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(output, "%s\n%s\nProject: %s\n\nSelected languages: %s\n\n%s\n\n", style.brand(), style.heading("HarnessForge setup"), root, strings.Join(languages, ", "), style.heading("Ready to analyze"))
+	fmt.Fprintf(output, "%s\n%s\nProject: %s\n\n%s\n\n", style.brand(), style.heading("HarnessForge setup"), root, style.heading("Ready to analyze"))
 	allowed, err := session.confirmDefaultYes("Analyze this project now?")
 	if err != nil {
 		return err
@@ -84,6 +80,10 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	}
 	fmt.Fprintln(output, style.heading("Analyzing project..."))
 	analysis, err := analyzer.AnalyzeWithOptions(ctx, root, analyzer.Options{})
+	if err != nil {
+		return err
+	}
+	languages, err := session.adjustDetectedLanguages(analysis)
 	if err != nil {
 		return err
 	}

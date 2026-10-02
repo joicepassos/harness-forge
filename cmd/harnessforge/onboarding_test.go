@@ -27,7 +27,7 @@ func TestGuidedInitLocalPlanRequiresConfirmation(t *testing.T) {
 		t.Fatal("unexpected AI call")
 		return setupAIProposal{}, nil
 	}
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\nn\n"), &output, root, noAI); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\nn\n"), &output, root, noAI); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "Proposed setup") || !strings.Contains(output.String(), "Go modules") {
@@ -37,7 +37,7 @@ func TestGuidedInitLocalPlanRequiresConfirmation(t *testing.T) {
 		t.Fatalf("files changed before confirmation: %v", err)
 	}
 	output.Reset()
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\ny\n"), &output, root, noAI); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\ny\n"), &output, root, noAI); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
@@ -70,7 +70,7 @@ func TestGuidedInitUsesDocumentsNotesAndAIProposal(t *testing.T) {
 	}
 	var output bytes.Buffer
 	input := "\n\ny\nopenai\n\n\nTeam uses ports and adapters\n\ny\n3\ny\n"
-	if err := runGuidedInit(context.Background(), strings.NewReader(input), &output, root, propose); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+input), &output, root, propose); err != nil {
 		t.Fatal(err)
 	}
 	if !called {
@@ -115,7 +115,7 @@ func TestGuidedInitPreservesManualAgentFile(t *testing.T) {
 	}
 	before, _ := os.ReadFile(filepath.Join(root, ".harness", "harness.yaml"))
 	var output bytes.Buffer
-	err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\nn\n"), &output, root, nil)
+	err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\nn\n"), &output, root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestGuidedInitPreservesManualAgentFile(t *testing.T) {
 		t.Fatalf("manual instructions changed before confirmation: %q", manual)
 	}
 	output.Reset()
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
 		t.Fatal(err)
 	}
 	manual, _ = os.ReadFile(path)
@@ -146,7 +146,7 @@ func TestGuidedInitReplacesOnlyStarterHarness(t *testing.T) {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\ny\n"), &output, root, nil); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "replace starter/generated file") {
@@ -158,7 +158,7 @@ func TestGuidedInitReplacesOnlyStarterHarness(t *testing.T) {
 	}
 	before, _ := os.ReadFile(filepath.Join(root, ".harness", "harness.yaml"))
 	output.Reset()
-	err := runGuidedInit(context.Background(), strings.NewReader("\n\n\n\n\n\ny\n"), &output, root, nil)
+	err := runGuidedInit(context.Background(), strings.NewReader("\n"+"\n\n\n\n\n\ny\n"), &output, root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +184,7 @@ func TestGuidedInitDoesNotAskForKeyWhenAIContextIsDeclined(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "")
 	var output bytes.Buffer
 	input := "\n\nn\n\n\n\nn\n"
-	err := runGuidedInit(context.Background(), strings.NewReader(input), &output, root, func(context.Context, setupProvider, *analyzer.Analysis, []setupDocument, string) (setupAIProposal, error) {
+	err := runGuidedInit(context.Background(), strings.NewReader("\n"+input), &output, root, func(context.Context, setupProvider, *analyzer.Analysis, []setupDocument, string) (setupAIProposal, error) {
 		t.Fatal("AI called after context sharing was declined")
 		return setupAIProposal{}, nil
 	})
