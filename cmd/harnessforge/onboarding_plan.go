@@ -83,6 +83,8 @@ func requestSetupProposal(ctx context.Context, config setupProvider, analysis *a
 	if err != nil {
 		return setupAIProposal{}, err
 	}
+	reportSetupStage(ctx, "context_prepared")
+	reportSetupStage(ctx, "waiting_provider")
 	response, err := provider.Generate(ctx, llmdomain.Request{
 		JSON:         true,
 		Temperature:  0.2,
@@ -92,6 +94,8 @@ func requestSetupProposal(ctx context.Context, config setupProvider, analysis *a
 	if err != nil {
 		return setupAIProposal{}, err
 	}
+	reportSetupStage(ctx, "response_received")
+	reportSetupStage(ctx, "validating_proposal")
 	if len(response.Content) > 128<<10 {
 		return setupAIProposal{}, fmt.Errorf("AI proposal is too large")
 	}

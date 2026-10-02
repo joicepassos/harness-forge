@@ -47,6 +47,13 @@ func (w setupLocalizedWriter) Write(data []byte) (int, error) {
 }
 
 var setupPortuguese = strings.NewReplacer(
+	"Preparing selected context...", "Preparando o contexto selecionado...",
+	"Context prepared.", "Contexto preparado.",
+	"Waiting for provider response...", "Aguardando a resposta do provedor...",
+	"Provider response received.", "Resposta do provedor recebida.",
+	"Validating the AI proposal...", "Validando a proposta de IA...",
+	"AI proposal ready for review.", "Proposta de IA pronta para revisao.",
+	"Cancelling the AI request...", "Cancelando a consulta a IA...",
 	"Summary:", "Resumo:",
 	"deepseek key found", "Chave do DeepSeek encontrada",
 	"openai key found", "Chave do OpenAI encontrada",

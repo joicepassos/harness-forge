@@ -157,9 +157,11 @@ func runGuidedInitMode(ctx context.Context, input io.Reader, output io.Writer, r
 		}
 	}
 	if useAI {
-		fmt.Fprintln(output, "Preparing the proposal with the selected context...")
-		suggestion, err = propose(ctx, config, analysis, documents, notes)
+		suggestion, err = session.generateProposal(ctx, config, analysis, documents, notes, propose)
 		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return err
+			}
 			fmt.Fprintln(output, style.status("error", fmt.Sprintf("AI proposal could not be validated: %v", err)))
 			continueLocal, askErr := session.confirm("Continue with a local proposal?")
 			if askErr != nil {
