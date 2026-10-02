@@ -47,6 +47,10 @@ func (w setupLocalizedWriter) Write(data []byte) (int, error) {
 }
 
 var setupPortuguese = strings.NewReplacer(
+	"File list unavailable for this older run.", "Lista de arquivos indisponivel nesta execucao antiga.",
+	"Review complete: choose the next action", "Revisao concluida: escolha a proxima acao",
+	"Apply these files", "Aplicar estes arquivos",
+	"Back without applying", "Voltar sem aplicar",
 	"The background AI proposal is unavailable. Your observations were not stored; a local proposal uses the current project and selected files.", "A proposta de IA em segundo plano nao esta disponivel. Suas observacoes nao foram guardadas; a proposta local usa o projeto atual e os arquivos selecionados.",
 	"Call inspector", "Inspetor de chamadas",
 	"Real events", "Eventos reais",

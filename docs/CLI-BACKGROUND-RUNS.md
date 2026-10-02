@@ -45,6 +45,13 @@ Use `--color always` to explicitly enable colors even in such an environment,
 or `--color never` to disable them. Redirected and accessible inspector output
 remains plain regardless of this option.
 
+When generation finishes, the proposal section opens with Review proposal
+focused. The file preview ends with Apply these files or Back without applying
+(the safe default). Approval leads to a completion screen listing the files
+actually written and a focused Finish action. Enter then closes the inspector;
+it does not start another review. Older cached runs may lack a saved file list
+and explicitly report that limitation rather than inventing a list.
+
 Run state is stored outside the project, in the user's cache. Credentials and
 full context documents are passed to the worker through a pipe, not command
 arguments or run-state files. The saved proposal can contain cited excerpts;

@@ -137,3 +137,18 @@ root-command propagation and responsive viewport bounds. No additional paid
 provider call was needed. Inline review approval/refusal was checked through
 the shared guarded review implementation with deterministic project fixtures;
 the demo's existing generated files were left untouched in this UI round.
+
+## Follow-up: explicit proposal lifecycle
+
+Ready proposals automatically focus their review action. The interactive
+preview offers Apply these files or Back without applying, defaulting to the
+non-writing choice. Applying records the exact output paths and opens a
+completion screen with Finish focused. Enter finishes instead of starting
+another review, and guided init no longer suggests resuming an applied run.
+
+Lifecycle and saved-path tests passed alongside the full Go suite and vet.
+The demo's existing applied run was reopened in a Windows terminal: it showed
+the completion state and Enter exited correctly. That older cache did not
+record output paths; the UI explicitly reports the missing historical list.
+New approved runs persist actual written paths, verified with project fixtures.
+No demo files or external provider requests were changed in this round.

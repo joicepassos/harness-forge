@@ -178,7 +178,11 @@ func runGuidedInitOptions(ctx context.Context, input io.Reader, output io.Writer
 				if inspectErr := inspectSetupBackgroundRun(ctx, input, output, id, false); inspectErr != nil {
 					return inspectErr
 				}
-				fmt.Fprintf(output, "Review later: harnessforge init resume %s\n", id)
+				if run, loadErr := loadSetupBackgroundRun(id); loadErr == nil && run.Status == "applied" {
+					fmt.Fprintln(output, "Setup complete. Review the generated files before committing them.")
+				} else {
+					fmt.Fprintf(output, "Review later: harnessforge init resume %s\n", id)
+				}
 			}
 			return nil
 		}

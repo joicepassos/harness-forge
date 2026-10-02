@@ -77,6 +77,10 @@ func TestBackgroundResumeAppliesOnceAndKeepsLocalFallback(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(run.Root, ".harness", "harness.yaml")); err != nil {
 				t.Fatal(err)
 			}
+			applied, err := loadSetupBackgroundRun(run.ID)
+			if err != nil || len(applied.AppliedFiles) == 0 || applied.Status != "applied" {
+				t.Fatal("completion did not record the files actually written")
+			}
 			if err := resumeSetupBackgroundRun(context.Background(), strings.NewReader(answers), &output, run.ID, true); err == nil {
 				t.Fatal("already applied run accepted again")
 			}

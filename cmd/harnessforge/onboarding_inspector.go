@@ -62,6 +62,14 @@ func (m *setupInspectorModel) canReview() bool {
 	return m.run.Status == "ready" || m.run.Status == "failed" || m.run.Status == "cancelled"
 }
 
+func (m *setupInspectorModel) focusNextStep() {
+	if m.canReview() || m.run.Status == "applied" {
+		m.confirmCancel = false
+		m.section, m.focus, m.action = 3, 2, 0
+		m.viewport.GotoTop()
+	}
+}
+
 func (s setupSession) inspectorText(text string) string {
 	if _, ok := s.output.(setupLocalizedWriter); ok {
 		return s.uiText(strings.NewReplacer("Response headers received; reading body", "Cabecalhos recebidos; aguardando corpo da resposta", "Proposal generation failed.", "A geracao da proposta falhou.", "Process cancelled.", "Processo cancelado.", "Proposal applied after confirmation.", "Proposta aplicada apos confirmacao.").Replace(text))
@@ -127,7 +135,11 @@ func (m *setupInspectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.err = msg.err
 		} else {
+			changed := m.run.Status != msg.run.Status
 			m.run = msg.run
+			if changed {
+				m.focusNextStep()
+			}
 		}
 		return m, m.poll()
 	case tea.WindowSizeMsg:
@@ -175,11 +187,18 @@ func (m *setupInspectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.focus == 2 {
 				switch m.action {
 				case 0:
+					if m.run.Status == "applied" {
+						return m, tea.Quit
+					}
 					if m.canReview() {
 						m.review = true
 						return m, tea.Quit
 					}
 				case 1:
+					if m.run.Status == "applied" {
+						m.focus, m.section = 1, 3
+						return m, nil
+					}
 					return m, tea.Quit
 				case 2:
 					m.confirmCancel = setupInspectorActive(m.run.Status)
@@ -197,7 +216,11 @@ func (m *setupInspectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if m.focus == 2 {
-				m.action = (m.action + step + 3) % 3
+				count := 3
+				if m.run.Status == "applied" {
+					count = 2
+				}
+				m.action = (m.action + step + count) % count
 				return m, nil
 			}
 		case "1", "2", "3", "4":
@@ -238,7 +261,14 @@ func setupInspectorDetails(run setupBackgroundRun, section int, sessions ...setu
 		return fmt.Sprintf("Validacao concluida\n\n%d regra(s) com evidencia valida\n%d habilidade(s) com evidencia valida\n\nDescartadas: %d regra(s), %d habilidade(s).\nCitacoes invalidas nao foram aceitas.", len(run.Proposal.Rules), len(run.Proposal.Skills), run.DiscardedRules, run.DiscardedSkills)
 	case 3:
 		if run.Status == "applied" {
-			return "Proposal applied after confirmation."
+			lines := []string{"Proposal applied after confirmation.", ""}
+			if len(run.AppliedFiles) == 0 {
+				lines = append(lines, s.uiText("File list unavailable for this older run."))
+			}
+			for _, path := range run.AppliedFiles {
+				lines = append(lines, "  "+setupInspectorSafe(path))
+			}
+			return strings.Join(lines, "\n")
 		}
 		if run.Proposal == nil {
 			return "Proposta\n\nAinda nao disponivel para revisao."
@@ -315,6 +345,11 @@ func (m *setupInspectorModel) View() tea.View {
 		activity = m.spinner.View() + " "
 	}
 	status := stateStyle.Render(fmt.Sprintf("%s%s", activity, m.session.inspectorStatus(m.run.Status))) + muted.Render(fmt.Sprintf("  /  %ds  /  ", elapsed)) + setupInspectorSafe(m.run.Provider) + " / " + setupInspectorSafe(m.run.Model)
+	if m.run.Status == "ready" {
+		status = stateStyle.Render(m.label("PROPOSAL READY / Next: review proposal", "PROPOSTA PRONTA / Proximo passo: revisar proposta"))
+	} else if m.run.Status == "applied" {
+		status = stateStyle.Render(m.label("COMPLETE / Files saved / Next: finish", "CONCLUIDO / Arquivos gravados / Proximo passo: encerrar"))
+	}
 	labels := []string{m.label("Context", "Contexto"), m.label("Calls", "Chamadas"), m.label("Validation", "Validacao"), m.label("Proposal", "Proposta")}
 	for i := range labels {
 		labels[i] = fmt.Sprintf("%d  %s", i+1, labels[i])
@@ -334,6 +369,9 @@ func (m *setupInspectorModel) View() tea.View {
 		header += "\n" + strings.Join(labels, " | ")
 	}
 	actions := []string{m.label("Review proposal", "Revisar proposta"), m.label("Detach", "Soltar terminal"), m.label("Cancel", "Cancelar")}
+	if m.run.Status == "applied" {
+		actions = []string{m.label("Finish", "Encerrar"), m.label("View saved files", "Ver arquivos gravados"), ""}
+	}
 	for i, action := range actions {
 		style := muted
 		if (i == 0 && m.canReview()) || (i == 2 && setupInspectorActive(m.run.Status)) {
@@ -348,6 +386,9 @@ func (m *setupInspectorModel) View() tea.View {
 	if m.focus == 1 {
 		footer = strings.Join(actions, "  ") + "\n" + muted.Render(m.label("DETAILS / arrows: scroll | Esc: sections | Tab: actions", "DETALHES / setas: rolar | Esc: secoes | Tab: acoes"))
 	}
+	if m.focus == 2 && (m.run.Status == "ready" || m.run.Status == "applied") {
+		footer = strings.Join(actions, "  ") + "\n" + muted.Render(m.label("Enter: continue with the highlighted action | arrows: choose", "Enter: continuar com a acao destacada | setas: escolher"))
+	}
 	if m.confirmCancel {
 		footer = lipgloss.NewStyle().Foreground(lipgloss.Color("#EDC56F")).Bold(true).Render(m.label("Cancel the provider request? Enter: confirm / Esc: keep running", "Cancelar a chamada ao provedor? Enter: confirmar / Esc: continuar"))
 	}
@@ -357,6 +398,11 @@ func (m *setupInspectorModel) View() tea.View {
 	if width < 48 || height < 16 {
 		header = accent.Render("HarnessForge") + "\n" + ansi.Truncate(status, width, "") + "\n" + ansi.Truncate(labels[m.section], width, "")
 		footer = m.label("Enter / Tab / Esc / r / d", "Enter / Tab / Esc / r / d")
+		if m.focus == 2 && m.run.Status == "ready" {
+			footer = m.label("Enter: review", "Enter: revisar")
+		} else if m.focus == 2 && m.run.Status == "applied" {
+			footer = m.label("Enter: finish", "Enter: encerrar")
+		}
 		if m.confirmCancel {
 			footer = m.label("Cancel? Enter / Esc", "Cancelar? Enter / Esc")
 		}
@@ -373,6 +419,9 @@ func (m *setupInspectorModel) View() tea.View {
 	m.viewport.SetWidth(max(1, bodyWidth))
 	m.viewport.SetHeight(max(1, height-lipgloss.Height(header)-lipgloss.Height(footer)-1))
 	details := strings.Split(m.session.inspectorRunText(setupInspectorDetails(m.run, m.section, m.session), m.run), "\n")
+	if m.section == 3 && m.run.Status == "ready" && m.run.Proposal != nil {
+		details = []string{m.label("Ready for your review", "Pronta para sua revisao"), "", fmt.Sprintf(m.label("%d rules / %d skills", "%d regras / %d skills"), len(m.run.Proposal.Rules), len(m.run.Proposal.Skills)), "", m.label("No project files have been changed.", "Nenhum arquivo do projeto foi alterado."), "", m.label("Review the file preview, then apply or go back without changes.", "Confira a previa dos arquivos e escolha aplicar ou voltar sem alterar.")}
+	}
 	for i, line := range details {
 		if i == 0 {
 			details[i] = accent.Render(line)
@@ -416,6 +465,7 @@ func inspectSetupBackgroundRun(ctx context.Context, input io.Reader, output io.W
 		activity := spinner.New(spinner.WithSpinner(spinner.Dot))
 		activity.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#55D6BE"))
 		m := &setupInspectorModel{session: s, run: run, section: 1, width: 80, height: 24, spinner: activity, viewport: viewport.New()}
+		m.focusNextStep()
 		options := []tea.ProgramOption{tea.WithInput(input), tea.WithOutput(s.uiOutput()), tea.WithContext(ctx)}
 		mode, _ := ctx.Value(setupInspectorColorKey{}).(string)
 		if mode == "always" || (runtime.GOOS == "windows" && setupInspectorColors(ctx) && (os.Getenv("TERM") == "" || os.Getenv("TERM") == "dumb")) {

@@ -28,6 +28,7 @@ type setupRunEvent struct {
 	At    time.Time
 }
 type setupBackgroundRun struct {
+	AppliedFiles                                    []string
 	ID, Root, Provider, Model, Status, Stage, Error string
 	StartedAt, UpdatedAt                            time.Time
 	Documents                                       []setupRunDocument
@@ -493,7 +494,14 @@ func reviewSetupBackgroundRun(ctx context.Context, input io.Reader, output io.Wr
 		return err
 	}
 	showSetupPlan(output, plan)
-	approved, err := session.confirm("Create or update exactly these files?")
+	var approved bool
+	if preserveLanguage && session.interactive {
+		choice, choiceErr := session.formSelect(session.uiText("Review complete: choose the next action"), []string{session.uiText("Apply these files"), session.uiText("Back without applying")}, []string{"apply", "back"}, "back")
+		err = choiceErr
+		approved = choice == "apply"
+	} else {
+		approved, err = session.confirm("Create or update exactly these files?")
+	}
 	if err != nil {
 		return err
 	}
@@ -505,6 +513,9 @@ func reviewSetupBackgroundRun(ctx context.Context, input io.Reader, output io.Wr
 		return err
 	}
 	run.Status = "applied"
+	for _, file := range plan.Files {
+		run.AppliedFiles = append(run.AppliedFiles, file.Path)
+	}
 	run.Stage = "applied"
 	run.UpdatedAt = time.Now().UTC()
 	run.Events = append(run.Events, setupRunEvent{Stage: "applied", At: run.UpdatedAt})

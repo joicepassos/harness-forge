@@ -167,6 +167,28 @@ func TestInspectorColorPolicyAndCommandPropagation(t *testing.T) {
 	}
 }
 
+func TestInspectorProposalLifecycleHasExplicitNextActions(t *testing.T) {
+	m := &setupInspectorModel{run: setupBackgroundRun{Status: "running"}, width: 80, height: 24, spinner: spinner.New(), viewport: viewport.New()}
+	ready := setupBackgroundRun{Status: "ready", Proposal: &setupAIProposal{}}
+	m.Update(setupInspectorPoll{run: ready})
+	if m.section != 3 || m.focus != 2 || m.action != 0 {
+		t.Fatal("ready proposal did not focus its next action")
+	}
+	if !strings.Contains(m.View().Content, "PROPOSAL READY") {
+		t.Fatal("missing ready step")
+	}
+	m.run = setupBackgroundRun{Status: "applied", AppliedFiles: []string{"AGENTS.md", ".harness/harness.yaml"}}
+	m.focusNextStep()
+	view := m.View().Content
+	if !strings.Contains(view, "COMPLETE") || !strings.Contains(view, "AGENTS.md") || !strings.Contains(view, "Finish") || strings.Contains(view, "Review proposal") {
+		t.Fatalf("ambiguous completed state: %s", view)
+	}
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil || m.review {
+		t.Fatal("completion must finish, not reopen review")
+	}
+}
+
 func TestInspectorFriendlyStatesPreserveFilenamesAndAppliedOutcome(t *testing.T) {
 	s := setupSession{output: setupLocalizedWriter{output: &bytes.Buffer{}}}
 	run := setupBackgroundRun{ID: "run-test", Status: "running", Documents: []setupRunDocument{{Path: "Contexto-Modelo.md"}}}
