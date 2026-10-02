@@ -16,6 +16,7 @@ import (
 func setupBackgroundTestCache(t *testing.T) {
 	t.Helper()
 	cache := t.TempDir()
+	t.Setenv("HOME", cache)
 	t.Setenv("LOCALAPPDATA", cache)
 	t.Setenv("XDG_CACHE_HOME", cache)
 }
