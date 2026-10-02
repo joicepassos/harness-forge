@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"harnessforge/internal/analyzer"
-	"harnessforge/internal/llm"
 	"io"
 	"os"
 	"path/filepath"
@@ -21,19 +20,42 @@ type setupProposer func(context.Context, setupProvider, *analyzer.Analysis, []se
 
 func newInitCommand() *cobra.Command {
 	var repository string
+	var accessible bool
+	var background bool
 	command := &cobra.Command{
 		Use:   "init",
 		Short: "Analyze and configure this project with a guided setup",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runGuidedInit(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), repository, requestSetupProposal)
+			return runGuidedInitOptions(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout(), repository, requestSetupProposal, accessible, background)
 		},
 	}
 	command.Flags().StringVar(&repository, "repository", ".", "Project directory to configure")
+	command.Flags().BoolVar(&accessible, "accessible", false, "Use plain prompts for screen readers and automation")
+	command.Flags().BoolVar(&background, "background", false, "Generate the authorized AI proposal in a detached process; review it with init resume")
+	command.AddCommand(newSetupRunCommands()...)
 	return command
 }
 
 func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repository string, propose setupProposer) (err error) {
+	return runGuidedInitMode(ctx, input, output, repository, propose, false)
+}
+
+func runGuidedInitMode(ctx context.Context, input io.Reader, output io.Writer, repository string, propose setupProposer, accessible bool) (err error) {
+	return runGuidedInitOptions(ctx, input, output, repository, propose, accessible, false)
+}
+
+func runGuidedInitOptions(ctx context.Context, input io.Reader, output io.Writer, repository string, propose setupProposer, accessible, background bool) (err error) {
+	reader := bufio.NewReader(input)
+	session := setupSession{reader: reader, input: input, output: output, ctx: ctx, interactive: setupInteractive(input, output, accessible)}
+	output, err = chooseSetupInterface(reader, output, session)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			fmt.Fprintln(output, "Setup cancelled; no project files changed.")
+			return nil
+		}
+		return err
+	}
 	style := presentationFor(output)
 	defer func() {
 		if errors.Is(err, io.EOF) {
@@ -61,12 +83,8 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	session := setupSession{reader: bufio.NewReader(input), output: output}
-	languages, err := session.chooseLanguages()
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(output, "%s\n%s\nProject: %s\n\nSelected languages: %s\n\n%s\n\n", style.brand(), style.heading("HarnessForge setup"), root, strings.Join(languages, ", "), style.heading("Ready to analyze"))
+	session.output = output
+	fmt.Fprintf(output, "%s\n%s\nProject: %s\n\n%s\n\n", style.brand(), style.heading("HarnessForge setup"), root, style.heading("Ready to analyze"))
 	allowed, err := session.confirmDefaultYes("Analyze this project now?")
 	if err != nil {
 		return err
@@ -77,6 +95,10 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	}
 	fmt.Fprintln(output, style.heading("Analyzing project..."))
 	analysis, err := analyzer.AnalyzeWithOptions(ctx, root, analyzer.Options{})
+	if err != nil {
+		return err
+	}
+	languages, err := session.adjustDetectedLanguages(analysis)
 	if err != nil {
 		return err
 	}
@@ -91,15 +113,19 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	fmt.Fprintf(output, "Languages selected: %s\n", strings.Join(languages, ", "))
 	printSetupDirectories(output, root)
 	fmt.Fprintln(output, style.status("info", "No project files have been changed."))
+	artifactLanguage, err := session.chooseArtifactLanguage()
+	if err != nil {
+		return err
+	}
 	config, useAI, err := askSetupProvider(session, input)
 	if err != nil {
 		return err
 	}
+	config.ArtifactLanguage = artifactLanguage
 	if useAI {
 		if err := ensureSetupKey(session, input, &config); err != nil {
 			return err
 		}
-		fmt.Fprintln(output, style.status("success", "AI token received for this run; it will not be written to project files."))
 	}
 	documents := defaultSetupDocuments(ctx, root)
 	if len(documents) > 0 {
@@ -139,13 +165,37 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 		if !allowed {
 			fmt.Fprintln(output, style.status("warning", "AI call cancelled; continuing with a local proposal."))
 			useAI = false
-			config = setupProvider{}
+			config = setupProvider{ArtifactLanguage: artifactLanguage}
 		}
 	}
 	if useAI {
-		fmt.Fprintln(output, "Preparing the proposal with the selected context...")
-		suggestion, err = propose(ctx, config, analysis, documents, notes)
+		if background || session.interactive {
+			fmt.Fprintln(output, "The proposal and cited excerpts will be saved in your user cache for later review; credentials and full documents will not be saved there.")
+			if notes != "" {
+				fmt.Fprintln(output, "Your observations guide this request but are not retained as raw notes when resuming the proposal.")
+			}
+			id, startErr := startSetupBackground(root, config, analysis, documents, notes)
+			if startErr != nil {
+				return startErr
+			}
+			fmt.Fprintf(output, "Background run started: %s\nReview later: harnessforge init resume %s\nNo project files have been changed.\n", id, id)
+			if session.interactive && !background {
+				if inspectErr := inspectSetupBackgroundRun(ctx, input, output, id, false); inspectErr != nil {
+					return inspectErr
+				}
+				if run, loadErr := loadSetupBackgroundRun(id); loadErr == nil && run.Status == "applied" {
+					fmt.Fprintln(output, "Setup complete. Review the generated files before committing them.")
+				} else {
+					fmt.Fprintf(output, "Review later: harnessforge init resume %s\n", id)
+				}
+			}
+			return nil
+		}
+		suggestion, err = session.generateProposal(ctx, config, analysis, documents, notes, propose)
 		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return err
+			}
 			fmt.Fprintln(output, style.status("error", fmt.Sprintf("AI proposal could not be validated: %v", err)))
 			continueLocal, askErr := session.confirm("Continue with a local proposal?")
 			if askErr != nil {
@@ -154,7 +204,10 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 			if !continueLocal {
 				return fmt.Errorf("setup stopped before changing project files")
 			}
-			config, suggestion = setupProvider{}, setupAIProposal{}
+			config, suggestion = setupProvider{ArtifactLanguage: artifactLanguage}, setupAIProposal{}
+		}
+		if suggestion.DiscardedRules+suggestion.DiscardedSkills > 0 {
+			fmt.Fprintln(output, style.status("warning", fmt.Sprintf("The AI generated %d rule(s) and %d skill(s) without valid project-file citations; these items were discarded. The remaining proposal has verified citations and still requires your review.", suggestion.DiscardedRules, suggestion.DiscardedSkills)))
 		}
 	}
 	agents, err := askSetupAgents(session)
@@ -165,7 +218,7 @@ func runGuidedInit(ctx context.Context, input io.Reader, output io.Writer, repos
 	if err != nil {
 		return err
 	}
-	showSetupPlan(output, plan)
+	showSetupReview(output, plan)
 	approved, err := session.confirm("Create or update exactly these files?")
 	if err != nil {
 		return err
@@ -217,13 +270,9 @@ func askSetupProvider(session setupSession, _ io.Reader) (setupProvider, bool, e
 	if variable == "?" {
 		return setupProvider{}, false, fmt.Errorf("unsupported provider %q", name)
 	}
-	defaultModel := llm.DefaultModel(name)
-	model, err := session.ask(fmt.Sprintf("Model (default %s): ", defaultModel))
+	model, err := session.chooseModel(name)
 	if err != nil {
 		return setupProvider{}, false, err
-	}
-	if model == "" {
-		model = defaultModel
 	}
 	if model == "" {
 		return setupProvider{}, false, fmt.Errorf("a model name is required for %s", name)
@@ -234,7 +283,14 @@ func askSetupProvider(session setupSession, _ io.Reader) (setupProvider, bool, e
 
 func ensureSetupKey(session setupSession, input io.Reader, config *setupProvider) error {
 	variable := setupKeyVariable(config.Name)
-	if variable != "" && os.Getenv(variable) == "" {
+	if variable != "" && strings.TrimSpace(os.Getenv(variable)) != "" {
+		fmt.Fprintf(session.output, "%s key found in the environment; it will be used only for this run.\n", config.Name)
+		return nil
+	}
+	if variable != "" {
+		if session.interactive {
+			return session.formKey(variable, config)
+		}
 		terminal, ok := input.(*os.File)
 		if !ok || terminal != os.Stdin || !term.IsTerminal(int(os.Stdin.Fd())) {
 			return fmt.Errorf("%s is missing; set it in the environment before a scripted AI setup", variable)
@@ -274,7 +330,8 @@ func setupKeyVariable(provider string) string {
 }
 
 func askSetupAgents(session setupSession) ([]string, error) {
-	answer, err := session.ask("Agent instructions [1 Codex, 2 Claude, 3 both] (default 1): ")
+	fmt.Fprintln(session.output, "The AI provider creates the proposal; these agents read the generated project instructions. Codex and OpenCode both use AGENTS.md.")
+	answer, err := session.ask("Agent instructions [1 Codex/OpenCode, 2 Claude, 3 both] (default 1): ")
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +350,7 @@ func askSetupAgents(session setupSession) ([]string, error) {
 func showSetupPlan(output io.Writer, plan setupPlan) {
 	fmt.Fprintln(output, "\n"+presentationFor(output).heading("Proposed setup (nothing has been written):"))
 	if plan.Summary != "" {
-		fmt.Fprintf(output, "AI summary: %s\n", plan.Summary)
+		fmt.Fprintf(output, "Summary: %s\n", plan.Summary)
 	}
 	fmt.Fprintf(output, "Languages: %s\n", strings.Join(plan.Harness.Project.Languages, ", "))
 	fmt.Fprintf(output, "Architecture: %s\n", strings.Join(plan.Harness.Architecture.Styles, ", "))
@@ -305,6 +362,11 @@ func showSetupPlan(output io.Writer, plan setupPlan) {
 		} else if file.Replace {
 			action = "replace starter/generated file"
 		}
-		fmt.Fprintf(output, "\n--- %s (%s) ---\n%s\n", file.Path, action, file.Content)
+		fmt.Fprintf(output, "\n--- %s (%s) ---\n", file.Path, action)
+		contentOutput := output
+		if localized, ok := output.(setupLocalizedWriter); ok {
+			contentOutput = localized.output
+		}
+		fmt.Fprintf(contentOutput, "%s\n", file.Content)
 	}
 }

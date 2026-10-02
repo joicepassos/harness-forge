@@ -20,31 +20,49 @@ func (YAMLLoader) Load(path string) (domain.Harness, error) {
 	if err != nil {
 		return h, fmt.Errorf("%s: %w", path, err)
 	}
+	return parseHarnessYAML(data, path)
+}
+
+// LoadBytes parses the exact bytes supplied by a caller that has already
+// opened a source through a confined filesystem handle.
+func (YAMLLoader) LoadBytes(data []byte) (domain.Harness, error) {
+	if int64(len(data)) > inputlimits.HarnessYAMLBytes {
+		return domain.Harness{}, fmt.Errorf("Harness YAML exceeds %d bytes", inputlimits.HarnessYAMLBytes)
+	}
+	return parseHarnessYAML(data, "Harness YAML")
+}
+
+func parseHarnessYAML(data []byte, source string) (domain.Harness, error) {
+	var h domain.Harness
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	var value any
 	if err := decoder.Decode(&value); err != nil {
-		return h, fmt.Errorf("%s: %w", path, err)
+		return h, fmt.Errorf("%s: %w", source, err)
 	}
 	if err := decoder.Decode(new(any)); err != io.EOF {
-		return h, fmt.Errorf("%s: expected one YAML document", path)
+		return h, fmt.Errorf("%s: expected one YAML document", source)
 	}
 	if err := rejectNull(value, "$"); err != nil {
 		return h, err
 	}
 	// JSON conversion enforces string types rather than YAML's scalar-to-string coercion.
-	data, err = json.Marshal(value)
+	data, err := json.Marshal(value)
 	if err != nil {
-		return h, fmt.Errorf("%s: YAML must use string keys: %w", path, err)
+		return h, fmt.Errorf("%s: YAML must use string keys: %w", source, err)
 	}
 	strict := json.NewDecoder(bytes.NewReader(data))
 	strict.DisallowUnknownFields()
 	if err := strict.Decode(&h); err != nil {
-		return h, fmt.Errorf("%s: %w", path, err)
+		return h, fmt.Errorf("%s: %w", source, err)
 	}
 	if err := h.Validate(); err != nil {
 		return h, err
 	}
-	if err := schemas.Validate("harness-v1.schema.json", data); err != nil {
+	schema := "harness-v1.schema.json"
+	if h.Version == 2 {
+		schema = "harness-v2.schema.json"
+	}
+	if err := schemas.Validate(schema, data); err != nil {
 		return h, err
 	}
 	return h, nil

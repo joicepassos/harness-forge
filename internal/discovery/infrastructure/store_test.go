@@ -24,7 +24,7 @@ func TestStoreAppendsOnceAndPreservesManualBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	first, _ := os.ReadFile(harness)
-	if !bytes.HasPrefix(first, original) || !bytes.Contains(first, []byte("status: approved")) {
+	if !bytes.HasPrefix(first, original) || !bytes.Contains(first, []byte("status: candidate")) {
 		t.Fatalf("%s", first)
 	}
 	if err := (Store{}).Apply(dir, harness, proposal); err != nil {
@@ -50,6 +50,54 @@ func TestStoreRejectsInvalidEvidenceWithoutChangingHarness(t *testing.T) {
 	}
 }
 
+func TestStoreRejectsSameIDWithDifferentContent(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "harness.yaml")
+	source := filepath.Join(dir, "port.go")
+	original := []byte("version: 1\nproject: {name: sample}\nrules:\n  - id: use-ports\n    description: Use ports\n    origin: ai\n    status: candidate\n    evidence:\n      - file: port.go\n        symbol: Port\n")
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(source, []byte("type Port interface{}"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	proposal := domain.Proposal{ID: "use-ports", Description: "Use adapters", Evidence: []domain.Evidence{{File: "port.go", Symbol: "Port"}}}
+	if err := (Store{}).Apply(dir, path, proposal); err == nil {
+		t.Fatal("conflicting proposal was accepted")
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(original, after) {
+		t.Fatal("conflicting proposal changed harness")
+	}
+}
+
+func TestStoreAcceptsSameIDWithIdenticalContent(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "harness.yaml")
+	source := filepath.Join(dir, "port.go")
+	original := []byte("version: 1\nproject: {name: sample}\nrules:\n  - id: use-ports\n    description: Use ports\n    origin: ai\n    status: candidate\n    evidence:\n      - file: port.go\n        symbol: Port\n")
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(source, []byte("type Port interface{}"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	proposal := domain.Proposal{ID: "use-ports", Description: "Use ports", Evidence: []domain.Evidence{{File: "port.go", Symbol: "Port"}}}
+	if err := (Store{}).Apply(dir, path, proposal); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(original, after) {
+		t.Fatal("identical proposal changed harness")
+	}
+}
+
 func TestStoreInsertsIntoExistingRulesBeforeFollowingSections(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "harness.yaml")
@@ -66,7 +114,7 @@ func TestStoreInsertsIntoExistingRulesBeforeFollowingSections(t *testing.T) {
 		t.Fatal(err)
 	}
 	updated, _ := os.ReadFile(path)
-	if !bytes.Contains(updated, []byte("    status: approved\n  - id: use-ports")) || !bytes.Contains(updated, []byte("    revision: \"\"\nquality_gates:")) {
+	if !bytes.Contains(updated, []byte("  - id: use-ports")) || !bytes.Contains(updated, []byte("    status: candidate\n    evidence:")) || !bytes.Contains(updated, []byte("    revision: \"\"\nquality_gates:")) {
 		t.Fatalf("rule was not inserted into its sequence:\n%s", updated)
 	}
 }

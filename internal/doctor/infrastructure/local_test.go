@@ -143,3 +143,41 @@ func TestDoctorRejectsSkillSymlinkEscape(t *testing.T) {
 	}
 	t.Fatal("skill symlink escape was accepted")
 }
+
+func TestDoctorValidatesForgeReferencesAndDoesNotRunGates(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".forge"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "gate-ran")
+	manifest := "layout_version: 1\nir_version: 2\nproject: {name: sample}\ntargets: [codex, claude]\nreferences:\n  knowledge: [{id: missing, path: .forge/knowledge/missing.md}]\nquality_gates:\n  - id: never\n    command: touch " + marker + "\n    workspace: .\n    workspaces: [.]\npolicies:\n  - id: advisory\n    description: Example\n    capability: advisory\n    executor: none\n"
+	path := filepath.Join(root, ".forge", "forge.yaml")
+	if err := os.WriteFile(path, []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	diagnostics, err := (LocalSource{}).Diagnose(context.Background(), path, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	codes := map[string]bool{}
+	for _, diagnostic := range diagnostics {
+		codes[diagnostic.Code] = true
+	}
+	if !codes["forge.reference_invalid"] || !codes["forge.gate_not_run"] || !codes["forge.policy_not_enforced"] {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("doctor executed the gate command: stat err = %v", err)
+	}
+}
+
+func TestDoctorForgeReportsInvalidManifest(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "forge.yaml")
+	if err := os.WriteFile(path, []byte("layout_version: 99\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	diagnostics, err := (LocalSource{}).Diagnose(context.Background(), path, "")
+	if err != nil || len(diagnostics) != 1 || diagnostics[0].Code != "forge.invalid" {
+		t.Fatalf("diagnostics = %#v, err = %v", diagnostics, err)
+	}
+}

@@ -82,6 +82,23 @@ harnessforge rag . "How is authentication configured?" --k 5
 
 `rag` validates that provider citations refer to retrieved chunks. If retrieval has no overlap, it returns `insufficient_evidence` instead of asking the provider. The index is local at `.harness/index.json`; do not commit a key to it or to any project file.
 
+To migrate a project to the Forge layout, first inspect the deterministic JSON
+preview. Choose the target agents and a knowledge kind for untyped legacy rules:
+
+```powershell
+harnessforge migrate --to-layout forge --dry-run --repository . --target codex --target claude --rule-kind convention
+```
+
+Copy the preview's `plan_sha256` value into the apply command after reviewing
+the listed losses, warnings, and generated files. Apply refuses a missing or
+stale digest, so rerun the preview if the source or migration choices change:
+
+```powershell
+harnessforge migrate --to-layout forge --apply --repository . --target codex --target claude --rule-kind convention --plan-sha256 <digest-from-preview>
+```
+
+The original Harness file remains in place. Use `harnessforge migrate --rollback
+--repository .` to remove only the unchanged files created by this migration.
 ## 4. Propose and approve a rule
 
 Use discovery when you want an AI-assisted suggestion with repository evidence, while keeping the decision with a human reviewer:

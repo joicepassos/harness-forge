@@ -1,8 +1,12 @@
 package domain
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 type Harness struct {
@@ -35,17 +39,30 @@ type Scope struct {
 	Paths []string `json:"paths,omitempty" yaml:"paths,omitempty"`
 }
 type Evidence struct {
-	File     string `json:"file" yaml:"file"`
-	Symbol   string `json:"symbol,omitempty" yaml:"symbol,omitempty"`
-	Revision string `json:"revision,omitempty" yaml:"revision"`
+	File      string `json:"file" yaml:"file"`
+	Kind      string `json:"kind,omitempty" yaml:"kind,omitempty"`
+	Workspace string `json:"workspace,omitempty" yaml:"workspace,omitempty"`
+	Symbol    string `json:"symbol,omitempty" yaml:"symbol,omitempty"`
+	Quote     string `json:"quote,omitempty" yaml:"quote,omitempty"`
+	StartLine int    `json:"start_line,omitempty" yaml:"start_line,omitempty"`
+	EndLine   int    `json:"end_line,omitempty" yaml:"end_line,omitempty"`
+	SHA256    string `json:"sha256,omitempty" yaml:"sha256,omitempty"`
+	Revision  string `json:"revision,omitempty" yaml:"revision"`
 }
 type Rule struct {
-	ID          string     `json:"id" yaml:"id"`
-	Description string     `json:"description" yaml:"description"`
-	Scope       Scope      `json:"scope,omitempty" yaml:"scope,omitempty"`
-	Origin      string     `json:"origin" yaml:"origin"`
-	Status      string     `json:"status" yaml:"status"`
-	Evidence    []Evidence `json:"evidence,omitempty" yaml:"evidence,omitempty"`
+	ID          string        `json:"id" yaml:"id"`
+	Description string        `json:"description" yaml:"description"`
+	Scope       Scope         `json:"scope,omitempty" yaml:"scope,omitempty"`
+	Origin      string        `json:"origin" yaml:"origin"`
+	Status      string        `json:"status" yaml:"status"`
+	Evidence    []Evidence    `json:"evidence,omitempty" yaml:"evidence,omitempty"`
+	Review      *ReviewRecord `json:"review,omitempty" yaml:"review,omitempty"`
+}
+
+// ReviewRecord identifies the exact rule and evidence examined by the reviewer.
+type ReviewRecord struct {
+	ContentSHA256  string `json:"content_sha256" yaml:"content_sha256"`
+	EvidenceSHA256 string `json:"evidence_sha256" yaml:"evidence_sha256"`
 }
 type Skill struct {
 	ID          string     `json:"id" yaml:"id"`
@@ -55,13 +72,38 @@ type Skill struct {
 	Evidence    []Evidence `json:"evidence,omitempty" yaml:"evidence,omitempty"`
 }
 type QualityGate struct {
-	ID      string `json:"id" yaml:"id"`
-	Command string `json:"command" yaml:"command"`
+	ID         string            `json:"id" yaml:"id"`
+	Command    string            `json:"command" yaml:"command"`
+	Workspace  string            `json:"workspace,omitempty" yaml:"workspace,omitempty"`
+	Workspaces []string          `json:"workspaces,omitempty" yaml:"workspaces,omitempty"`
+	Env        map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 }
 
+// ValidateGateEnvironment enforces portable environment names and values accepted by OS process APIs.
+func ValidateGateEnvironment(env map[string]string) error {
+	for key, value := range env {
+		if key == "" || !isEnvKeyStart(rune(key[0])) {
+			return fmt.Errorf("environment key %q: expected [A-Za-z_][A-Za-z0-9_]*", key)
+		}
+		for _, r := range key[1:] {
+			if !isEnvKeyPart(r) {
+				return fmt.Errorf("environment key %q: expected [A-Za-z_][A-Za-z0-9_]*", key)
+			}
+		}
+		if strings.ContainsRune(value, 0) {
+			return fmt.Errorf("environment value for %q contains NUL", key)
+		}
+	}
+	return nil
+}
+func isEnvKeyStart(r rune) bool {
+	return r == '_' || (r < unicode.MaxASCII && (r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z'))
+}
+func isEnvKeyPart(r rune) bool { return isEnvKeyStart(r) || r >= '0' && r <= '9' }
+
 func (h Harness) Validate() error {
-	if h.Version != 1 {
-		return fmt.Errorf("version: expected 1")
+	if h.Version != 1 && h.Version != 2 {
+		return fmt.Errorf("version: expected 1 or 2")
 	}
 	if strings.TrimSpace(h.Project.Name) == "" {
 		return fmt.Errorf("project.name: must not be empty")
@@ -71,12 +113,6 @@ func (h Harness) Validate() error {
 	}
 	if err := nonemptyList("architecture.styles", h.Architecture.Styles); err != nil {
 		return err
-	}
-	if err := nonemptyList("context.documents", h.Context.Documents); err != nil {
-		return err
-	}
-	if h.AI.Provider == "" && h.AI.Model != "" || h.AI.Provider != "" && h.AI.Model == "" {
-		return fmt.Errorf("ai.provider and ai.model must be set together")
 	}
 	ids := map[string]bool{}
 	for i, r := range h.Rules {
@@ -103,6 +139,15 @@ func (h Harness) Validate() error {
 			if strings.TrimSpace(e.File) == "" {
 				return fmt.Errorf("%s.evidence[%d].file: must not be empty", field, j)
 			}
+			if e.Workspace != "" && strings.TrimSpace(e.Workspace) == "" {
+				return fmt.Errorf("%s.evidence[%d].workspace: must not be blank", field, j)
+			}
+			if e.StartLine < 0 || e.EndLine < 0 || (e.EndLine > 0 && e.StartLine > e.EndLine) {
+				return fmt.Errorf("%s.evidence[%d]: invalid line range", field, j)
+			}
+			if e.SHA256 != "" && (len(e.SHA256) != 64 || !isHex(e.SHA256)) {
+				return fmt.Errorf("%s.evidence[%d].sha256: expected 64 hexadecimal characters", field, j)
+			}
 		}
 	}
 	ids = map[string]bool{}
@@ -121,6 +166,15 @@ func (h Harness) Validate() error {
 			if strings.TrimSpace(e.File) == "" {
 				return fmt.Errorf("%s.evidence[%d].file: must not be empty", field, j)
 			}
+			if e.Workspace != "" && strings.TrimSpace(e.Workspace) == "" {
+				return fmt.Errorf("%s.evidence[%d].workspace: must not be blank", field, j)
+			}
+			if e.StartLine < 0 || e.EndLine < 0 || (e.EndLine > 0 && e.StartLine > e.EndLine) {
+				return fmt.Errorf("%s.evidence[%d]: invalid line range", field, j)
+			}
+			if e.SHA256 != "" && (len(e.SHA256) != 64 || !isHex(e.SHA256)) {
+				return fmt.Errorf("%s.evidence[%d].sha256: expected 64 hexadecimal characters", field, j)
+			}
 		}
 	}
 	ids = map[string]bool{}
@@ -132,8 +186,27 @@ func (h Harness) Validate() error {
 		if strings.TrimSpace(g.Command) == "" {
 			return fmt.Errorf("%s.command: must not be empty", field)
 		}
+		if err := ValidateGateEnvironment(g.Env); err != nil {
+			return fmt.Errorf("%s.env: %w", field, err)
+		}
+		if g.Workspace != "" && strings.TrimSpace(g.Workspace) == "" {
+			return fmt.Errorf("%s.workspace: must not be blank", field)
+		}
+		if err := nonemptyList(field+".workspaces", g.Workspaces); err != nil {
+			return err
+		}
+		if g.Workspace != "" {
+			if len(g.Workspaces) == 0 || g.Workspaces[0] != g.Workspace {
+				return fmt.Errorf("%s: workspace must be represented in workspaces", field)
+			}
+		}
 	}
 	return nil
+}
+
+func isHex(value string) bool {
+	_, err := hex.DecodeString(value)
+	return err == nil
 }
 func uniqueID(field, id string, ids map[string]bool) error {
 	if strings.TrimSpace(id) == "" {
@@ -175,4 +248,16 @@ func (h *Harness) ReviewRule(id, status string) error {
 		return nil
 	}
 	return fmt.Errorf("rule %q not found", id)
+}
+
+// RuleContentHash hashes the reviewable rule content, excluding its decision record.
+func RuleContentHash(rule Rule) (string, error) {
+	rule.Review = nil
+	rule.Status = ""
+	data, err := json.Marshal(rule)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]), nil
 }

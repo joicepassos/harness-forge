@@ -2,12 +2,23 @@ package contextpack
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 )
+
+type buildTokenCounter struct {
+	model string
+}
+
+func (c *buildTokenCounter) Name() string { return "build-test-counter" }
+func (c *buildTokenCounter) Count(_ context.Context, model string, payload []byte) (int, error) {
+	c.model = model
+	return len(payload) / 4, nil
+}
 
 func TestBuildExplainsRankingDedupCompressionAndBudget(t *testing.T) {
 	root := t.TempDir()
@@ -58,6 +69,107 @@ func TestBuildExplainsRankingDedupCompressionAndBudget(t *testing.T) {
 	if plan.Comparison.UnfilteredCandidateEstimatedTokens <= plan.Comparison.SelectedEstimatedTokens {
 		t.Fatalf("expected selected context to cost less than baseline: %+v", plan.Comparison)
 	}
+}
+
+func TestBuildCanOptIntoBM25Ranking(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "docs/unrelated.md", "deployment history")
+	writeFile(t, root, "internal/auth/validator.go", "JWT authentication validates token")
+	plan, err := Build(context.Background(), root, "where is JWT authentication validated?", "", Options{BudgetTokens: 900, UseBM25: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Included) == 0 || plan.Included[0].Path != "internal/auth/validator.go" {
+		t.Fatalf("BM25 ranking = %+v", plan.Included)
+	}
+}
+
+func TestBuildPassesModelAndCounterToSelection(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "go.mod", "module example\n")
+	counter := &buildTokenCounter{}
+	plan, err := Build(context.Background(), root, "where is the Go module configured?", "provider-model", Options{BudgetTokens: 900, Counter: counter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counter.model != "provider-model" || plan.Estimator != "build-test-counter" {
+		t.Fatalf("counter/model not propagated: model=%q plan=%+v", counter.model, plan)
+	}
+}
+
+func TestBuildCarriesStructuredAnalyzerEvidence(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "packages/auth/go.mod", "module example/auth\n")
+	writeFile(t, root, "packages/auth/main.go", "package auth\n")
+	plan, err := Build(context.Background(), root, "where is the Go module configured?", "", Options{BudgetTokens: 900})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, excerpt := range plan.Included {
+		if strings.Contains(excerpt.Text, "go module: example/auth") && excerpt.Workspace != "packages/auth" {
+			t.Fatalf("go module workspace = %q", excerpt.Workspace)
+		}
+		if strings.Contains(excerpt.Text, "structured evidence: packages/auth/go.mod") && strings.Contains(excerpt.Text, "workspace=packages/auth") && strings.Contains(excerpt.Text, "sha256=") {
+			if excerpt.Workspace != "packages/auth" {
+				t.Fatalf("excerpt workspace = %q", excerpt.Workspace)
+			}
+			return
+		}
+	}
+	t.Fatalf("structured analyzer evidence was not carried into context: %+v", plan)
+}
+
+func TestBuildCarriesAllAnalyzerWorkspaces(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "packages/auth/main.go", "package auth\n")
+	writeFile(t, root, "apps/web/main.go", "package web\n")
+	plan, err := Build(context.Background(), root, "where are the Go sources?", "", Options{BudgetTokens: 900})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, excerpt := range plan.Included {
+		if strings.Contains(excerpt.Text, "workspaces: apps/web, packages/auth") {
+			return
+		}
+	}
+	t.Fatalf("all workspaces were not carried into context: %+v", plan)
+}
+
+func TestBuildCarriesQualityGateWorkspaceStructurally(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "services/auth/package.json", "{\"scripts\":{\"test\":\"go test\"}}\n")
+	plan, err := Build(context.Background(), root, "which test command validates auth?", "", Options{BudgetTokens: 900})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, excerpt := range plan.Included {
+		if strings.Contains(excerpt.Text, "quality gate: npm test") {
+			if excerpt.Workspace != "services/auth" {
+				t.Fatalf("quality gate workspace = %q", excerpt.Workspace)
+			}
+			return
+		}
+	}
+	t.Fatalf("quality gate excerpt not selected: %+v", plan)
+}
+
+func TestBuildFindsRelevantFileBeyondDeepReadLimit(t *testing.T) {
+	root := t.TempDir()
+	for i := 0; i < 250; i++ {
+		writeFile(t, root, filepath.Join("aaa", fmt.Sprintf("file-%03d.txt", i)), "unrelated content")
+	}
+	writeFile(t, root, "zzz/security/authentication.go", "func ValidateJWT(token string) bool { return token != \"\" }")
+
+	plan, err := Build(context.Background(), root, "where is JWT authentication validated?", "", Options{BudgetTokens: 900})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, excerpt := range plan.Included {
+		if excerpt.Path == "zzz/security/authentication.go" {
+			return
+		}
+	}
+	t.Fatalf("relevant file after the first 200 paths was not selected: %+v", plan)
 }
 
 func TestBuildSkipsSecretsSymlinksAndUnsafePaths(t *testing.T) {
@@ -116,11 +228,15 @@ func TestBuildHonorsCanceledContext(t *testing.T) {
 	}
 }
 
-func TestBuildRejectsBudgetBelowPromptEnvelope(t *testing.T) {
+func TestBuildReportsBudgetOverflowBelowPromptEnvelope(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "safe.txt", "webhook authentication")
-	if _, err := Build(context.Background(), root, "webhook authentication", "", Options{BudgetTokens: 10}); err == nil {
-		t.Fatal("tiny context budget accepted")
+	plan, err := Build(context.Background(), root, "webhook authentication", "", Options{BudgetTokens: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.BudgetOverflow || plan.OverflowTokens <= 0 {
+		t.Fatalf("tiny context budget did not report explicit overflow: %+v", plan)
 	}
 }
 

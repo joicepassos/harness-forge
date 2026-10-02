@@ -37,6 +37,7 @@ func (d *Detect) Execute(ctx context.Context, harnessPath string) (domain.Report
 	report := domain.Report{Occurrences: []domain.Occurrence{}, Limitations: []string{
 		"A difference can be a violation, an intentional architectural change, or stale evidence; it is not classified automatically.",
 		"Only approved rules with literal evidence symbols are evaluated in this initial strategy.",
+		"Evidence presence is not proof of rule conformance; conformance remains not_evaluated.",
 		"All proposals are review-only and no repository or Harness IR file is modified.",
 	}}
 	for _, rule := range h.Rules {
@@ -47,18 +48,26 @@ func (d *Detect) Execute(ctx context.Context, harnessPath string) (domain.Report
 			continue
 		}
 		if len(rule.Evidence) == 0 {
-			report.Occurrences = append(report.Occurrences, domain.Occurrence{RuleID: rule.ID, Status: domain.StatusNotEvaluated, Explanations: []string{"The rule has no structural evidence."}})
+			report.Occurrences = append(report.Occurrences, domain.Occurrence{RuleID: rule.ID, Status: domain.StatusNotEvaluated, EvidenceStatus: domain.StatusNotEvaluated, Conformance: domain.StatusNotEvaluated, Explanations: []string{"The rule has no structural evidence."}})
+			report.Coverage.RulesWithoutEvidence++
 			continue
 		}
 		for _, evidence := range rule.Evidence {
-			report.Occurrences = append(report.Occurrences, d.evaluateEvidence(ctx, rule.ID, evidence))
+			occurrence := d.evaluateEvidence(ctx, rule.ID, evidence)
+			report.Occurrences = append(report.Occurrences, occurrence)
+			report.Coverage.Total++
+			if occurrence.EvidenceStatus == domain.StatusNotEvaluated {
+				report.Coverage.NotEvaluated++
+			} else {
+				report.Coverage.Evaluated++
+			}
 		}
 	}
 	return report, ctx.Err()
 }
 
 func (d *Detect) evaluateEvidence(ctx context.Context, id string, evidence harnessdomain.Evidence) domain.Occurrence {
-	occurrence := domain.Occurrence{RuleID: id, Status: domain.StatusNotEvaluated, Locations: []string{evidence.File}, Revision: evidence.Revision}
+	occurrence := domain.Occurrence{RuleID: id, Status: domain.StatusNotEvaluated, EvidenceStatus: domain.StatusNotEvaluated, Conformance: domain.StatusNotEvaluated, Locations: []string{evidence.File}, Revision: evidence.Revision}
 	if evidence.Symbol == "" {
 		occurrence.Explanations = []string{"The evidence has no literal structural symbol."}
 		return occurrence
@@ -89,13 +98,16 @@ func (d *Detect) evaluateEvidence(ctx context.Context, id string, evidence harne
 	}
 	if found {
 		occurrence.Status = domain.StatusAligned
+		occurrence.EvidenceStatus = domain.EvidencePresent
 		return occurrence
 	}
 	change := difference(id, evidence.File, "The referenced literal symbol is absent.")
+	change.EvidenceStatus = domain.EvidenceMissing
+	change.Conformance = domain.StatusNotEvaluated
 	change.Revision, change.BaselineStatus = occurrence.Revision, occurrence.BaselineStatus
 	return change
 }
 
 func difference(ruleID, location, detail string) domain.Occurrence {
-	return domain.Occurrence{RuleID: ruleID, Status: domain.StatusDifference, Locations: []string{location}, Explanations: []string{detail, "Possible violation of the approved rule.", "Possible intentional architectural change.", "Possible stale rule or evidence."}, CodeProposal: "Review the affected code and restore the intended structure if the rule remains valid.", HarnessProposal: "Review the approved rule and update its evidence or status if the architecture intentionally changed."}
+	return domain.Occurrence{RuleID: ruleID, Status: domain.StatusDifference, EvidenceStatus: domain.EvidenceMissing, Conformance: domain.StatusNotEvaluated, Locations: []string{location}, Explanations: []string{detail, "Possible violation of the approved rule.", "Possible intentional architectural change.", "Possible stale rule or evidence."}, CodeProposal: "Review the affected code and restore the intended structure if the rule remains valid.", HarnessProposal: "Review the approved rule and update its evidence or status if the architecture intentionally changed."}
 }

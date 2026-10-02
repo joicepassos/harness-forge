@@ -15,8 +15,9 @@ type Pattern struct {
 	Evidence   []Evidence `json:"evidence"`
 }
 type Evidence struct {
-	Source string `json:"source"`
-	Quote  string `json:"quote"`
+	Source    string `json:"source"`
+	Quote     string `json:"quote"`
+	Workspace string `json:"workspace,omitempty"`
 }
 
 // ValidateEvidence verifies citations against supplied context, not the truth of an inference.

@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "case_id": "opencode-v1-claude-disable-controls",
+  "captured_on": "2026-09-28",
+  "status": "observed-documentation-mismatch",
+  "package": "opencode-ai@1.18.33",
+  "reported_version": "1.18.33",
+  "platform": "Windows, win32",
+  "command": "npm exec --offline --yes --package=opencode-ai@1.18.33 -- opencode run --model mock/test --format json \"List the top-level files in this project.\"",
+  "provider": {
+    "model": "mock/test",
+    "endpoint": "http://127.0.0.1:8765/v1",
+    "implementation": "local loopback mock",
+    "external_provider_called": false,
+    "fixed_response": "LOCAL_MOCK_OK"
+  },
+  "inputs": {
+    "project_claude_path": "workspace/CLAUDE.md",
+    "project_claude_sha256": "6866ab662507585dc1314b5021a0c89e9c274098c4d9b98d93deb7de78c3063d",
+    "global_claude_path": "$HOME/.claude/CLAUDE.md",
+    "global_claude_sha256": "8ccdbf46b7d797462abe821a2313ddd00a8e19e7bc2d9ad8dddf54d44a99e3c6",
+    "global_opencode_agents_present": false,
+    "project_instruction_files": [
+      "CLAUDE.md"
+    ],
+    "opencode_config_path": "$XDG_CONFIG_HOME/opencode/opencode.json",
+    "opencode_config_sha256": "009aff85548ed6e01e03244bcea2f25ace008aafddc9d59795aaae95cf942463"
+  },
+  "observations": {
+    "neutral_prompt": "List the top-level files in this project.",
+    "all_message_roles_scanned": true,
+    "requests_per_case": 2,
+    "title_generation_requests_per_case": 1,
+    "task_requests_per_case": 1,
+    "cases": {
+      "baseline": {
+        "disable_env": "none",
+        "project_claude_expected": 1,
+        "project_claude_observed": 1,
+        "global_claude_expected": 1,
+        "global_claude_observed": 1,
+        "output": "LOCAL_MOCK_OK",
+        "run_sha256": "639b8f49da0f771928c042af1e19cde52b82bc45d73809f3318c8c2706b93c01"
+      },
+      "disable_all_claude_support": {
+        "env": "OPENCODE_DISABLE_CLAUDE_CODE=1",
+        "project_claude_expected": 0,
+        "project_claude_observed": 0,
+        "global_claude_expected": 0,
+        "global_claude_observed": 0,
+        "matches_current_v1_docs": true,
+        "output": "LOCAL_MOCK_OK",
+        "run_sha256": "8a826626b839261007dcc1ea707bf95ab1ae4522f935ff678360a81630ff361d"
+      },
+      "disable_global_claude_prompt": {
+        "env": "OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1",
+        "project_claude_expected": 1,
+        "project_claude_observed": 0,
+        "global_claude_expected": 0,
+        "global_claude_observed": 0,
+        "matches_current_v1_docs": false,
+        "output": "LOCAL_MOCK_OK",
+        "run_sha256": "8c29c66c27461e86220a15efec0d2a003b3d57e60f323f1c4b3817fa3a14eef6"
+      }
+    },
+    "opencode_log_sha256": "1e527768915f37aa65ea5972ef6fb8c4a82c39fbe439af069111e2c5b4046e6d",
+    "raw_request_capture": {
+      "status": "withheld-from-published-evidence",
+      "request_count": 6
+    }
+  },
+  "documentation": {
+    "v1_rules_url": "https://opencode.ai/docs/rules/",
+    "checked_on": "2026-09-28",
+    "current_documentation_says": "OPENCODE_DISABLE_CLAUDE_CODE disables all .claude support; OPENCODE_DISABLE_CLAUDE_CODE_PROMPT disables only ~/.claude/CLAUDE.md",
+    "rules_page_lists_OPENCODE_DISABLE_PROJECT_CONFIG": false,
+    "release_version_for_env_semantics_specified": false,
+    "interpretation": "The exact 1.18.33 run shows a discrepancy for the prompt-only flag: both global and project CLAUDE sentinels disappear. Do not claim the project file is preserved on this build without a version-specific explanation or a follow-up upstream resolution."
+  },
+  "limitations": [
+    "The official Rules page describes these environment variables but does not bind their behavior to a specific release; this is an empirical result for opencode-ai@1.18.33 only.",
+    "The prompt-only flag result differs from the current V1 Rules-page contract: it also removed project CLAUDE.md in the captured request.",
+    "The V1 Rules page does not document OPENCODE_DISABLE_PROJECT_CONFIG; do not claim a general V1 project AGENTS discovery disable control from the V2 documentation.",
+    "The fixed local response verifies captured request context only, not model instruction-following or task quality.",
+    "No external model provider was configured or called by these local-mock invocations.",
+    "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1 was not tested; this fixture covered project/global CLAUDE.md file discovery controls."
+  ],
+  "untested_documented_control": "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1 (skills, not file discovery)"
+}

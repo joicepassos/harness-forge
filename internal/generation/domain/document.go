@@ -5,13 +5,16 @@ type Document struct {
 	Content []byte
 }
 type Input struct {
-	Project   string
-	Summary   string
-	Notes     string
-	Documents []string
-	Rules     []Rule
-	Skills    []Skill
-	Commands  []string
+	Project      string
+	Summary      string
+	Notes        string
+	Documents    []string
+	Architecture []string
+	Rules        []Rule
+	Skills       []Skill
+	Gates        []QualityGate
+	Policies     []Policy
+	Commands     []string
 }
 type Rule struct {
 	ID, Description string
@@ -20,3 +23,9 @@ type Rule struct {
 type Skill struct {
 	ID, Description, Path string
 }
+type QualityGate struct {
+	ID, Command, Workspace string
+	Workspaces             []string
+}
+
+type Policy struct{ ID, Description, Capability, Executor string }

@@ -30,12 +30,18 @@ type setupDocument struct {
 }
 
 type setupSession struct {
-	reader *bufio.Reader
-	output io.Writer
+	reader      *bufio.Reader
+	output      io.Writer
+	input       io.Reader
+	interactive bool
+	ctx         context.Context
 }
 
 func (s setupSession) chooseLanguages() ([]string, error) {
 	options := []string{"Go", "JavaScript/TypeScript", "Python", "Java", "Rust", "C/C++", "Other"}
+	if s.interactive {
+		return s.selectLanguages(options, nil)
+	}
 	fmt.Fprintln(s.output, presentationFor(s.output).heading("Which languages should guide the harness?"))
 	for i, option := range options {
 		fmt.Fprintf(s.output, "  %d) %s\n", i+1, option)
@@ -64,6 +70,9 @@ func (s setupSession) chooseLanguages() ([]string, error) {
 }
 
 func (s setupSession) ask(question string) (string, error) {
+	if s.interactive {
+		return s.formQuestion(question)
+	}
 	if _, err := fmt.Fprint(s.output, presentationFor(s.output).accent(question)); err != nil {
 		return "", err
 	}
@@ -81,22 +90,31 @@ func (s setupSession) ask(question string) (string, error) {
 }
 
 func (s setupSession) confirm(question string) (bool, error) {
+	if s.interactive {
+		return s.formConfirm(question, false)
+	}
 	answer, err := s.ask(question + " [y/N]: ")
 	if err != nil {
 		return false, err
 	}
-	return strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes"), nil
+	return strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes") || strings.EqualFold(answer, "s") || strings.EqualFold(answer, "sim"), nil
 }
 
 func (s setupSession) confirmDefaultYes(question string) (bool, error) {
+	if s.interactive {
+		return s.formConfirm(question, true)
+	}
 	answer, err := s.ask(question + " [Y/n]: ")
 	if err != nil {
 		return false, err
 	}
-	return !strings.EqualFold(answer, "n") && !strings.EqualFold(answer, "no"), nil
+	return answer == "" || strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes") || strings.EqualFold(answer, "s") || strings.EqualFold(answer, "sim"), nil
 }
 
 func (s setupSession) notes() (string, error) {
+	if s.interactive {
+		return s.formNotes()
+	}
 	fmt.Fprintln(s.output, "Additional observations or instructions (one per line; empty line to continue):")
 	var lines []string
 	length := 0
@@ -117,6 +135,13 @@ func (s setupSession) notes() (string, error) {
 }
 
 func (s setupSession) selectedDocuments(ctx context.Context, root string, existing []setupDocument) ([]setupDocument, error) {
+	if s.interactive {
+		return s.interactiveDocuments(ctx, root, existing)
+	}
+	return s.browseSetupDocuments(ctx, root, existing)
+}
+
+func (s setupSession) setupDocumentPaths(ctx context.Context, root string, existing []setupDocument) ([]setupDocument, error) {
 	fmt.Fprintln(s.output, "Add context files or directories (one path per line; empty line to continue).")
 	files := append([]setupDocument(nil), existing...)
 	seen := map[string]bool{}

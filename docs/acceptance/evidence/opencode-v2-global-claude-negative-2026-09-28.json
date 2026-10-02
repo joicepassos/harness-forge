@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "case_id": "opencode-v2-global-claude-only-negative",
+  "status": "passed",
+  "captured_on": "2026-09-28",
+  "package": "@opencode/cli@2.0.18",
+  "reported_version": "opencode v2.0.18",
+  "platform": "Windows 11, win32",
+  "command": "opencode run --standalone --model mock/test --format json \"Summarize the top-level files in this project.\"",
+  "provider": {
+    "model": "mock/test",
+    "endpoint": "http://127.0.0.1:8765/v1",
+    "implementation": "local loopback mock",
+    "external_provider_called": false,
+    "fixed_response": "LOCAL_MOCK_OK"
+  },
+  "isolated_inputs": {
+    "global_claude_path": "$HOME/.claude/CLAUDE.md",
+    "global_claude_sha256": "6154378fe07483fd5d120ab56c60df5f8079d1b320825bbf1eb2b4fae7f2810b",
+    "global_opencode_agents_path": "$XDG_CONFIG_HOME/opencode/AGENTS.md",
+    "global_opencode_agents_present": false,
+    "global_opencode_config_sha256": "90153d55f2adbbaa3d00d84ae5961600dc0360ffac1513cd69eeabc6942363d2",
+    "project_instruction_files": []
+  },
+  "observation": {
+    "neutral_prompt_present": true,
+    "captured_request_count": 2,
+    "captured_system_message_count": 2,
+    "claude_sentinel_occurrences_in_all_captured_messages": 0,
+    "run_output_sha256": "73ec2ce6418601c5acd5688bb0a8f15edcb8dbf2d08084f110199f369973b566"
+  },
+  "request_capture": {
+    "status": "withheld-from-published-evidence",
+    "request_count": 2
+  },
+  "interpretation": "For this exact V2 build, a global ~/.claude/CLAUDE.md by itself was not added to the captured model requests when no global OpenCode AGENTS.md existed.",
+  "limitations": [
+    "This negative case does not test precedence when global OpenCode AGENTS.md and global Claude CLAUDE.md coexist; that comparison remains pending.",
+    "A fixed local mock response verifies request context only, not model compliance, automatic skill-body loading, or task quality.",
+    "This result applies only to @opencode/cli@2.0.18 and this isolated configuration."
+  ]
+}

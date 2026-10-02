@@ -1,0 +1,299 @@
+package mcp
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestServeInitializeListAndRead(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("# Sample\nA small sample repository.\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".forge"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".forge", "forge.yaml"), []byte("layout_version: 1\nir_version: 2\nproject: {name: sample}\ntargets: [codex]\nreferences: {}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}`,
+		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/list"}`,
+		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"forge://context/current"}}`,
+	}, "\n")
+	var out strings.Builder
+	err := (Server{Repository: root, Budget: 512}).Serve(context.Background(), strings.NewReader(input), &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected three responses, got %d: %s", len(lines), out.String())
+	}
+	var initialize map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &initialize); err != nil {
+		t.Fatal(err)
+	}
+	if initialize["error"] != nil {
+		t.Fatalf("initialize failed: %s", lines[0])
+	}
+	result := initialize["result"].(map[string]any)
+	if result["protocolVersion"] != ProtocolVersion {
+		t.Fatalf("protocol version = %v", result["protocolVersion"])
+	}
+	var listed map[string]any
+	if err := json.Unmarshal([]byte(lines[1]), &listed); err != nil {
+		t.Fatal(err)
+	}
+	if listed["error"] != nil {
+		t.Fatalf("list failed: %s", lines[1])
+	}
+	resources := listed["result"].(map[string]any)["resources"].([]any)
+	if len(resources) != 1 || resources[0].(map[string]any)["uri"] != contextResourceURI {
+		t.Fatalf("unexpected resources: %#v", resources)
+	}
+	var read map[string]any
+	if err := json.Unmarshal([]byte(lines[2]), &read); err != nil {
+		t.Fatal(err)
+	}
+	if read["error"] != nil {
+		t.Fatalf("read failed: %s", lines[2])
+	}
+	contents := read["result"].(map[string]any)["contents"].([]any)
+	if len(contents) != 1 || contents[0].(map[string]any)["mimeType"] != "application/json" {
+		t.Fatalf("unexpected contents: %#v", contents)
+	}
+	var plan map[string]any
+	if err := json.Unmarshal([]byte(contents[0].(map[string]any)["text"].(string)), &plan); err != nil {
+		t.Fatalf("resource is not JSON: %v", err)
+	}
+}
+
+func TestServeErrorsAndLimits(t *testing.T) {
+	t.Run("requires initialize", func(t *testing.T) {
+		var out strings.Builder
+		err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"resources/list"}`), &out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), `"code":-32002`) {
+			t.Fatalf("expected not initialized error: %s", out.String())
+		}
+	})
+	t.Run("unknown resource", func(t *testing.T) {
+		input := "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"x\"}}\n" +
+			"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n" +
+			"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"resources/read\",\"params\":{\"uri\":\"forge://other\"}}\n"
+		var out strings.Builder
+		if err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(input), &out); err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+		var initialize struct {
+			Result struct {
+				ProtocolVersion string `json:"protocolVersion"`
+			} `json:"result"`
+			Error *rpcError `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(lines[0]), &initialize); err != nil || initialize.Error != nil || initialize.Result.ProtocolVersion != ProtocolVersion {
+			t.Fatalf("unsupported protocol version was not counter-offered: %#v err=%v", initialize, err)
+		}
+		if !strings.Contains(lines[1], `"code":-32602`) {
+			t.Fatalf("expected invalid resource URI: %s", lines[1])
+		}
+	})
+	t.Run("oversized input", func(t *testing.T) {
+		input := strings.NewReader(strings.Repeat("x", MaxMessageBytes+1) + "\n")
+		var out strings.Builder
+		err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), input, &out)
+		if err == nil || !strings.Contains(err.Error(), "byte limit") {
+			t.Fatalf("expected bounded message error, got %v", err)
+		}
+	})
+	t.Run("configuration limits", func(t *testing.T) {
+		var out strings.Builder
+		if err := (Server{Repository: t.TempDir()}).Serve(context.Background(), strings.NewReader(""), &out); err == nil {
+			t.Fatal("expected positive budget requirement")
+		}
+	})
+}
+
+func TestServeRejectsInvalidJSON(t *testing.T) {
+	var out strings.Builder
+	if err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader("{bad}\n"), &out); err != nil {
+		t.Fatal(err)
+	}
+	var response rpcResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Error == nil || response.Error.Code != -32700 {
+		t.Fatalf("expected parse error: %s", fmt.Sprint(out.String()))
+	}
+}
+
+func TestServeRejectsMalformedTaskQuery(t *testing.T) {
+	for _, uri := range []string{
+		"forge://context/task/Find?path=%ZZ",
+		"forge://context/task/Find?path=src%2Fmain.go&path=%ZZ",
+	} {
+		t.Run(uri, func(t *testing.T) {
+			input := strings.Join([]string{
+				`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}`,
+				`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
+				fmt.Sprintf(`{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":%q}}`, uri),
+			}, "\n")
+			var out strings.Builder
+			if err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(input), &out); err != nil {
+				t.Fatal(err)
+			}
+			lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+			if len(lines) != 2 {
+				t.Fatalf("responses=%d: %s", len(lines), out.String())
+			}
+			var response rpcResponse
+			if err := json.Unmarshal([]byte(lines[1]), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Error == nil || response.Error.Code != -32602 || response.Result != nil {
+				t.Fatalf("malformed query must be rejected before context resolution: %s", lines[1])
+			}
+		})
+	}
+}
+
+func TestWriteResponseBoundsEscapedResource(t *testing.T) {
+	resource := strings.Repeat(`\u0000`, (MaxResourceBytes-100)/6)
+	if len(resource) > MaxResourceBytes {
+		t.Fatal("fixture exceeds raw resource limit")
+	}
+	var out strings.Builder
+	response := rpcResponse{
+		JSONRPC: "2.0",
+		ID:      1,
+		Result:  map[string]any{"contents": []any{map[string]any{"text": resource}}},
+	}
+	if err := writeResponse(bufio.NewWriter(&out), response); err != nil {
+		t.Fatal(err)
+	}
+	if out.Len() > MaxMessageBytes {
+		t.Fatalf("framed response has %d bytes; limit is %d", out.Len(), MaxMessageBytes)
+	}
+	var bounded rpcResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &bounded); err != nil {
+		t.Fatal(err)
+	}
+	if bounded.Error == nil || bounded.Error.Code != -32603 || bounded.Result != nil {
+		t.Fatalf("expected bounded JSON-RPC error, got %#v", bounded)
+	}
+}
+
+func TestServeListsAndReadsPromptScopedResourceTemplate(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".forge"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".forge", "forge.yaml"), []byte("layout_version: 1\nir_version: 2\nproject: {name: sample}\ntargets: [codex]\nreferences: {}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`,
+		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
+		`{"jsonrpc":"2.0","id":2,"method":"resources/templates/list"}`,
+		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"forge://context/task/Find%20JWT%20authentication%20in%20middleware?path=internal%2Fauth%2Fmiddleware.go"}}`,
+	}, "\n")
+	var out strings.Builder
+	if err := (Server{Repository: root, Budget: 1}).Serve(context.Background(), strings.NewReader(input), &out); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("responses=%d: %s", len(lines), out.String())
+	}
+	var templates struct {
+		Result struct {
+			ResourceTemplates []struct {
+				URITemplate string `json:"uriTemplate"`
+			} `json:"resourceTemplates"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(lines[1]), &templates); err != nil || len(templates.Result.ResourceTemplates) != 1 || templates.Result.ResourceTemplates[0].URITemplate != contextResourceTemplateURI {
+		t.Fatalf("resource template list = %#v, err=%v", templates, err)
+	}
+	var read struct {
+		Result struct {
+			Contents []struct {
+				Text string `json:"text"`
+			} `json:"contents"`
+		} `json:"result"`
+		Error *rpcError `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(lines[2]), &read); err != nil || read.Error != nil || len(read.Result.Contents) != 1 {
+		t.Fatalf("template resource read = %#v, err=%v", read, err)
+	}
+	var plan struct {
+		Excluded []struct {
+			Text string `json:"text"`
+		} `json:"excluded"`
+	}
+	if err := json.Unmarshal([]byte(read.Result.Contents[0].Text), &plan); err != nil || len(plan.Excluded) != 1 || plan.Excluded[0].Text != "Find JWT authentication in middleware" {
+		t.Fatalf("task prompt was not used to resolve context: plan=%#v err=%v", plan, err)
+	}
+}
+
+func TestServeRespondsToInvalidRequestWithoutID(t *testing.T) {
+	var out strings.Builder
+	err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(`{"method":"resources/list"}`), &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var response rpcResponse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Error == nil || response.Error.Code != -32600 || response.ID != nil {
+		t.Fatalf("invalid request response = %#v", response)
+	}
+}
+
+func TestServeNegotiatesSupportedAndUnsupportedProtocolVersions(t *testing.T) {
+	tests := []struct {
+		name      string
+		requested string
+		want      string
+	}{
+		{name: "latest handshake revision", requested: ProtocolVersion, want: ProtocolVersion},
+		{name: "previous supported revision", requested: previousProtocolVersion, want: previousProtocolVersion},
+		{name: "unsupported old revision", requested: "2024-11-05", want: ProtocolVersion},
+		{name: "unknown revision", requested: "not-a-version", want: ProtocolVersion},
+		{name: "stateless revision is counter-offered legacy", requested: "2026-07-28", want: ProtocolVersion},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":%q}}`+"\n", tt.requested)
+			var out strings.Builder
+			if err := (Server{Repository: t.TempDir(), Budget: 1}).Serve(context.Background(), strings.NewReader(input), &out); err != nil {
+				t.Fatal(err)
+			}
+			var response struct {
+				Result struct {
+					ProtocolVersion string `json:"protocolVersion"`
+				} `json:"result"`
+				Error *rpcError `json:"error"`
+			}
+			if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Error != nil || response.Result.ProtocolVersion != tt.want {
+				t.Fatalf("negotiation result = %#v; want version %q", response, tt.want)
+			}
+		})
+	}
+}

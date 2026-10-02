@@ -135,7 +135,7 @@ func ensureWithin(root, path string) error {
 	return nil
 }
 func render(proposal domain.Proposal) string {
-	text := "# " + proposal.ID + "\n\n" + proposal.Description + "\n\n## Evidence\n"
+	text := "---\nname: " + proposal.ID + "\ndescription: " + strconv.Quote(proposal.Description) + "\n---\n\n# " + proposal.ID + "\n\n" + proposal.Description + "\n\n## Evidence\n"
 	for _, evidence := range proposal.Examples {
 		text += "- " + evidence.File + ": " + evidence.Symbol + "\n"
 	}

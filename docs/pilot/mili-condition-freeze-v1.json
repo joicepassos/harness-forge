@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "pilot_id": "harnessforge-mili-v1",
+  "status": "running",
+  "frozen_on": "2026-09-27",
+  "repository": {
+    "repository_id": "mili",
+    "commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+    "task_text_source": "tasks-draft-v1.md",
+    "task_text_source_sha256": "b54814e4b9c37c3e242ad051472037c9dabc220086f0209d8f34b062afa6348f",
+    "approved_task_ids": [
+      "MLI-01",
+      "MLI-02",
+      "MLI-03",
+      "MLI-04",
+      "MLI-05"
+    ],
+    "include_original_checkout_changes": false
+  },
+  "approval_record": {
+    "path": "mili-task-approval-v1.json",
+    "sha256": "77f69ad649e2e6eac8c55b8dbde18fb2cb0f81e6c741516c04299a7d029e70d0"
+  },
+  "conditions": {
+    "baseline": {
+      "overlay": [],
+      "source": "clean pinned commit only; backend/CLAUDE.md remains present but is not a Codex CLI discovery file"
+    },
+    "team": {
+      "bundle": "mili-team-v1/files",
+      "files": [
+        {
+          "path": ".agents/skills/mili-cycle/SKILL.md",
+          "sha256": "21fa9dc595b0ed17363600e71c14f6a38a2ff332d8db64cfd6ce249a1d78f1dc"
+        },
+        {
+          "path": ".agents/skills/mili-domain/SKILL.md",
+          "sha256": "22559b989e796e701192cf49dff0cd8c1ed155144f24f0aaadc5094a84bb09a4"
+        },
+        {
+          "path": ".codex/context/product.md",
+          "sha256": "8895fdcf763d6289d5ab79505b2ebb543f51057817f42afed7a95452825e03a0"
+        },
+        {
+          "path": "AGENTS.md",
+          "sha256": "7d55a0151c11af967f43f2ff5daf4cbc4f9642f0f0fcf590f52ad4b392b39c2b"
+        }
+      ]
+    },
+    "forge": {
+      "bundle": "mili-forge-condition-v1/files",
+      "source_project": "mili-forge-source",
+      "source_manifest_sha256": "d91e319b7559b9d3b4c46dba0cc47132a826074f557d7490d04bc07973d0fe22",
+      "source_knowledge_item_sha256": "3bc761b36936a404c03c3ebc1d844690bb3d8000456f86a2d429774080fe04d2",
+      "reviewer": "codex-pilot-preparation",
+      "reviewed_knowledge_id": "import-agents-09e217e70d1f",
+      "generated_manifest_sha256": "8d6226b43305c97a2b8312f651d1b0770a15cd3d5226167b1cc07ce2ebd6b66e",
+      "files": [
+        {
+          "path": ".agents/skills/mili-cycle/SKILL.md",
+          "sha256": "21fa9dc595b0ed17363600e71c14f6a38a2ff332d8db64cfd6ce249a1d78f1dc"
+        },
+        {
+          "path": ".agents/skills/mili-domain/SKILL.md",
+          "sha256": "22559b989e796e701192cf49dff0cd8c1ed155144f24f0aaadc5094a84bb09a4"
+        },
+        {
+          "path": ".codex/context/product.md",
+          "sha256": "8895fdcf763d6289d5ab79505b2ebb543f51057817f42afed7a95452825e03a0"
+        },
+        {
+          "path": "AGENTS.md",
+          "sha256": "a12e3331027ead01ec0439033499c9489158f14b6f443685b68ffc0a8916adcd"
+        }
+      ],
+      "transformation_note": "The team AGENTS.md text is retained as one reviewed convention item. Forge adds its deterministic generated header and item wrapper; the two native skills and product context are byte-identical to the team condition."
+    }
+  },
+  "agent": {
+    "product": "Codex CLI",
+    "version": "0.158.0-alpha.2.1",
+    "model": "gpt-6-luna",
+    "reasoning_effort": "low",
+    "service_tier": "default",
+    "configuration_source": "User-approved local Codex CLI defaults observed at freeze; pinned explicitly for each task invocation.",
+    "execution": {
+      "sandbox": "workspace-write",
+      "approval": "never",
+      "additional_write_directories": [],
+      "web_search": false,
+      "user_config_and_MCP": "ignored for task sessions to prevent machine-specific tools from leaking into conditions",
+      "session_persistence": "ephemeral",
+      "source_commits": false
+    }
+  },
+  "runtime": {
+    "operating_system": "Windows 11 10.0 amd64",
+    "java": "Eclipse Temurin OpenJDK 25.0.4.1+1-LTS",
+    "gradle": "9.5.1",
+    "docker": "not required in primary acceptance path"
+  },
+  "repetitions_per_task_per_condition": 3,
+  "planned_agent_runs": 45,
+  "run_order": {
+    "condition_rotation_by_repetition": [
+      [
+        "baseline",
+        "team",
+        "forge"
+      ],
+      [
+        "team",
+        "forge",
+        "baseline"
+      ],
+      [
+        "forge",
+        "baseline",
+        "team"
+      ]
+    ],
+    "task_order_by_repetition": [
+      [
+        "MLI-01",
+        "MLI-02",
+        "MLI-03",
+        "MLI-04",
+        "MLI-05"
+      ],
+      [
+        "MLI-03",
+        "MLI-04",
+        "MLI-05",
+        "MLI-01",
+        "MLI-02"
+      ],
+      [
+        "MLI-05",
+        "MLI-02",
+        "MLI-04",
+        "MLI-01",
+        "MLI-03"
+      ]
+    ],
+    "isolation": "Every run starts from a fresh detached copy of the pinned commit, with exactly one frozen condition overlay and no prior agent session state."
+  },
+  "evaluation": {
+    "rubric_file": "mili-evaluator-v1.md",
+    "rubric_sha256": "eb0212c488b7647c61b537100c08021cb366f4d6e204d26c7518c2acf11d8049",
+    "evaluator_source": "Five task evaluators and PostgreSQL probe retained with hashes. MLI-01 source v3 supersedes the incompatible v1/v2 measurement and is used identically for baseline, team and Forge repetition 1.",
+    "status": "running: MLI-01 repetition 1 has three valid condition runs; repetition 2 has one valid Team attempt and invalid baseline/Forge retries due to clone reuse across sessions; full matrix pending",
+    "baseline_smoke_file": "baseline-mili-v1.json",
+    "baseline_smoke_status": "passed: 8 tests, 0 failures, 0 skipped, no Docker",
+    "inventory_file": "inventory-v1.json",
+    "inventory_sha256": "b9900e655c6958c0a8dd364da9ecca8604241918e0d29645b3feba24fee6eb43",
+    "evaluator_sources": [
+      {
+        "path": "Mli01AcceptanceTest.java",
+        "sha256": "79b584a23c2e696723150584fe23006e2a87f2708490662863ebc922e418148d",
+        "baseline_result": "compiled; three cross-tenant assertions failed; tenant-A visibility control passed"
+      },
+      {
+        "path": "Mli02AcceptanceTest.java",
+        "sha256": "d362026aa122c116857d2e266b4881c1bb9bb3a9e7f5cd3a26ff43b763e5352a",
+        "baseline_result": "production service/controller evaluator: 3 tests pass; malformed cursor responses observed as 500, 200, 200, 500; invalid cursor path caused 2 repository queries"
+      },
+      {
+        "path": "Mli03AcceptanceTest.java",
+        "sha256": "1599eea87296f6ad30b90137e38d32956451d4941cc9bdfa260d2ce5d6b73c2c",
+        "baseline_result": "compiled; detects stale ACTIVE cache after pause/delete and ingest 202 plus publication"
+      },
+      {
+        "path": "Mli04AcceptanceTest.java",
+        "sha256": "e4ee3e8d7ee7577555797f03abc3387f84a0dbffc8bbce95d4c93ff47247c1b6",
+        "baseline_result": "compiled; absent-event 404 assertions fail; FAILED 204 and non-FAILED 409 controls pass"
+      },
+      {
+        "path": "Mli05JsonPathProbe.java",
+        "sha256": "d503a4b83ae589428987969d00d9f926db3035f2159adb8ecacf873dd4d8d1e8",
+        "baseline_result": "Jayway JsonPath 2.10.0 accepts $.type and rejects frozen malformed expression $["
+      },
+      {
+        "path": "Mli02PostgresKeyset.sql",
+        "sha256": "5d5adbe0ca210cec16181245a681092179068a9abdcb1aa867170db79cdd5a20"
+      },
+      {
+        "path": "Mli01AcceptanceTestV3.java",
+        "sha256": "2C3D4648C2C0316EAFE46B0F946ECBB45F2128CF2B169AAFFA0001B6519E6A88",
+        "baseline_result": "3 acceptance tests pass on clean baseline; old and tenant-scoped repository API signatures supported"
+      }
+    ],
+    "run_status": "Four valid condition runs: MLI-01 repetition 1 baseline/team/Forge plus repetition 2 Team. Independent v3 evaluator: 3/3 in all valid runs. Repetition 2 baseline/Forge are invalid due to multiple agent sessions on one clone; Forge diagnostic compilation failed at InboundEventRepository.java:76. 41 planned condition runs remain; pilot incomplete.",
+    "mli01_repetition_1_measurements": "See mli01-repetition-1.md: condition diff sizes recorded; duration, tokens, review scores, rule violations and discovery not captured.",
+    "partial_results_file": "mili-results-v1.md",
+    "runtime_decision_file": "../adr/0002-runtime-executor-decision.md",
+    "mli01_repetition_2_status": "Incomplete repetition. Team is one valid condition attempt: independent evaluator 3/3, later focused suite 12/12, 9 files changed and tracked diff +75/-29. Duration, tokens, review quality, rule violations, and instruction-source discovery were not captured. Baseline and Forge are invalid because multiple agent sessions reused the same clone. Forge diagnostic compilation on the contaminated clone failed at InboundEventRepository.java:76. A fresh Forge retry could not proceed because the CLI executor was read-only despite requesting workspace-write. Logs and clones remain in ignored .pilot-runs/. No three-condition comparison is claimed.",
+    "evaluator_compilation": "MLI-01, MLI-02, MLI-03, and MLI-04 sources compiled in disposable clean pinned clones. The MLI-02 evaluator ran three characterization tests successfully and captured the malformed-cursor baseline defects. These are evaluator baselines, not coding-agent outcome runs.",
+    "mli02_probe": "Independent controller evaluator passes on strict parser patch and fails against pinned baseline malformed cursors; no coding-agent run.",
+    "mli05_probe": "Jayway JsonPath 2.10.0: frozen `$[` expression raises InvalidPathException and $.type compiles.",
+    "mli02_postgresql_check": "PostgreSQL 18.3 isolated disposable cluster: exact-millisecond ties traversed 120/120 unique IDs; submillisecond timestamps traversed 50/120 and skipped 70 due epoch-millisecond cursor truncation. Baseline MLI-02 SQL pagination fails completeness.",
+    "mli02_database_result": "mili-postgres-keyset-v1.json",
+    "database_result_sha256": "b1d562d98661cdb89b92d8ab0ab7a9a6c5eca8010454609a520a143805cfcffb",
+    "mli04_baseline_probe": "Four independent checks compiled; FAILED to return 404 for missing IDs (service IllegalArgumentException and MVC response fail); FAILED to 204 and PROCESSED 409 controls passed.",
+    "mli01_evaluator_revision": "v1 initially failed on method-name mismatch; v2 confirmed service behavior but compared detail error bodies beyond the rubric; v3 is the normalized evaluator used for all three MLI-01 repetition-1 conditions. Earlier v1/v2 runs are excluded from scoring. v3 hash: 2C3D4648C2C0316EAFE46B0F946ECBB45F2128CF2B169AAFFA0001B6519E6A88."
+  },
+  "run_performed": true
+}

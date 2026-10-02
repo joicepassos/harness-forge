@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "pilot_id": "harnessforge-mili-v1",
+  "status": "pilot_running",
+  "approved_on": "2026-09-27",
+  "approval_source": "user confirmation in the HarnessForge implementation task",
+  "repository": {
+    "repository_id": "mili",
+    "commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+    "working_tree_changes_included": false
+  },
+  "task_set": {
+    "source": "tasks-draft-v1.md",
+    "source_sha256": "b54814e4b9c37c3e242ad051472037c9dabc220086f0209d8f34b062afa6348f",
+    "approved_task_ids": [
+      "MLI-01",
+      "MLI-02",
+      "MLI-03",
+      "MLI-04",
+      "MLI-05"
+    ]
+  },
+  "agent": {
+    "product": "Codex CLI",
+    "version": "0.158.0-alpha.2.1",
+    "configuration": "local default; no task-specific profile or overrides",
+    "model": "gpt-6-luna",
+    "reasoning_effort": "low",
+    "service_tier": "default"
+  },
+  "repetitions_per_condition": 3,
+  "conditions": {
+    "required": [
+      "baseline",
+      "team",
+      "forge"
+    ],
+    "artifacts_frozen": true,
+    "baseline": "Fresh detached copy of pinned commit 49402ad341a7e8a01aee7968d1b10d91b44c0d1c with no overlays.",
+    "team": "Exact four-file bundle frozen in docs/pilot/mili-team-v1/files; hashes recorded in mili-condition-freeze-v1.json.",
+    "forge": "Exact four-file generated bundle frozen in docs/pilot/mili-forge-condition-v1/files; source and manifest hashes recorded in mili-condition-freeze-v1.json.",
+    "first_repetition": "MLI-01 repetition 1 completed for baseline, team, and Forge; 3/3 independent v3 acceptance tests pass per condition. Repetition 2 has one valid Team condition attempt (3/3 acceptance; 12/12 later focused tests); baseline and Forge retries are invalid due to clone reuse across agent sessions. Four of 45 condition runs are valid; 41 remain."
+  },
+  "run_performed": true,
+  "open_freeze_requirements": [],
+  "integrity_note": "The Mili checkout contains modified source files and untracked instruction/index files. They are excluded from the code baseline. The current .harness/index.json was generated from that modified tree and is not accepted as the Forge condition."
+}

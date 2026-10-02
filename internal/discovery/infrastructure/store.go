@@ -10,6 +10,7 @@ import (
 	harnessinfra "harnessforge/internal/harness/infrastructure"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -31,16 +32,22 @@ func (Store) Apply(repository, path string, proposal domain.Proposal) error {
 	if err != nil {
 		return err
 	}
-	for _, rule := range h.Rules {
-		if rule.ID == proposal.ID {
-			return nil
-		}
-	}
 	evidence := make([]harnessdomain.Evidence, len(proposal.Evidence))
 	for i, item := range proposal.Evidence {
-		evidence[i] = harnessdomain.Evidence{File: item.File, Symbol: item.Symbol, Revision: item.Revision}
+		evidence[i] = harnessdomain.Evidence{File: item.File, Kind: item.Kind, Workspace: item.Workspace, Symbol: item.Symbol, Quote: item.Quote, StartLine: item.StartLine, EndLine: item.EndLine, SHA256: item.SHA256, Revision: item.Revision}
 	}
-	candidate := harnessdomain.Rule{ID: proposal.ID, Description: proposal.Description, Origin: "ai", Status: "approved", Evidence: evidence}
+	// AI output is a proposal. Approval is a separate human decision and must
+	// not be implied by persisting the proposal.
+	candidate := harnessdomain.Rule{ID: proposal.ID, Description: proposal.Description, Origin: "ai", Status: "candidate", Evidence: evidence}
+	for _, rule := range h.Rules {
+		if rule.ID != proposal.ID {
+			continue
+		}
+		if rule.Description == candidate.Description && slices.Equal(rule.Evidence, candidate.Evidence) {
+			return nil
+		}
+		return fmt.Errorf("proposal ID %q already exists with different content", proposal.ID)
+	}
 	check := harnessdomain.Harness{Version: 1, Project: harnessdomain.Project{Name: "validation"}, Rules: []harnessdomain.Rule{candidate}}
 	if err := check.Validate(); err != nil {
 		return err

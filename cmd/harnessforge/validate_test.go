@@ -45,7 +45,7 @@ func TestValidateRejectsInvalidDocuments(t *testing.T) {
 	rule := "rules:\n  - id: sample\n    description: Example\n    origin: human\n    status: candidate\n"
 	cases := []struct{ name, text, want string }{
 		{"null collection", base + "rules: null\n", "null is not allowed"},
-		{"version", strings.Replace(base, "version: 1", "version: 2", 1), "version"},
+		{"version", strings.Replace(base, "version: 1", "version: 3", 1), "version"},
 		{"missing name", "version: 1\nproject: {}", "project.name"},
 		{"unknown field", base + "secret: value\n", "unknown field"},
 		{"wrong type", strings.Replace(base, "name: sample-project", "name: 123", 1), "cannot unmarshal"},
@@ -70,5 +70,36 @@ func TestValidateRejectsInvalidDocuments(t *testing.T) {
 				t.Fatalf("error %v, want %s", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestValidateDiscoversForgeLayoutAndRejectsAmbiguousSources(t *testing.T) {
+	root := t.TempDir()
+	forge := filepath.Join(root, ".forge", "forge.yaml")
+	content := "layout_version: 1\nir_version: 2\nproject: {name: sample}\ntargets: [codex]\nreferences: {}\n"
+	if err := os.MkdirAll(filepath.Dir(forge), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(forge, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := newValidateCommand()
+	cmd.SetArgs([]string{"--repository", root})
+	cmd.SetOut(new(bytes.Buffer))
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("valid Forge layout was not discovered: %v", err)
+	}
+	harness := filepath.Join(root, ".harness", "harness.yaml")
+	if err := os.MkdirAll(filepath.Dir(harness), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(harness, []byte("version: 1\nproject: {name: sample}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cmd = newValidateCommand()
+	cmd.SetArgs([]string{"--repository", root})
+	cmd.SetOut(new(bytes.Buffer))
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "select --layout") {
+		t.Fatalf("ambiguous layouts were not rejected: %v", err)
 	}
 }

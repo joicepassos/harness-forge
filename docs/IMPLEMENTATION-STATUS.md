@@ -1,0 +1,394 @@
+# Implementation status
+
+Date: 2026-09-30. Branch: `codex/forge-evolution-mvp`. Base: `bb226d8`.
+
+## Completed in this implementation
+
+- T0.1: this status record captures the branch, current verification, and open
+  work. The checkout also contained pre-existing repository-context changes;
+  those are still uncommitted and are not claimed as part of this plan's tasks.
+- T0.2: the six priority findings are mapped to regression tests in
+  [the acceptance map](acceptance/t0.2-regressions.md).
+- T0.3: reusable single-module, Go-workspace monorepo, and Windows path/workspace
+  fixtures cover repository paths, portable references, and workspace roots.
+- T0.5: [ADR 0001](adr/0001-layout-cli-contracts.md) defines independent layout,
+  IR, JSON diagnostic, and build versions, compatibility behavior, and CLI exit
+  codes, aligned with the current implementation. A subprocess contract test
+  now verifies all three CLI exit classes (0/1/2) against the built executable.
+- T0.6: the OS test matrix runs uncached deterministic tests with provider API
+  keys blanked; no paid provider calls are enabled by this workflow.
+- T0.4: synthetic single-module, monorepo, and Windows-workspace development
+  fixtures are inventoried separately from the selected Mili validation commit.
+  A focused clean-commit smoke baseline records 8 passing tests. A PostgreSQL
+  18.3 probe found the MLI-02 cursor precision defect; comparative agent-task
+  baselines remain part of T9.2. An offline paired context-selection baseline
+  now covers the five approved Mili task prompts on the pinned validation
+  commit, but it is a retrieval proxy rather than agent-task outcomes. A
+  provisional single-analyst path-judgment set now records 80/80 high/medium
+  annotated-path coverage across the ten task-condition captures. This is not
+  ground-truth recall, evidence of an improvement, or agent-task outcome data;
+  T0.4's comparative validation metrics remain partial.
+- T1.1–T1.5: generation preserves skills and structured workspaces; generated
+  files use ownership hashes; approval records bind rule/evidence fingerprints;
+  discovery rejects conflicting IDs; drift reports evidence presence and
+  coverage separately from conformance.
+- T1.6: `testdata/clones/without-forge/` contains Codex and Claude Code clones
+  with static native instructions and no HarnessForge configuration. Their
+  canonical Forge source is `testdata/clones/payments-demo-forge/`.
+- T1.7: deterministic repository-level tests for generation, ownership, review,
+  discovery, and drift pass. `TestWithoutForgeClonesPreserveExportedContract`
+  compiles and syncs a temporary copy of the canonical Forge source, compares
+  every generated instruction and skill byte-for-byte with the consumer clones,
+  checks for extra or stale native outputs, and verifies the clones contain no
+  Forge configuration or ownership manifest.
+  `go test -count=1 ./internal/generation/... ./internal/harness/... ./internal/discovery/... ./internal/drift/... ./cmd/harnessforge` passed after this change. Codex CLI prompt-input verified discovery in the static clone for version `0.158.0-alpha.2.1`; no task/model compliance was tested. Claude runtime discovery remains unverified. See [P0–T1 acceptance](acceptance/p0-t1.md).
+- T2.1: a shared layout resolver discovers `.harness` or `.forge`, rejects
+  ambiguous coexistence unless selection is explicit, rejects symlinked
+  layout directories and referenced path components, and resolves safe
+  repository-relative paths. Regression tests cover internal and external
+  symlink targets for both layout directories and references.
+- T2.2–T2.6: `.forge/forge.yaml` has a versioned contract independent from
+  Harness IR v1/v2; offline loading preserves the complete manifest, and the
+  legacy compatibility projection carries project, architecture, skills, and
+  gates without aliasing mutable fields. `LoadProject` also loads the referenced
+  typed knowledge documents with bounded safe reads, validates their schemas
+  and IDs, and preserves review, health, evidence, and provenance separately
+  from legacy rules.
+  Forge-to-legacy generation now fails closed with directions to native sync,
+  rather than emitting a partial Harness. Versioned migration round-trip
+  fixtures preserve `architecture.styles` and the legacy skill approval status
+  in the Forge manifest. `TestPreviewToForgePreservesEveryMappedLegacyField`
+  compares all current legacy fields with their manifest/knowledge mappings;
+  semantic review changes (legacy approved rules become Forge candidates) are
+  explicit and retain the original review metadata.
+- T3.1–T3.4: migration preview reports unmapped choices, apply preserves the
+  legacy source, rollback protects modified/unowned output, and v1 migration
+  remains compatible. Applying a Forge migration now requires the SHA-256
+  digest printed by the reviewed preview; changed sources or choices invalidate
+  it. Skill status and evidence now survive conversion through the versioned
+  manifest and schema. Cross-layout legacy command compatibility is explicit:
+  legacy `generate` directs Forge projects to native `sync` rather than emitting
+  a partial document. Explicit `review --layout forge` also fails closed when
+  Forge is missing and cannot fall through to mutate a Harness file.
+  Preview now hashes and parses the same bounded source bytes through a
+  root-confined read. Preview and apply reject observed source/parent symlinks,
+  and root identity is checked after opening it. Regression tests cover a
+  changed source during parsing and post-preview symlink replacement.
+- T4.1–T4.6: deterministic Codex/Claude compile adapters, shared ownership
+  manifest, architecture metadata in both native exports, dry-run/check/apply,
+  collision and edit protection, staging, clone
+  ownership, idempotence, and symlink checks are implemented. T4.5 now records a
+  durable recovery journal before publishing files; interrupted transactions
+  roll back on the next apply, and post-interruption human edits are preserved
+  with an explicit conflict. Recovery also preserves a human deletion of a
+  planned file that the interrupted transaction had not touched; stale-file
+  removals carry a matching staged backup before recovery may restore them.
+  Concurrent `sync` writers now serialize through
+  an OS-backed repository lock stored in the user cache; lock waits honor
+  cancellation, and dry-run remains read-only. Concurrent-apply, cross-process
+  lock, and lock-cancellation tests pass on Windows. T4.2 emits nested Codex
+  `AGENTS.md` for literal subtree scopes (`dir/**`) and keeps file/mixed globs
+  advisory; consumers must run Codex from the matching CWD subtree. The local
+  Codex 0.158.0-alpha.2.1 `debug prompt-input` check confirmed root-only
+  discovery at root and cumulative root-to-leaf discovery in `services/api`.
+  T4.3 emits scoped Claude rules as `.claude/rules/<sha256-id>.md` with YAML
+  `paths` frontmatter at byte zero; the compiler marks glob-dialect parity
+  unverified. Both adapters retain global content in the root file, and their
+  single-document APIs fail explicitly when scoped outputs would be discarded.
+  Renderer and sync tests cover deterministic output, ownership, stale-file
+  protection, conflicts, and symlinks. Claude runtime acceptance and target
+  conflict behavior remain open. See the [Codex validation](CODEX-ADAPTER-VALIDATION.md)
+  and [Claude export contract](CLAUDE-CODE-RULES.md). Dry-run
+  reports unmanaged, edited, and unsafe output conflicts
+  without writing; `sync --check` lists missing current outputs. Apply captures
+  preflight snapshots and rechecks outputs immediately before removal and
+  publication. A deterministic concurrent-create test confirms that human
+  bytes survive and earlier transaction outputs are restored.
+- T5.1/T5.6: read-only aggregate `check`, static Forge/Harness output drift,
+  explicit gate status (`not_run`/blocked/executed), optional gate execution,
+  strict `--require-gates`, stale/missing approved knowledge failure, and CI
+  drift workflow are implemented. Native sync now rejects approved knowledge
+  marked stale or missing as well; unknown and verified health remain eligible.
+  `doctor` discovers either project layout, validates Forge references, and
+  reports declared policies and gates without claiming to enforce or run them.
+  Harness diagnostics remain supported.
+  CLI exit codes follow ADR 0001: success 0, failed checks 1, and usage,
+  configuration, or execution errors 2. The cross-platform workflow runs both
+  no-Forge clone gates, verifies exact Forge-to-clone export parity, and checks
+  generated drift. It does not launch an
+  external agent against the clone, so runtime discovery remains unverified.
+  Its GitHub OS matrix has not run; external CI acceptance remains pending.
+- T5.2–T5.4: explicit candidate import, reviewer-bound approval bound to rule,
+  evidence, and reviewable metadata hashes, and Forge knowledge/evidence drift
+  are covered. Legacy approvals without the metadata digest require re-review.
+  `drift` reports
+  missing or changed evidence separately and always leaves semantic conformance
+  `not_evaluated`; evidence presence is not treated as proof of conformance.
+- T5.5: `harnessforge onboard` provides text/JSON guidance, explicit handling of
+  missing/invalid/ambiguous layouts, candidate import, review-before-export
+  steps, and safe sync guidance. It is command-driven rather than an interactive
+  wizard; model-backed proposals remain optional.
+- T6.1–T6.2: approved knowledge is selected with content/evidence and review
+  metadata hash validation, freshness checks, provenance, scope, explicit
+  keywords, and task-path glob matching. The CLI exposes task paths. Backend /
+  frontend `Build` integration coverage verifies both selection and explicit
+  out-of-scope exclusions. Context plans also explain approved knowledge omitted
+  for stale or missing health, keyword mismatch, or prompts with no relevant
+  keywords. T6.3 reports selected-item and early prompt-envelope
+  overflow with the configured estimator and an explicit excluded-prompt reason.
+  Counter failures and negative values declare the byte-estimator fallback in
+  the result instead of silently reporting the requested counter; the entire
+  selection is recomputed in bytes after an intermittent failure so values
+  from incompatible estimators are never mixed. Excerpts sharing a source now
+  retain separate provider keys, and the budget counts the same serialized
+  payload sent to the provider.
+  T6.4 adds `context explain --compare-knowledge`, which emits paired plans for
+  the same prompt, model, estimator, budget, ranking options, and task paths,
+  with and without approved knowledge. It reports selected knowledge IDs and
+  estimated token delta while labeling the result as a retrieval proxy;
+  task-level quality remains unmeasured. A provider-free paired capture for
+  MLI-01–05 on the pinned Mili commit records selected source paths and
+  estimated tokens at a fixed 131,072-token budget; the mean delta is +1,799
+  estimated tokens. A separate provisional analyst judgment set and exact-path
+  coverage report find 80/80 high/medium annotated paths in both conditions
+  across all five tasks; this is path coverage of a non-exhaustive candidate
+  set, not ground-truth recall or an improvement claim, and task quality is
+  unmeasured. See the
+  [Mili context-selection report](pilot/mili-context-selection-v1.json) and its
+  [provenance sidecar](pilot/mili-context-selection-provenance-v1.json), the
+  [provisional relevance judgments](pilot/mili-source-relevance-judgments-v1.json),
+  and the [coverage output](pilot/mili-relevance-coverage-v1.json). The
+  original runner binary reports `vcs.modified=true`, leaving its build-tree
+  cleanliness uncertain. A clean offline rebuild from the pinned HarnessForge
+  commit reproduced all five report-linked raw JSON captures byte-for-byte; the
+  sidecar records both binary/archive hashes and clearly treats this as a clean
+  reproduction, not proof of the original invocation's arguments. The ten
+  included-excerpt lists in that frozen report contain no duplicate source
+  keys, so the later same-source fix does not alter those historical estimates.
+- T7.1–T7.5: local observation capture, review, candidate publication,
+  audit provenance, and checkout isolation are implemented and covered. Generated
+  indexes use the OS user cache keyed by canonical checkout/worktree path;
+  legacy `.harness/index.json` files remain readable and are not removed. T7.3
+  memory publication reuses an existing candidate/approved item when content,
+  kind, scope,
+  keywords, and evidence match, without changing its provenance or review;
+  rejected/deprecated items do not block a new candidate. T7.4 supports
+  preview/apply, age and quota retention, pending-item
+  preservation, atomic snapshot replacement, and safe retry after an injected
+  interruption; pending items survive and repeated collection is idempotent.
+  Capture, review, and GC serialize cross-process read-modify-write operations
+  with OS file locks so concurrent mutations do not lose observations or reviews.
+  Acceptance tests delete and rebuild the generated index cache while asserting
+  a persistent observation survives, use an actual linked Git worktree to
+  verify index-cache isolation, and assert every unique payload survives
+  concurrent cross-process captures.
+- T8.1: the official-doc matrix was refreshed on 2026-09-28. No Cursor editor
+  or CLI runtime is available here; current CLI docs promise root
+  `AGENTS.md`/`CLAUDE.md`, while nested CLI discovery remains unverified.
+  Cursor release/runtime acceptance remains open. T8.2: isolated local-mock
+  checks on Windows cover OpenCode V1 `opencode-ai@1.18.33` and V2
+  `@opencode/cli@2.0.18`. V1 captures confirm root and nested `AGENTS.md`,
+  project `CLAUDE.md` fallback and precedence, global OpenCode-vs-Claude
+  fallback, `instructions` local path/glob/URL inclusion, and the documented
+  remote timeout (slow URL response at 12 seconds; task request began 5.145
+  seconds after fetch start). V2 captures
+  confirm global/root/ancestor instructions, `OPENCODE_DISABLE_PROJECT_CONFIG=1`,
+  `CLAUDE.md` exclusion, and local/glob/URL `instructions` exclusion. A separate
+  root-started V2 `read` call confirms nested rules are appended to the next
+  request after reading inside `packages/api`. A follow-up V2 mock run in a
+  temporary no-Forge clone confirmed that OpenCode receives the current
+  Forge-synced Codex `AGENTS.md` rule and native skill reference; this verifies
+  cross-consumption for `@opencode/cli@2.0.18`, not model compliance or skill
+  body loading. Neutral V2 global-instruction probes on `@opencode/cli@2.0.18`
+  show the Claude sentinel absent when it is the only global file; with both
+  global files present, only OpenCode `AGENTS.md` appears, and after removing
+  it the Claude fallback remains absent. Summary observations are in
+  `docs/acceptance/evidence/opencode-v2-global-precedence-2026-09-28.json`; raw
+  request captures are withheld from this published evidence set. V1
+  disable controls were tested on `opencode-ai@1.18.33` with the local mock:
+  `OPENCODE_DISABLE_CLAUDE_CODE=1` removed project and global Claude markers as
+  documented, but `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` unexpectedly removed
+  the project marker too, although current V1 docs say it disables only the
+  global Claude prompt. A follow-up skills probe confirmed
+  `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` removes both project and global skill
+  descriptions while preserving project and global `CLAUDE.md` sentinels,
+  matching the documented skills-only scope on that build. Prompt-only
+  semantics are not tied to a release in the docs, so that behavior remains
+  unresolved; V1 docs do not document a general project `AGENTS.md` disable
+  switch. Summary observations are in
+  `docs/acceptance/evidence/opencode-v1-disable-controls-2026-09-28.json` and
+  `docs/acceptance/evidence/opencode-v1-skills-disable-2026-09-30.json`; raw
+  request captures are withheld from this published evidence set. An external-root probe
+  with a neutral query found the parent `AGENTS.md` in system instructions
+  outside an inner Git root, contrary to the V2 docs' “global only” statement.
+  V2 local-file, glob, and loopback URL entries in config `instructions` were
+  all absent from captured requests. See
+  [OpenCode adapter validation](OPENCODE-ADAPTER-VALIDATION.md).
+- T8.3: the read-only context resolver is exposed through MCP JSON-RPC stdio
+  using the legacy initialize lifecycle. It negotiates `2025-11-25` and
+  `2025-06-18`, counter-offers `2025-11-25` for unsupported versions, and
+  supports resources/list, resources/read, a task-prompt resource template,
+  optional repository-relative task paths, bounded messages, and no tools or
+  write operations. Protocol behavior is covered locally; remote transport,
+  authentication, and client-specific discovery remain out of scope. See
+  [MCP context contract](MCP-CONTEXT.md).
+  Malformed task-query escapes are rejected, and escaped JSON-RPC responses
+  remain within the advertised message limit.
+- T8.4: sync validates and publishes portable Agent Skills bundles under
+  `.agents/skills/` and `.claude/skills/`; generated instruction files link to
+  skills without duplicating their bodies. Updates and stale-file cleanup use
+  generated-manifest hashes, and symlinks/special files are rejected.
+- T8.5: the opt-in gate runner supports workspace, timeout, cancellation and
+  bounded output. Cancellation terminates the shell process tree on supported
+  operating systems. Gates inherit the HarnessForge process environment and
+  may override named variables; the secret-handling limit is documented in
+  [quality-gate guidance](QUALITY-GATES.md). Policies marked `enforced` fail
+  closed because no policy enforcement executor is implemented. T8.6 adds a
+  dedicated CI workflow that
+  verifies Forge sync and runs the repository's `go test ./...` gate; both
+  commands passed locally. The workflow has not yet run on GitHub.
+- T9.1: the user approved MLI-01–05, Codex CLI local defaults, and three
+  repetitions. The pinned Mili commit, four-file team bundle, generated Forge
+  source/export, task text, model/effort, run rotation, and baseline smoke are
+  hash-recorded in the pilot freeze files. The original Mili checkout is intact.
+  The original independent task evaluators were frozen by hash. After the user
+  confirmed the task-draft wording, `mili-condition-freeze-v2.json` pins rubric
+  v2 and MLI-01 evaluator V4; V4 compiled and ran on a clean pinned baseline
+  with three expected acceptance failures. V3 MLI-01 results are historical
+  and excluded from the revised score. The MLI-02 evaluator
+  uses the real service/controller and its three characterization tests pass
+  on Temurin 25.0.4.1. The four malformed cursor observations are 500, 200,
+  200, and 500; the accepted malformed cursors cause repository queries.
+  Baseline probes found cross-tenant exposure in MLI-01, stale ACTIVE cache and accepted ingest
+  after pause/delete in MLI-03, and missing-event HTTP 404 failures in MLI-04;
+  MLI-04 FAILED/204 and non-FAILED/409 controls pass. The frozen PostgreSQL
+  18.3 probe traversed tied millisecond rows without loss but skipped 70 of 120 rows when timestamps had
+  submillisecond precision: the API cursor truncates to milliseconds. The
+  pinned MLI-02 baseline therefore fails pagination completeness. The MLI-05
+  JsonPath probe confirms the frozen malformed expression is rejected. These
+  evaluator checks are not coding-agent pilot runs. The user-approved MLI-01
+  repetition-1 runs are complete on three isolated clones: baseline, team, and
+  Forge each passed 3/3 independent v3 acceptance checks. The agent-authored
+  focused test suites were not run according to retained CLI reports; earlier
+  contradictory summaries claiming success are superseded. Diff sizes were
+  measured, while duration, tokens, review quality, rule violations and
+  instruction-source discovery were not captured. Repetition 2 has one valid
+  Team attempt: its independent evaluator passed 3/3 and later focused
+  verification passed 12/12; the Team task changed 9 source/test files (+75/-29
+  tracked lines). Baseline and Forge reused clones across multiple
+  agent sessions and are invalid; a diagnostic Forge build on that clone failed
+  at `InboundEventRepository.java:76`. A fresh Forge retry also could not run:
+  the CLI executor remained read-only despite the requested workspace-write
+  setting. The repetition remains incomplete and is not comparative. See [the database result](pilot/mili-postgres-keyset-v1.json),
+  [partial pilot results](pilot/mili-results-v1.md), and [repetition 2 record](pilot/mli01-repetition-2.md).
+  T9.1 protocol is versioned. The v1 ledger retains four valid condition runs,
+  but the revised v2 scoring matrix starts at 0/45 because MLI-01 V3 does not
+  meet the approved rubric. T9.3 records available
+  measures and missing-data limits in a versioned run ledger; null values mean
+  unmeasured, never zero. T9.5
+  publishes descriptive partial outcomes only. T9.6 provisionally defers a
+  custom runtime pending the complete pilot and T7/T8 runtime evidence; see
+  [ADR 0002](adr/0002-runtime-executor-decision.md). The revised matrix has 45
+  condition runs outstanding: none has completed as a valid agent run. MLI-01
+  repetition 1 was attempted on fresh clones, but the nested Codex CLI could
+  not execute repository commands under the frozen workspace-write environment
+  policy. Evaluator-only checks confirmed all three MLI-01 failures on the
+  untouched baseline, Team overlay, and Forge overlay; these are baseline
+  characterization results, not agent outcomes. A further direct CLI retry on
+  a fresh pinned baseline clone was blocked by the same host policy before any
+  repository read or write; it remains an invalid run and did not change the
+  0/45 score. See the
+  [blocked retry record](pilot/mili-mli01-v2-r1-baseline-blocked-20260928.md).
+  T9.2 remains incomplete, so
+  neither T9.5 nor T9.6 has final acceptance. See [the MLI-01 repetition 1
+  attempt record](pilot/mili-mli01-r1-attempt-v2.md).
+  The 2026-09-28 v1 freeze audit recovered the historical partial-approval
+  bytes from commit `df787e2a` into a byte-identical snapshot and found the old
+  approval pointer and MLI-01 evaluator incomplete. The user then confirmed the
+  approved task-draft requirement; freeze v2 records that decision and pins a
+  reviewed rubric/evaluator pair. Freeze v1 and its outcomes remain historical;
+  v2 governs future scored runs. See the
+  [freeze integrity audit](pilot/freeze-integrity-audit-2026-09-28.md) and
+  [reconciliation record](pilot/mili-freeze-reconciliation-2026-09-28.md).
+
+## Verification
+
+Passed:
+
+```text
+go test -count=1 ./...
+go vet ./...
+go run ./cmd/harnessforge sync --repository . --check
+go run ./cmd/harnessforge check --repository . --layout forge --run-gates --format json
+```
+
+All four commands passed on 2026-09-28 in a fresh Windows checkout using Go
+1.26.2 and an isolated build cache. This also confirmed that generated-file
+ownership hashes survive Git's Windows checkout behavior. The cross-platform CI
+matrix has not yet been run. No direct provider API calls were made; the
+approved Codex CLI was used for the Mili pilot attempts recorded above.
+After the T5.6 clone-parity update, `go test ./...` also passed on the active
+checkout. The same command passed independently in both no-Forge consumer
+clones; those small fixtures currently have no dedicated Go test files.
+After the T7.1/T7.5 acceptance additions, `go test ./...` passed on the active
+Windows checkout, including memory and linked-worktree index tests.
+Focused T7.1/T7.5 acceptance tests also passed for persistent-memory survival
+across index-cache rebuild, linked-worktree index isolation, and preservation of
+all concurrent cross-process captures.
+The OpenCode V2 Forge-export capture used the npm cache offline and a local-only
+mock provider; no paid model provider was contacted.
+On 2026-09-30, `go test ./...` passed on the active checkout after the T3.2
+source-read and T8.3 response-bound fixes.
+An independent fresh Windows clone initially exposed a T1.7 parity failure:
+Git converted the canonical Forge skill to CRLF while the exported clone
+skills retained LF. After pinning LF for Forge skill sources in `.gitattributes`,
+the fresh clone passed `go test -count=1 ./...`, `go vet ./...`,
+`sync --check`, and `check --run-gates`. The T8.6 gate workflow also now pins
+the complete `actions/setup-go` commit SHA verified against its upstream
+repository. GitHub's OS matrix remains unrun; the workflows trigger on a pull
+request or a push to `main`, so publishing this branch alone will not run them.
+After the T4.5, T5.1, and T6.3 fixes, a fresh clone of commit `e1ece75`
+passed `go test -count=1 ./...`, `go vet ./...`, `sync --check`, and
+`check --run-gates` on Windows.
+
+## Remaining validation
+
+- Acceptance distinction: T4.2/T4.3 renderer contracts, T1.7/T5.6 clone gates,
+  and T8.6 workflow configuration are implemented and locally verifiable, but
+  target-runtime discovery/precedence, an external clone-agent run, and the
+  GitHub OS matrix are separate acceptance criteria and remain pending.
+- Cursor, broad OpenCode compatibility, and external Codex/Claude runtime
+  validation, end-to-end clone agent runs, pilot measurements, and the runtime
+  decision require exact agent builds and representative repositories; the
+  narrowly scoped OpenCode V2.0.18 local-mock evidence is recorded separately
+  and is not generalized to other builds or adapter behavior.
+- T9.2–T9.5 need completion of the v2 frozen run matrix and outcome
+  measurements. Mili's clean HEAD, approved tasks, run configuration,
+  instruction bundles, immutable approval snapshot, and PostgreSQL keyset
+  finding are versioned; the original modified working tree is excluded. The
+  v1 ledger's historical outcomes do not count toward v2: the v2 matrix is
+  currently 0/45 valid agent runs. Synthetic Go and Windows fixtures remain
+  development data, not pilot evidence.
+- T6.2 now supports explicit knowledge keywords and task paths through the
+  context API and `context explain --task-path`; glob matching is segment-aware
+  with `**`, and backend/frontend scope fixtures pass. T6.3 reports early
+  prompt-envelope overflow with the same configured estimator and an explicit
+  excluded-prompt reason. T6.4 has a paired five-task Mili capture and
+  provisional analyst-judgment coverage (80/80 annotated high/medium paths in
+  both conditions); the labels are non-exhaustive and not ground truth, and the
+  metric is not task-quality evidence or proof of improvement. The offline
+  [integrity validator](pilot/verify-context-selection.ps1) rechecks the frozen
+  task text, source hashes, paired raw captures, clean-run reproduction, source
+  snapshot digest, and aggregate arithmetic. The separate
+  [provisional path-coverage scorer](pilot/score-mili-relevance-coverage.ps1)
+  checks the report/judgment/evaluator/capture hashes and scores only the
+  annotated path set; it does not calculate precision, NDCG, ground-truth recall,
+  or task quality. The raw captures do not embed the source commit or
+  executed prompt, so the sidecar binds those declarations to capture hashes
+  without claiming a signed execution attestation. Original runner cleanliness
+  remains uncertain (`vcs.modified=true`); the clean rebuild produced matching
+  bytes for all five captures.
+- T1.7/T2/T3/T4/T5 also retain acceptance gaps listed in their status entries;
+  static fixtures and repository-level tests are not external runtime evidence.
+- This checkout contains pre-existing repository-context/retrieval changes;
+  they remain outside the Forge plan task commits.

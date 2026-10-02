@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "report_id": "mili-relevance-coverage-v1",
+  "status": "provisional_annotated_path_coverage_only",
+  "generated_on": "2026-09-30",
+  "is_ground_truth": false,
+  "metric": "annotated_high_medium_path_coverage",
+  "formula": "unique selected paths labeled high or medium divided by the number of unique high or medium paths annotated for that task",
+  "interpretation": "Coverage of this provisional, non-exhaustive analyst-annotated path set only. Both conditions may already include all annotated candidates; 100% coverage is not evidence of improvement. This is not ground-truth recall, precision, NDCG, source-quality, or task-quality evidence.",
+  "source_repository": {
+    "id": "mili",
+    "commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+    "rule": "Only source paths and behavior from this pinned Git HEAD were considered; the local Mili worktree is dirty and excluded.",
+    "selection_snapshot_tree_manifest_sha256": "315765fd296acd1ddebc94c701a825314899b3fccbaf54a6b099f5fe1ab4c170",
+    "selection_snapshot_manifest_algorithm": "SHA-256 over UTF-8 lines: file_sha256<TAB>byte_length<TAB>slash_relative_path<LF>, sorted by ordinal relative path",
+    "selection_snapshot_file_count": 198,
+    "selection_snapshot_path": ".pilot-runs/mili-context-eval-v1/repo",
+    "selection_provenance_sidecar_path": "docs/pilot/mili-context-selection-provenance-v1.json",
+    "selection_provenance_sidecar_sha256": "7b7ac49a7503bbac283654c67bd580f644fe69b985b5317093c6bff1b635ebfd"
+  },
+  "inputs": {
+    "paired_report": {
+      "path": "docs/pilot/mili-context-selection-v1.json",
+      "sha256": "3ac4399759584baea90f31617689c0958cd8dc4716baf085801e4c2abe568a1f"
+    },
+    "provenance_sidecar": {
+      "path": "docs/pilot/mili-context-selection-provenance-v1.json",
+      "sha256": "7b7ac49a7503bbac283654c67bd580f644fe69b985b5317093c6bff1b635ebfd",
+      "source_tree_manifest_sha256": "315765fd296acd1ddebc94c701a825314899b3fccbaf54a6b099f5fe1ab4c170"
+    },
+    "provisional_judgments": {
+      "path": "docs/pilot/mili-source-relevance-judgments-v1.json",
+      "sha256": "003e8250fc0cd91e2ce19b65f6bdfc6bf3e95d3931c3e0f5f6fe0a2eb4ec4031"
+    }
+  },
+  "aggregate": {
+    "task_condition_pairs": 10,
+    "expected_task_condition_pairs": 10,
+    "micro_covered_paths": 80,
+    "micro_annotated_paths": 80,
+    "micro_coverage": 1.0,
+    "macro_mean_task_condition_coverage": 1.0,
+    "by_condition_macro_mean": [
+      {
+        "condition": "baseline_without_knowledge",
+        "task_count": 5,
+        "macro_mean_coverage": 1.0
+      },
+      {
+        "condition": "with_approved_knowledge",
+        "task_count": 5,
+        "macro_mean_coverage": 1.0
+      }
+    ]
+  },
+  "results": [
+    {
+      "task_id": "MLI-01",
+      "condition": "baseline_without_knowledge",
+      "capture_sha256": "d89b2d17b9feb1dbf876371607839c41679f9c5ea851cdb44d135601ef586e5f",
+      "annotated_high_medium_path_count": 7,
+      "covered_path_count": 7,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/tenant/TenantContext.java",
+        "backend/core/src/main/java/com/mili/core/tenant/TenantId.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceImpl.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/GlobalExceptionHandler.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/InboundEventRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/WebhookMonitoringService.java"
+      ],
+      "missing_annotated_paths": []
+    },
+    {
+      "task_id": "MLI-01",
+      "condition": "with_approved_knowledge",
+      "capture_sha256": "d89b2d17b9feb1dbf876371607839c41679f9c5ea851cdb44d135601ef586e5f",
+      "annotated_high_medium_path_count": 7,
+      "covered_path_count": 7,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/tenant/TenantContext.java",
+        "backend/core/src/main/java/com/mili/core/tenant/TenantId.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceImpl.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/GlobalExceptionHandler.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/InboundEventRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/WebhookMonitoringService.java"
+      ],
+      "missing_annotated_paths": []
+    },
+    {
+      "task_id": "MLI-02",
+      "condition": "baseline_without_knowledge",
+      "capture_sha256": "8425d914e34d345615570a160477df3c7c8596803eca44da95513f405e3178d3",
+      "annotated_high_medium_path_count": 7,
+      "covered_path_count": 7,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/webhook/api/InboundEventSummary.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceImpl.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/InboundEventRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/WebhookMonitoringService.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceTest.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringControllerIntegrationTest.java"
+      ],
+      "missing_annotated_paths": []
+    },
+    {
+      "task_id": "MLI-02",
+      "condition": "with_approved_knowledge",
+      "capture_sha256": "8425d914e34d345615570a160477df3c7c8596803eca44da95513f405e3178d3",
+      "annotated_high_medium_path_count": 7,
+      "covered_path_count": 7,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/webhook/api/InboundEventSummary.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceImpl.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/InboundEventRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/WebhookMonitoringService.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceTest.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringControllerIntegrationTest.java"
+      ],
+      "missing_annotated_paths": []
+    },
+    {
+      "task_id": "MLI-03",
+      "condition": "baseline_without_knowledge",
+      "capture_sha256": "941356e5736bbfbaadaa95cee1da117d94ba304c102fb1a17bb6d7e94b496913",
+      "annotated_high_medium_path_count": 11,
+      "covered_path_count": 11,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/inbound/CreateInboundWebhookService.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/cache/CachedWebhookConfig.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/cache/WebhookInboundCache.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/InboundController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookManagementController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/WebhookConfigRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/WebhookInboundConfigRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/security/InboundAuthenticator.java",
+        "backend/core/src/main/java/com/mili/core/webhook/WebhookInboundService.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/infrastructure/cache/WebhookInboundCacheTest.java",
+        "backend/core/src/test/java/com/mili/core/webhook/WebhookInboundLifecycleIntegrationTest.java"
+      ],
+      "missing_annotated_paths": []
+    },
+    {
+      "task_id": "MLI-03",
+      "condition": "with_approved_knowledge",
+      "capture_sha256": "941356e5736bbfbaadaa95cee1da117d94ba304c102fb1a17bb6d7e94b496913",
+      "annotated_high_medium_path_count": 11,
+      "covered_path_count": 11,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/inbound/CreateInboundWebhookService.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/cache/CachedWebhookConfig.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/cache/WebhookInboundCache.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/InboundController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookManagementController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/WebhookConfigRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/WebhookInboundConfigRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/security/InboundAuthenticator.java",
+        "backend/core/src/main/java/com/mili/core/webhook/WebhookInboundService.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/infrastructure/cache/WebhookInboundCacheTest.java",
+        "backend/core/src/test/java/com/mili/core/webhook/WebhookInboundLifecycleIntegrationTest.java"
+      ],
+      "missing_annotated_paths": []
+    },
+    {
+      "task_id": "MLI-04",
+      "condition": "baseline_without_knowledge",
+      "capture_sha256": "742e0b72d4124a1fb896a0a195cb1327df5b20e0f0cfa9ebe6964d60ca42da55",
+      "annotated_high_medium_path_count": 8,
+      "covered_path_count": 8,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/InvalidReprocessException.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceImpl.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/GlobalExceptionHandler.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/InboundEventRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/WebhookMonitoringService.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceTest.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringControllerIntegrationTest.java"
+      ],
+      "missing_annotated_paths": []
+    },
+    {
+      "task_id": "MLI-04",
+      "condition": "with_approved_knowledge",
+      "capture_sha256": "742e0b72d4124a1fb896a0a195cb1327df5b20e0f0cfa9ebe6964d60ca42da55",
+      "annotated_high_medium_path_count": 8,
+      "covered_path_count": 8,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/InvalidReprocessException.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceImpl.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/GlobalExceptionHandler.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringController.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/InboundEventRepository.java",
+        "backend/core/src/main/java/com/mili/core/webhook/WebhookMonitoringService.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceTest.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringControllerIntegrationTest.java"
+      ],
+      "missing_annotated_paths": []
+    },
+    {
+      "task_id": "MLI-05",
+      "condition": "baseline_without_knowledge",
+      "capture_sha256": "71d385ed5e6c0824efdf14f47b454428bb61657a4f743d66e44e58c4227618ee",
+      "annotated_high_medium_path_count": 7,
+      "covered_path_count": 7,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/webhook/api/CreateInboundWebhookCommand.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/inbound/CreateInboundWebhookService.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/domain/EventTypePath.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/GlobalExceptionHandler.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookManagementController.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/application/inbound/CreateInboundWebhookServiceTest.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/domain/EventTypePathTest.java"
+      ],
+      "missing_annotated_paths": []
+    },
+    {
+      "task_id": "MLI-05",
+      "condition": "with_approved_knowledge",
+      "capture_sha256": "71d385ed5e6c0824efdf14f47b454428bb61657a4f743d66e44e58c4227618ee",
+      "annotated_high_medium_path_count": 7,
+      "covered_path_count": 7,
+      "coverage": 1.0,
+      "covered_paths": [
+        "backend/core/src/main/java/com/mili/core/webhook/api/CreateInboundWebhookCommand.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/application/inbound/CreateInboundWebhookService.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/domain/EventTypePath.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/GlobalExceptionHandler.java",
+        "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookManagementController.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/application/inbound/CreateInboundWebhookServiceTest.java",
+        "backend/core/src/test/java/com/mili/core/webhook/internal/domain/EventTypePathTest.java"
+      ],
+      "missing_annotated_paths": []
+    }
+  ],
+  "limitations": [
+    "Only paths listed in the provisional judgment artifact are counted; the candidate pool is not exhaustive.",
+    "A low or absent annotation is not treated as a definitive irrelevance judgment.",
+    "No precision, NDCG, ground-truth recall, agent outcome, or task-quality score is calculated."
+  ]
+}

@@ -21,7 +21,7 @@ func TestReviewPreservesBytesAndControlsTransitions(t *testing.T) {
 	}
 	actual, _ := os.ReadFile(path)
 	want := bytes.Replace(original, []byte("'candidate'"), []byte("'approved'"), 1)
-	if !bytes.Equal(actual, want) {
+	if !bytes.HasPrefix(actual, want) || !bytes.Contains(actual, []byte("review:\n      content_sha256: ")) || !bytes.Contains(actual, []byte("      evidence_sha256: ")) {
 		t.Fatalf("unexpected formatting: %q", actual)
 	}
 	if err := review.Execute(path, "sample", "rejected"); err == nil {
@@ -31,7 +31,7 @@ func TestReviewPreservesBytesAndControlsTransitions(t *testing.T) {
 		t.Fatal("missing rule accepted")
 	}
 	unchanged, _ := os.ReadFile(path)
-	if !bytes.Equal(unchanged, want) {
+	if !bytes.Equal(unchanged, actual) {
 		t.Fatal("failed review changed file")
 	}
 	if err := review.Execute(path, "sample", "candidate"); err != nil {
@@ -39,6 +39,62 @@ func TestReviewPreservesBytesAndControlsTransitions(t *testing.T) {
 	}
 	if err := review.Execute(path, "sample", "rejected"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestApprovedRuleRequiresReReviewWhenContentOrEvidenceChanges(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, ".harness", "harness.yaml")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(root, "source.go")
+	if err := os.WriteFile(source, []byte("func Execute() { first() }"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	doc := []byte("version: 1\nproject: {name: sample}\nrules:\n  - id: sample\n    description: call Execute\n    origin: ai\n    status: candidate\n    evidence:\n      - file: source.go\n        symbol: Execute\n")
+	if err := os.WriteFile(path, doc, 0600); err != nil {
+		t.Fatal(err)
+	}
+	review := application.NewReview(YAMLRuleStore{}, EvidenceRevalidator{Root: root})
+	if err := review.Execute(path, "sample", "approved"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(source, []byte("func Execute() { second() }"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := review.Execute(path, "sample", "approved"); err == nil {
+		t.Fatal("changed evidence retained approval")
+	}
+	updated, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated = bytes.Replace(updated, []byte("description: call Execute"), []byte("description: changed Execute"), 1)
+	if err := os.WriteFile(path, updated, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := review.Execute(path, "sample", "approved"); err == nil {
+		t.Fatal("changed rule content retained approval")
+	}
+}
+
+func TestReviewRequiresCheckerForRulesWithEvidence(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "harness.yaml")
+	doc := []byte("version: 1\nproject: {name: sample}\nrules:\n  - id: sample\n    description: verified\n    origin: human\n    status: candidate\n    evidence:\n      - file: source.go\n")
+	if err := os.WriteFile(path, doc, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := application.NewReview(YAMLRuleStore{}).Execute(path, "sample", "approved"); err == nil {
+		t.Fatal("rule with unvalidated evidence was approved")
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(after, doc) {
+		t.Fatal("failed review changed file")
 	}
 }
 func TestEvidenceChecksFilesAndSymbols(t *testing.T) {

@@ -10,18 +10,26 @@ import (
 )
 
 func TestAdaptersAreDeterministicAndAgentSpecific(t *testing.T) {
-	input := domain.Input{Project: "sample", Rules: []domain.Rule{{ID: "z", Description: "Last"}, {ID: "a", Description: "First", Paths: []string{"internal/"}}}, Commands: []string{"go test ./..."}}
+	input := domain.Input{Project: "sample", Architecture: []string{"hexagonal", "event-driven"}, Rules: []domain.Rule{{ID: "z", Description: "Last"}, {ID: "a", Description: "First", Paths: []string{"internal/"}}}, Skills: []domain.Skill{{ID: "backend", Description: "Backend help", Path: "skills/backend/SKILL.md"}}, Gates: []domain.QualityGate{{ID: "test-api", Command: "go test ./...", Workspace: "services/api", Workspaces: []string{"services/api", "libs/core"}}}}
 	codex, err := (Markdown{Agent: "codex"}).Render(input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	again, _ := (Markdown{Agent: "codex"}).Render(input)
-	claude, _ := (Markdown{Agent: "claude"}).Render(input)
-	if codex.Path != "AGENTS.md" || claude.Path != "CLAUDE.md" || !bytes.Equal(codex.Content, again.Content) || bytes.Index(codex.Content, []byte("[a]")) > bytes.Index(codex.Content, []byte("[z]")) {
+	claudeDocs, claudeErr := (ClaudeAdapter{}).RenderDocuments(input)
+	if claudeErr != nil {
+		t.Fatal(claudeErr)
+	}
+	if codex.Path != "AGENTS.md" || len(claudeDocs) != 2 || claudeDocs[0].Path != "CLAUDE.md" || !bytes.Equal(codex.Content, again.Content) || bytes.Index(codex.Content, []byte("[a]")) > bytes.Index(codex.Content, []byte("[z]")) {
 		t.Fatal("non-deterministic adapter output")
 	}
 	if _, err := (Markdown{Agent: "other"}).Render(input); err == nil {
 		t.Fatal("unsupported adapter accepted")
+	}
+	for _, expected := range []string{"## Architecture", "- event-driven", "- hexagonal", "skills/backend/SKILL.md", "services/api", "libs/core", "test-api"} {
+		if !bytes.Contains(codex.Content, []byte(expected)) {
+			t.Fatalf("generated instructions omit %q: %s", expected, codex.Content)
+		}
 	}
 }
 func TestWriterProtectsManualFilesAndAllowsOwnedRegeneration(t *testing.T) {
@@ -39,7 +47,11 @@ func TestWriterProtectsManualFilesAndAllowsOwnedRegeneration(t *testing.T) {
 	if !bytes.Equal(after, original) {
 		t.Fatal("manual bytes changed")
 	}
-	if err := os.WriteFile(path, []byte(marker+"\nold"), 0600); err != nil {
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	owned := domain.Document{Path: "AGENTS.md", Content: []byte(marker + "\nold")}
+	if err := (FileWriter{}).Write(context.Background(), dir, owned); err != nil {
 		t.Fatal(err)
 	}
 	if err := (FileWriter{}).Write(context.Background(), dir, document); err != nil {
@@ -48,6 +60,17 @@ func TestWriterProtectsManualFilesAndAllowsOwnedRegeneration(t *testing.T) {
 	after, _ = os.ReadFile(path)
 	if !bytes.Equal(after, document.Content) {
 		t.Fatal("owned file not regenerated")
+	}
+	manualEdit := append(append([]byte(nil), document.Content...), []byte("\nmanual edit")...)
+	if err := os.WriteFile(path, manualEdit, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := (FileWriter{}).Write(context.Background(), dir, owned); err == nil {
+		t.Fatal("manually edited generated file overwritten")
+	}
+	after, _ = os.ReadFile(path)
+	if !bytes.Equal(after, manualEdit) {
+		t.Fatal("conflict changed manually edited bytes")
 	}
 	if err := (FileWriter{}).Write(context.Background(), dir, domain.Document{Path: "../escape", Content: document.Content}); err == nil {
 		t.Fatal("unsafe output accepted")

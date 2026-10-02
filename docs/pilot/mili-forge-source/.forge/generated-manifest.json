@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": ".agents/skills/mili-cycle/SKILL.md",
+      "sha256": "21fa9dc595b0ed17363600e71c14f6a38a2ff332d8db64cfd6ce249a1d78f1dc",
+      "target": "codex",
+      "adapter_version": "1",
+      "capabilities": {
+        "skills": "agent-skills"
+      }
+    },
+    {
+      "path": ".agents/skills/mili-domain/SKILL.md",
+      "sha256": "22559b989e796e701192cf49dff0cd8c1ed155144f24f0aaadc5094a84bb09a4",
+      "target": "codex",
+      "adapter_version": "1",
+      "capabilities": {
+        "skills": "agent-skills"
+      }
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "a12e3331027ead01ec0439033499c9489158f14b6f443685b68ffc0a8916adcd",
+      "target": "codex",
+      "adapter_version": "1",
+      "capabilities": {
+        "policy": "unsupported",
+        "quality_gates": "advisory",
+        "scope": "textual",
+        "skills": "native"
+      }
+    }
+  ]
+}

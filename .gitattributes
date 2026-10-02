@@ -1,1 +1,15 @@
 *.go text eol=lf
+AGENTS.md text eol=lf
+**/AGENTS.md text eol=lf
+CLAUDE.md text eol=lf
+**/CLAUDE.md text eol=lf
+.claude/rules/*.md text eol=lf
+**/.claude/rules/*.md text eol=lf
+.forge/generated-manifest.json text eol=lf
+**/.forge/generated-manifest.json text eol=lf
+.forge/skills/** text eol=lf
+**/.forge/skills/** text eol=lf
+.agents/skills/** -text
+**/.agents/skills/** -text
+.claude/skills/** -text
+**/.claude/skills/** -text

@@ -73,7 +73,7 @@ func classify(file File) (string, string) {
 }
 
 func ValidateID(id string) error {
-	if id == "" || strings.Contains(id, "/") || strings.Contains(id, "\\") || strings.Contains(id, "..") {
+	if len(id) == 0 || len(id) > 64 || strings.HasPrefix(id, "-") || strings.HasSuffix(id, "-") || strings.Contains(id, "--") || strings.Contains(id, "/") || strings.Contains(id, "\\") || strings.Contains(id, "..") {
 		return fmt.Errorf("invalid skill id")
 	}
 	for _, r := range id {

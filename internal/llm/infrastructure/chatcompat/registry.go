@@ -19,7 +19,7 @@ type Registry struct {
 func NewRegistry(lookup func(string) string) *Registry {
 	return &Registry{lookup: lookup, definitions: map[string]definition{
 		"openai":   {"https://api.openai.com/v1/chat/completions", "OPENAI_API_KEY", "gpt-4o-mini"},
-		"deepseek": {"https://api.deepseek.com/chat/completions", "DEEPSEEK_API_KEY", "deepseek-v4-flash"},
+		"deepseek": {"https://api.deepseek.com/chat/completions", "DEEPSEEK_API_KEY", "deepseek-flash"},
 		"gemini":   {"https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "GEMINI_API_KEY", ""},
 		"groq":     {"https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY", ""},
 		"ollama":   {"http://localhost:11434/v1/chat/completions", "", ""},

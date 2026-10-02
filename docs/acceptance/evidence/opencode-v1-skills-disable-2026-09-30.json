@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "case_id": "opencode-v1-claude-skills-disable",
+  "captured_on": "2026-09-30",
+  "status": "matches_documented_scope",
+  "package": "opencode-ai@1.18.33",
+  "reported_version": "1.18.33",
+  "platform": "Windows, win32",
+  "command": "npm exec --offline --yes --package=opencode-ai@1.18.33 -- opencode run --model mock/test --format json \"Say LOCAL_MOCK_OK when ready.\"",
+  "provider": {
+    "model": "mock/test",
+    "endpoint": "http://127.0.0.1:8765/v1",
+    "implementation": "local loopback mock",
+    "external_provider_called": false,
+    "output": "LOCAL_MOCK_OK"
+  },
+  "environment": {
+    "isolated_home_and_xdg": true,
+    "disabled_case_flag": "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1",
+    "baseline_flag": "unset",
+    "user_config": "project-local isolated fixture"
+  },
+  "inputs": {
+    "config": {
+      "path": "profile/xdg/opencode/opencode.json",
+      "sha256": "e8d7cc4b3db07ab87ef5e55b5f82947642832019ebde58935421f935c6dbe7fe"
+    },
+    "project_claude": {
+      "path": "project-claude/CLAUDE.md",
+      "sha256": "5920e3a2934e79faee454198cc5453b0d6a12d3abd7afab3ef5d485cd88dfb07"
+    },
+    "global_claude": {
+      "path": "profile/home/.claude/CLAUDE.md",
+      "sha256": "5278b13cce347e228efa2c5f278e8776291d49d5414e1e4b9760c72c3ab3dec8"
+    },
+    "project_skill": {
+      "path": "project-claude/.claude/skills/probe-skill/SKILL.md",
+      "sha256": "f08fa2a84d1680299a7f456afb8fee9ad8e900e7a1d3ac225669a6ba76b86723"
+    },
+    "global_skill": {
+      "path": "profile/home/.claude/skills/global-probe-skill/SKILL.md",
+      "sha256": "7b42c7ef6b5aea1289003d9cf7b7fd677a869f6238ab36406eed3888c30a5f80"
+    },
+    "mock_source": {
+      "path": "mock_provider.go",
+      "sha256": "71b49173363f5f162a749d0c945e403c287c2e73721fa25bd705e17f31eb0928"
+    },
+    "mock_binary": {
+      "path": "mock_provider.exe",
+      "sha256": "c7d09fd01b2142e00bd4fb437157f2f9f6d3d9ac0645a2ed0836717f7ee78669"
+    }
+  },
+  "observations": {
+    "requests_per_case": 2,
+    "title_generation_requests_per_case": 1,
+    "task_requests_per_case": 1,
+    "all_message_roles_scanned": true,
+    "baseline": {
+      "project_claude": true,
+      "global_claude": true,
+      "project_skill_description": true,
+      "global_skill_description": true
+    },
+    "disable_skills": {
+      "env": "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1",
+      "project_claude": true,
+      "global_claude": true,
+      "project_skill_description": false,
+      "global_skill_description": false
+    },
+    "fixed_output": "LOCAL_MOCK_OK",
+    "raw_request_capture": {
+      "status": "withheld-from-published-evidence",
+      "request_count": 4
+    }
+  },
+  "documentation": {
+    "rules_url": "https://opencode.ai/docs/rules/",
+    "skills_url": "https://opencode.ai/docs/skills/",
+    "checked_on": "2026-09-30",
+    "documented_scope": "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS disables Claude-compatible skills only."
+  },
+  "limitations": [
+    "Empirical result applies to opencode-ai 1.18.33 on Windows only.",
+    "Capture validates request context, not model instruction-following.",
+    "Skill bodies were not loaded because the fixed mock does not call the skill tool; the probe verifies skill discovery metadata in the available-skills tool description.",
+    "No external model provider was configured or called."
+  ]
+}

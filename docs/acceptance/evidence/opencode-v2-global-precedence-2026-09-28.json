@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "case_id": "opencode-v2-global-claude-and-agents-precedence",
+  "status": "passed",
+  "captured_on": "2026-09-28",
+  "package": "@opencode/cli@2.0.18",
+  "reported_version": "opencode v2.0.18",
+  "platform": "Windows, win32",
+  "command": "npm exec --offline --yes --package=@opencode/cli@2.0.18 -- opencode run --standalone --model mock/test --format json \"Summarize the top-level files in this project.\"",
+  "provider": {
+    "model": "mock/test",
+    "endpoint": "http://127.0.0.1:8765/v1",
+    "implementation": "local loopback mock",
+    "external_provider_called": false,
+    "fixed_response": "LOCAL_MOCK_OK"
+  },
+  "isolated_inputs": {
+    "global_opencode_agents_path": "$XDG_CONFIG_HOME/opencode/AGENTS.md",
+    "global_opencode_agents_content": "GLOBAL_OPENCODE_ONLY_SENTINEL: OPEN_CODE_GLOBAL_SOURCE",
+    "global_opencode_agents_sha256": "ce362ae57657d98c8a7c78b76415a1b738414aa68e51926c0e098543372cf91b",
+    "global_claude_path": "$HOME/.claude/CLAUDE.md",
+    "global_claude_content": "GLOBAL_CLAUDE_ONLY_SENTINEL: CLAUDE_GLOBAL_SOURCE",
+    "global_claude_sha256": "504640ef72a231ba66af1c244c8ad4b45085fb8213110f29c63874989628e384",
+    "isolated_opencode_config_sha256": "90153d55f2adbbaa3d00d84ae5961600dc0360ffac1513cd69eeabc6942363d2",
+    "project_instruction_files": [],
+    "checked_workspace_and_temp_parent_AGENTS_absent": true
+  },
+  "observations": {
+    "neutral_prompt": "Summarize the top-level files in this project.",
+    "all_message_roles_scanned": true,
+    "both_global_files": {
+      "global_opencode_agents_present": true,
+      "global_claude_present": true,
+      "request_count": 2,
+      "title_generation_requests": 1,
+      "task_requests": 1,
+      "model": "test",
+      "opencode_sentinel_message_occurrences": 1,
+      "claude_sentinel_message_occurrences": 0,
+      "output": "LOCAL_MOCK_OK",
+      "run_output_sha256": "639dc7c0bfe63928d1e0fc25bb91e5a1f4666585bc50041d2603fcb6919e2600"
+    },
+    "after_removing_only_global_opencode_agents": {
+      "global_opencode_agents_present": false,
+      "global_claude_present": true,
+      "request_count": 2,
+      "title_generation_requests": 1,
+      "task_requests": 1,
+      "model": "test",
+      "opencode_sentinel_message_occurrences": 0,
+      "claude_sentinel_message_occurrences": 0,
+      "output": "LOCAL_MOCK_OK",
+      "run_output_sha256": "bbb3ed1622c4e1580b2f1b5478337a54c592f5c97e7de5c3c8e9136008c59415"
+    },
+    "opencode_log_sha256": "f978fa10e45188ce754dbbe6b955805b41171e4702d69e09d49851d3a7f7c633"
+  },
+  "request_capture": {
+    "status": "withheld-from-published-evidence",
+    "request_count": 4
+  },
+  "interpretation": "For @opencode/cli@2.0.18 on this isolated Windows configuration, when both global files were present the OpenCode AGENTS sentinel appeared in a captured model request and the Claude sentinel did not. After removing only the OpenCode global AGENTS file, neither sentinel appeared, showing no global Claude fallback in this V2 run.",
+  "limitations": [
+    "Applies only to this exact package version, Windows platform, and isolated configuration.",
+    "The task and title-generation requests are both included; assertions scan messages across all roles.",
+    "A fixed local mock response validates captured request context, not model instruction-following, task quality, or behavior on another build/configuration.",
+    "No paid/external provider was configured or called by these invocations; no claim is made about unrelated account billing."
+  ]
+}

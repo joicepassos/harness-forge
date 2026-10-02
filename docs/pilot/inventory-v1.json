@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "inventory_id": "harnessforge-evolution-pilot-v1",
+  "recorded_on": "2026-09-27",
+  "status": "mili_pilot_frozen_pre_run_all_evaluators",
+  "purpose": "Versioned inventory for separating implementation fixtures from independent validation data. Null or empty fields mean unavailable, not zero or a successful run.",
+  "development_repositories": [
+    {
+      "repository_id": "harnessforge",
+      "role": "product_development_only",
+      "local_path": ".",
+      "commit": "4fc7711933eaa15ffee4f54db7d4946ede10f48e",
+      "commit_is_pilot_freeze": false,
+      "working_tree_modified_at_audit": true,
+      "modified_tracked_file_count_at_audit": 42,
+      "tasks": [],
+      "reason_excluded_from_validation": "The implementation repository had local tracked modifications when inventoried. Its HEAD identifies a development base only and does not freeze the evaluated source tree or a task/configuration set."
+    },
+    {
+      "repository_id": "go-single-fixture",
+      "role": "synthetic_development_fixture_only",
+      "local_path": "testdata/repos/go-single",
+      "snapshot_manifest": {
+        "path": "testdata/repos/go-single.snapshot.json",
+        "sha256": "6ac4791f4bf3e1f6b5a546ff04a7035ac66356ec66c08468be8b968d45e94e32"
+      },
+      "git_commit": null,
+      "tasks": [],
+      "contents_at_audit": [
+        {
+          "path": ".gitignore",
+          "sha256": "7d8bf54db0e090506421e6057a4020f598538b9ecc134a87376e4596309634b8"
+        },
+        {
+          "path": "README.md",
+          "sha256": "d7c9018ef24ea7c8d7dfadf49638eb8f384a73e3d36632e985ad5065dd75a5bce"
+        },
+        {
+          "path": "go.mod",
+          "sha256": "35ea7f898b29b3480c0cefde5faf75602fb795deafe8465753f362a948533752"
+        },
+        {
+          "path": "ignored.txt",
+          "sha256": "d5bac5ae58d44a74a2fd9bc1c6876a1aea0958bfc13b5450a52d3670dac4703"
+        },
+        {
+          "path": "main.go",
+          "sha256": "55a60bb97151b2b4b680462447ce60ec34511b14fa10d77440c97b9777101566"
+        }
+      ],
+      "reason_excluded_from_validation": "One empty Go main module is useful for deterministic development tests but has no meaningful behavior or executable pilot task and no repository commit history."
+    },
+    {
+      "repository_id": "go-monorepo-fixture",
+      "role": "synthetic_development_fixture_only",
+      "local_path": "testdata/repos/go-monorepo",
+      "git_commit": null,
+      "tasks": [],
+      "contents_at_freeze": [
+        {
+          "path": "apps/api/go.mod",
+          "sha256": "6b65a61e5496f4a82e1f42bf190240b1f4f5a9d0556fd52562826a81f772f971"
+        },
+        {
+          "path": "apps/api/main.go",
+          "sha256": "33fbf27f344f91d5763797aaf09ed089ed81d70d489749768367147a42e7a4dd"
+        },
+        {
+          "path": "go.work",
+          "sha256": "4484e7876d48f31b979bcb695765a6ff174cbbecbad78e6edec71acacab09b3b"
+        },
+        {
+          "path": "libs/core/core.go",
+          "sha256": "27a4c49bedb437b6e1a4a696d054b7b282122fc15a343181c152f336e8c0ea09"
+        },
+        {
+          "path": "libs/core/go.mod",
+          "sha256": "a983b4650ce2f4ae9805cb9ab7ff4ec7438a78802ac54ebfd4e5ce9196cab6b1"
+        }
+      ],
+      "reason": "Deterministic Go workspace fixture for unit/integration development; not pilot validation data."
+    },
+    {
+      "repository_id": "windows-workspace-fixture",
+      "role": "synthetic_development_fixture_only",
+      "local_path": "testdata/fixtures/windows-workspaces",
+      "git_commit": null,
+      "tasks": [],
+      "contents_at_freeze": [
+        {
+          "path": ".forge/forge.yaml",
+          "sha256": "33823e732e2fe60e10e708c5bbacdb06c197a31c090fc730430c3f901adb4f80"
+        },
+        {
+          "path": ".forge/knowledge/windows-paths.md",
+          "sha256": "3a8754bcae97daac3e554db5772538bc7e352f09d318415e60fa9bbb0c168e21"
+        },
+        {
+          "path": ".forge/skills/windows-build/SKILL.md",
+          "sha256": "f1c824a6061e9f231162ebf68d528a744221726d4294c230421ee29ab3a13150"
+        },
+        {
+          "path": "apps/windows-service/README.md",
+          "sha256": "0af2ce2ce2d4c867c48e7d405c852b5929ee2ef9bfa86de2e2c80e73c73e31a6"
+        },
+        {
+          "path": "libs/shared/README.md",
+          "sha256": "40980f8dcdfd3636a28cc3f79362c6597ebbd6e827e1c04fc1e43695b73d900c"
+        }
+      ],
+      "reason": "Forge manifest, skill, knowledge, and two workspace roots exercise portable references; not pilot validation data."
+    }
+  ],
+  "validation_repositories": [
+    {
+      "repository_id": "mili",
+      "role": "selected_validation_repository",
+      "local_path": "../mili",
+      "commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+      "commit_is_pilot_freeze": true,
+      "working_tree_modified_at_audit": true,
+      "modified_tracked_file_count_at_audit": 12,
+      "untracked_path_count_at_audit": 14,
+      "tasks": [
+        "MLI-01",
+        "MLI-02",
+        "MLI-03",
+        "MLI-04",
+        "MLI-05"
+      ],
+      "reason_excluded_from_validation": "The pinned clean commit is selected and the original dirty checkout is excluded. Tasks, Codex CLI model/configuration, repetitions, conditions, baseline smoke, and all five independent evaluators are frozen; coding-agent outcome runs remain pending.",
+      "pilot_freeze": "mili-condition-freeze-v1.json",
+      "original_checkout_changes_included": false
+    },
+    {
+      "repository_id": "promptforge",
+      "role": "candidate_not_frozen",
+      "local_path": "../PromptForge",
+      "commit": "e33bee6a45ce40aba2d6413fd0c283e8e62eeefc",
+      "commit_is_pilot_freeze": false,
+      "working_tree_modified_at_audit": true,
+      "modified_tracked_file_count_at_audit": 0,
+      "untracked_path_count_at_audit": 1,
+      "tasks": [],
+      "reason_excluded_from_validation": "Assistant-discovered candidate at a pinned commit; the original checkout contains an untracked Claude worktree directory, no evaluation tasks or agent/model configuration have been frozen. A clean snapshot at this commit passed `go test ./...`, but the packages currently have no tests."
+    },
+    {
+      "repository_id": "toca",
+      "role": "candidate_not_frozen",
+      "local_path": "../toca",
+      "commit": "3000adc7c5766e1a4cd88493d864843b4647abdd",
+      "commit_is_pilot_freeze": false,
+      "working_tree_modified_at_audit": true,
+      "modified_tracked_file_count_at_audit": 0,
+      "untracked_path_count_at_audit": 4,
+      "tasks": [],
+      "reason_excluded_from_validation": "Assistant-discovered candidate at a pinned commit with independently buildable server/client npm workspaces; the original checkout has four untracked paths and no test suite or frozen task/configuration. A clean snapshot passed npm ci and npm run build."
+    }
+  ],
+  "tasks": [
+    "MLI-01",
+    "MLI-02",
+    "MLI-03",
+    "MLI-04",
+    "MLI-05"
+  ],
+  "conditions": [
+    "baseline",
+    "team",
+    "forge"
+  ],
+  "agent_products": [
+    {
+      "product": "Codex CLI",
+      "executable": "codex",
+      "version": "codex-cli 0.158.0-alpha.2.1",
+      "discovery": "found_on_PATH",
+      "pilot_agent_configuration_frozen": false,
+      "pilot_run_performed": false
+    },
+    {
+      "product": "Claude Code",
+      "executable": "claude",
+      "discovery": "not_found_on_PATH"
+    },
+    {
+      "product": "Cursor CLI",
+      "executable": "cursor",
+      "discovery": "not_found_on_PATH"
+    },
+    {
+      "product": "OpenCode CLI",
+      "executable": "opencode",
+      "discovery": "not_found_on_PATH"
+    }
+  ],
+  "software_versions": {
+    "go_observed_during_inventory": "go1.26.2 windows/amd64",
+    "java_observed_during_inventory": "openjdk 25.0.4.1 windows/amd64",
+    "node_observed_during_inventory": "v24.18.0 windows/amd64",
+    "npm_observed_during_inventory": "11.16.0",
+    "docker_client_observed_during_inventory": null,
+    "agent_product_versions": {
+      "codex_cli": "codex-cli 0.158.0-alpha.2.1",
+      "claude_code": null,
+      "cursor_cli": null,
+      "opencode_cli": null
+    }
+  },
+  "runs": [],
+  "limitations": [
+    "No coding-agent pilot runs have been performed.",
+    "All five independent evaluators and the PostgreSQL probe are frozen. The corrected MLI-02 production service/controller evaluator passed its characterization suite on Java 25 and recorded the baseline's malformed-cursor behavior. These failures characterize the pinned baseline and are not coding-agent task outcomes.",
+    "The PostgreSQL 18.3 keyset check found that millisecond cursor truncation skips rows with submillisecond timestamps; see mili-postgres-keyset-v1.json.",
+    "The original Mili working tree is dirty and excluded; all task runs must use fresh copies of the pinned commit."
+  ],
+  "pilot_freeze": "mili-condition-freeze-v1.json",
+  "baseline_smoke": {
+    "path": "baseline-mili-v1.json",
+    "status": "passed",
+    "tests": 8,
+    "failures": 0,
+    "skipped": 0,
+    "docker_used": false,
+    "classification": "repository smoke test only, not agent outcome"
+  }
+}

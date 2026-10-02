@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "6d5778dee3a3b55e9da1276c3211ed47f61b9ede4b002a187c146edcf3c8d6a2",
+      "target": "codex",
+      "adapter_version": "2",
+      "capabilities": {
+        "policy": "unsupported",
+        "quality_gates": "advisory",
+        "scope": "textual",
+        "skills": "native"
+      }
+    }
+  ]
+}

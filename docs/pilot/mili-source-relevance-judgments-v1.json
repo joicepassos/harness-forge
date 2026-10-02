@@ -1,0 +1,463 @@
+{
+  "schema_version": 1,
+  "artifact_id": "mili-source-relevance-judgments-v1",
+  "status": "provisional_analyst_judgments",
+  "labeler": "analyst-agent",
+  "is_ground_truth": false,
+  "created_on": "2026-09-28",
+  "source_repository": {
+    "id": "mili",
+    "commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+    "rule": "Only source paths and behavior from this pinned Git HEAD were considered; the local Mili worktree is dirty and excluded.",
+    "selection_snapshot_tree_manifest_sha256": "315765fd296acd1ddebc94c701a825314899b3fccbaf54a6b099f5fe1ab4c170",
+    "selection_snapshot_manifest_algorithm": "SHA-256 over UTF-8 lines: file_sha256<TAB>byte_length<TAB>slash_relative_path<LF>, sorted by ordinal relative path",
+    "selection_snapshot_file_count": 198,
+    "selection_snapshot_path": ".pilot-runs/mili-context-eval-v1/repo",
+    "selection_provenance_sidecar_path": "docs/pilot/mili-context-selection-provenance-v1.json",
+    "selection_provenance_sidecar_sha256": "7b7ac49a7503bbac283654c67bd580f644fe69b985b5317093c6bff1b635ebfd"
+  },
+  "task_corpus": {
+    "path": "docs/pilot/tasks-draft-v1.md",
+    "sha256": "b54814e4b9c37c3e242ad051472037c9dabc220086f0209d8f34b062afa6348f"
+  },
+  "grade_definitions": {
+    "high": "Production source directly implements the behavior under the frozen task contract or is an essential boundary in that behavior path.",
+    "medium": "Directly supports the behavior path, its API/type contract, or a relevant existing regression test; useful context but not the primary implementation locus.",
+    "low": "Plausible background or lexical-neighbor source; may aid orientation but should not count as a primary relevant path.",
+    "coverage_rule": "Coverage counts unique high- and medium-graded paths present in a paired capture divided by all high- and medium-graded paths listed for that task. This is provisional annotated-path coverage only, not ground-truth recall."
+  },
+  "independent_review": {
+    "reviewed_on": "2026-09-30",
+    "reviewer_role": "independent-agent-review",
+    "scope": "All five task annotations checked against the pinned source, frozen prompts, evaluator contracts, and paired selected paths.",
+    "finding": "MLI-03 WebhookInboundConfigRepository was downgraded from high to medium: it supplies cache refresh data but need not change for the invalidation behavior. No other clearly missing essential source path or high/medium grade issue was identified. MLI-05 still has only a parser probe as frozen evaluator source; its broader HTTP/no-save contract remains uncovered by that probe.",
+    "is_human_adjudication": false,
+    "is_ground_truth": false
+  },
+  "frozen_evaluator_sources": [
+    {
+      "task_id": "MLI-01",
+      "path": "docs/pilot/mili-evaluator-sources-v2/Mli01AcceptanceTestV4.java",
+      "sha256": "67408a5abbd60975afd353685b941ef8a0b094d3361de4d93c724152510a8232"
+    },
+    {
+      "task_id": "MLI-02",
+      "path": "docs/pilot/mili-evaluator-sources-v1/Mli02AcceptanceTest.java",
+      "sha256": "d362026aa122c116857d2e266b4881c1bb9bb3a9e7f5cd3a26ff43b763e5352a"
+    },
+    {
+      "task_id": "MLI-03",
+      "path": "docs/pilot/mili-evaluator-sources-v1/Mli03AcceptanceTest.java",
+      "sha256": "1599eea87296f6ad30b90137e38d32956451d4941cc9bdfa260d2ce5d6b73c2c"
+    },
+    {
+      "task_id": "MLI-04",
+      "path": "docs/pilot/mili-evaluator-sources-v1/Mli04AcceptanceTest.java",
+      "sha256": "e4ee3e8d7ee7577555797f03abc3387f84a0dbffc8bbce95d4c93ff47247c1b6"
+    },
+    {
+      "task_id": "MLI-05",
+      "path": "docs/pilot/mili-evaluator-sources-v1/Mli05JsonPathProbe.java",
+      "sha256": "d503a4b83ae589428987969d00d9f926db3035f2159adb8ecacf873dd4d8d1e8",
+      "coverage_note": "Freeze v2 records this parser probe for MLI-05. It verifies parser behavior only, not the full HTTP and no-save acceptance contract described in the rubric."
+    }
+  ],
+  "tasks": [
+    {
+      "task_id": "MLI-01",
+      "evaluator_contract_summary": "Authenticated tenant scopes listing; foreign detail and reprocess are indistinguishable from unknown; no foreign mutation; own event remains visible.",
+      "paths": [
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringController.java",
+          "grade": "high",
+          "rationale": "List receives a request tenantId and passes it to the service; detail and reprocess are routed here, making this the direct HTTP trust boundary. V4 exercises this real controller through MockMvc.",
+          "pinned_head_git_blob_oid": "d04252efe35ed34f07335903d0db8adf67dd4ffc",
+          "pinned_head_file_sha256": "d9dc23f351d6e1327adc87137ec0688c391a71b3de92d0dabe75712685ca61af"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceImpl.java",
+          "grade": "high",
+          "rationale": "Passes the list tenant to the repository and currently uses ID-only lookups for detail/reprocess. V4 constructs this production service and checks query scoping and foreign-event behavior.",
+          "pinned_head_git_blob_oid": "39ef660b0c07db74d2a90acf6998c1db881c5ad2",
+          "pinned_head_file_sha256": "037aea3eb77640d976d40c1ddef71519b8e293e601f43e17743c55a412e9472c"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/InboundEventRepository.java",
+          "grade": "high",
+          "rationale": "List SQL filters by tenant_id, while detail and reset are ID-only at baseline. V4 inspects repository calls and forbids selecting tenant B for tenant A.",
+          "pinned_head_git_blob_oid": "8d6dd4596b2d1f30d82b8aa977564eccee68b84c",
+          "pinned_head_file_sha256": "a99d60a1e42f75244f6d54404c7969add82798fc5fcb862ad03bd08339adff1c"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/tenant/TenantContext.java",
+          "grade": "medium",
+          "rationale": "Existing accessor exposes the tenant carried by the authenticated security principal and is the natural support for removing client-selected identity. V4 verifies SecurityContext behavior but uses reflection-based construction, so use of this class is not itself mandated.",
+          "pinned_head_git_blob_oid": "61c82a1b3950f3622c7ab8b05c97b341c4cb7941",
+          "pinned_head_file_sha256": "9974aa7cf379d0829133cfab798c4df55ef503be6bf005b160991a4c27820a9f"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/WebhookMonitoringService.java",
+          "grade": "medium",
+          "rationale": "Declares the service boundary through which tenant scope and event operations flow.",
+          "pinned_head_git_blob_oid": "c894b680ddf87b83ae0ca3654097edfb7f38bf9b",
+          "pinned_head_file_sha256": "e245a049f3fc4c165a87cb0d24a0e94d077f89c112c7abb1fc0ea9947017a4c3"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/tenant/TenantId.java",
+          "grade": "medium",
+          "rationale": "Represents the authenticated tenant type used by TenantContext and repository-facing domain code.",
+          "pinned_head_git_blob_oid": "2e5876aed75cb5eed2d4ae15f420baf7051bb8fa",
+          "pinned_head_file_sha256": "2dd5b03c52ea298a7c4ee416910260c8c000027ceed368ecba31f42c264434ee"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/GlobalExceptionHandler.java",
+          "grade": "medium",
+          "rationale": "HTTP problem mapping is relevant if secure foreign-event handling introduces a not-found exception; V4 compares observable 404 responses, not a required exception type.",
+          "pinned_head_git_blob_oid": "8c4aa19be1c014f79db9d6aaf7ccdafa99240c47",
+          "pinned_head_file_sha256": "f48fb7f4bd088ecf9111d1d494b5d29f9db1d648447027c661b122722539279e"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/tenant/internal/TenantExceptionHandler.java",
+          "grade": "low",
+          "rationale": "Nearby tenant exception advice may appear relevant by name, but the frozen checks concern webhook event response equivalence and do not require this handler.",
+          "pinned_head_git_blob_oid": "f7790b17c61b8b773eede42efff93d143e14be28",
+          "pinned_head_file_sha256": "b5ba325ddedec93821f4ac14f3e6a25f00c7fe32f6fe05b0224ebd53079b0df7"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/tenant/internal/ApiKeyAuthenticatorImpl.java",
+          "grade": "low",
+          "rationale": "Authentication establishes the principal upstream, but the acceptance harness sets the authenticated tenant directly; changing key authentication is not required by this task.",
+          "pinned_head_git_blob_oid": "f2b99514bb7d490ce97388fcaedb00081931f559",
+          "pinned_head_file_sha256": "7f37f8ab2d6de66de5226628f72e778ad6647affc9ce49de0a8e46a29c54c322"
+        }
+      ],
+      "ambiguities": [
+        "The frozen V4 contract permits tenant-filtered detail/reprocess lookup or ID lookup followed by an ownership check. The qrels identify both service and repository as relevant without prescribing which must change.",
+        "TenantContext is a likely implementation aid, not a contract-mandated dependency."
+      ]
+    },
+    {
+      "task_id": "MLI-02",
+      "evaluator_contract_summary": "Blank cursor starts page one; valid cursor parses and round-trips; malformed cursors return 400 without repository queries; separate PostgreSQL check establishes complete keyset traversal.",
+      "paths": [
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceImpl.java",
+          "grade": "high",
+          "rationale": "Contains Cursor.parse and translates the parsed timestamp/id into repository boundaries. Frozen Mli02AcceptanceTest uses the production service and checks valid and malformed cursor behavior.",
+          "pinned_head_git_blob_oid": "39ef660b0c07db74d2a90acf6998c1db881c5ad2",
+          "pinned_head_file_sha256": "037aea3eb77640d976d40c1ddef71519b8e293e601f43e17743c55a412e9472c"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringController.java",
+          "grade": "high",
+          "rationale": "Accepts pageAfter and emits the next cursor from the last summary. The frozen controller evaluator checks HTTP status and cursor round-trip through the real controller.",
+          "pinned_head_git_blob_oid": "d04252efe35ed34f07335903d0db8adf67dd4ffc",
+          "pinned_head_file_sha256": "d9dc23f351d6e1327adc87137ec0688c391a71b3de92d0dabe75712685ca61af"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/InboundEventRepository.java",
+          "grade": "high",
+          "rationale": "Builds the production keyset predicate, DESC ordering, and LIMIT 50 query. The separate frozen PostgreSQL probe shows source-level cursor precision can affect complete traversal.",
+          "pinned_head_git_blob_oid": "8d6dd4596b2d1f30d82b8aa977564eccee68b84c",
+          "pinned_head_file_sha256": "a99d60a1e42f75244f6d54404c7969add82798fc5fcb862ad03bd08339adff1c"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/api/InboundEventSummary.java",
+          "grade": "medium",
+          "rationale": "Carries the event ID and receivedAt fields used by the controller to construct the next cursor.",
+          "pinned_head_git_blob_oid": "741ea6449af533ba2212960fcf93b7b4e663a4dd",
+          "pinned_head_file_sha256": "344d89bbf06a9b877c66bc3f507fb31c6865e0e74f980261a22c22bba132aa50"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/WebhookMonitoringService.java",
+          "grade": "medium",
+          "rationale": "Defines the cursor-bearing monitoring service method called by the controller.",
+          "pinned_head_git_blob_oid": "c894b680ddf87b83ae0ca3654097edfb7f38bf9b",
+          "pinned_head_file_sha256": "e245a049f3fc4c165a87cb0d24a0e94d077f89c112c7abb1fc0ea9947017a4c3"
+        },
+        {
+          "path": "backend/core/src/test/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceTest.java",
+          "grade": "medium",
+          "rationale": "Existing focused service tests exercise list filtering and monitoring behavior; useful adjacent regression context, although frozen evaluator source is independent.",
+          "pinned_head_git_blob_oid": "a2c93589b5ecedd9737671a9abb180c8a61bee93",
+          "pinned_head_file_sha256": "7cf8564dbb659abdf1ea4df2f2885fd7127ee5e17c84b9e12374e33327c79b79"
+        },
+        {
+          "path": "backend/core/src/test/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringControllerIntegrationTest.java",
+          "grade": "medium",
+          "rationale": "Existing controller-level pagination behavior may inform response shape, but it is integration-oriented and is not the no-database frozen evaluator.",
+          "pinned_head_git_blob_oid": "707d241e2b8eeb43ea01afab0eb8764c0c315fbe",
+          "pinned_head_file_sha256": "ef27926beede4a5c51020586822c59f3a314ee97a7ecceb12b979a8e0765172f"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/batch/InboundEventReader.java",
+          "grade": "low",
+          "rationale": "Shares the inbound-event domain but implements batch processing rather than monitoring cursor pagination; likely a nearby retrieval false positive.",
+          "pinned_head_git_blob_oid": "f6bfb4c3cead83e45dca7031552695195923afe7",
+          "pinned_head_file_sha256": "6ac6eb86d57832ccac63ef708651aba6ed20951cf7c5f8c25bddb360d6afc5c7"
+        }
+      ],
+      "ambiguities": [
+        "The frozen Mli02AcceptanceTest checks parser/controller plumbing with a mocked repository; complete SQL traversal is a separate PostgreSQL acceptance criterion. Repository relevance is high for the complete task contract, but controller-evaluator success alone cannot establish SQL correctness.",
+        "The epoch-millisecond API cursor may not represent PostgreSQL submillisecond timestamps without loss; the source-level repair may affect cursor encoding or query semantics."
+      ]
+    },
+    {
+      "task_id": "MLI-03",
+      "evaluator_contract_summary": "Preserve cache hits for unchanged active tokens and invalidate immediately after successful pause/delete so the next lookup and ingest request observe paused/absent state and do not publish.",
+      "paths": [
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/cache/WebhookInboundCache.java",
+          "grade": "high",
+          "rationale": "Owns the Caffeine token cache and findByToken lookup; baseline exposes no invalidation method. The frozen evaluator directly instantiates this production cache.",
+          "pinned_head_git_blob_oid": "f0889a2b7ad1b6b7017a36fdbc9710762eecd129",
+          "pinned_head_file_sha256": "26f1432d00cff412b29808f3a4d928b5823bc45c6d080e54f759aaa76281dc9f"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/application/inbound/CreateInboundWebhookService.java",
+          "grade": "high",
+          "rationale": "Implements successful updateStatus and delete operations but currently has no cache invalidation dependency/call. The evaluator invokes this real management service before checking cache behavior.",
+          "pinned_head_git_blob_oid": "d33843a1956d918790488ee37a8b1558c2bdd55f",
+          "pinned_head_file_sha256": "c74d5cf148f87aa769a00694a6b16d8554c31d537b4b4dc4965ceffa446d0f87"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/InboundController.java",
+          "grade": "high",
+          "rationale": "Reads token configuration through WebhookInboundCache before authenticating and publishing ingress. The evaluator exercises this real request boundary and checks no publication.",
+          "pinned_head_git_blob_oid": "738e9440afbf72367b14f44fb9e02d41fd034853",
+          "pinned_head_file_sha256": "05914c56e243f10edad00f4c2f019c2b232ea1ace0d4a981be16c5fb5c520d19"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/WebhookConfigRepository.java",
+          "grade": "high",
+          "rationale": "Persists status changes and deletion that must invalidate cached authentication data after success.",
+          "pinned_head_git_blob_oid": "fd1a24ce72244c7cee20d9dd6715aa56d7012bac",
+          "pinned_head_file_sha256": "027a768afb48c4cf6d7863f08ad001e76abb1408a804175977fc300f0846e859"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/WebhookInboundConfigRepository.java",
+          "grade": "medium",
+          "rationale": "Supplies auth config/status when the token cache refreshes after invalidation, but the repository itself need not change to implement the frozen invalidation behavior.",
+          "pinned_head_git_blob_oid": "9f0da92745850b4bfbd6c57945595e78319d2406",
+          "pinned_head_file_sha256": "d5e5f1e6b0a17ff8fa4545fb6bf6a3e9a41ab8c85010a1293ea152f080bc4beb"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/WebhookInboundService.java",
+          "grade": "medium",
+          "rationale": "Management service contract exposes updateStatus/delete operations used by the frozen evaluator.",
+          "pinned_head_git_blob_oid": "bca671116d378df40f970e84752734bc23990930",
+          "pinned_head_file_sha256": "bd08de33cac6beb595ba1bfbf3db78f330d0acc3832c514b5bee73246e4ec733"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookManagementController.java",
+          "grade": "medium",
+          "rationale": "Maps management pause/delete HTTP routes to the service; evaluator invokes service methods directly, so the controller is not required for its main acceptance path.",
+          "pinned_head_git_blob_oid": "5f3e953cde3cdfbd887d53f4971c906ecbd03e01",
+          "pinned_head_file_sha256": "e4524a981820957ee7349cebfb03bfd0cd0ea23ea55d3885cf9490873e3a5fbb"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/cache/CachedWebhookConfig.java",
+          "grade": "medium",
+          "rationale": "Represents the cached ACTIVE/PAUSED status observed after lookups.",
+          "pinned_head_git_blob_oid": "e10abb9f50623564369acbeeaa851bf54220c911",
+          "pinned_head_file_sha256": "b1d4c25982d0a00991e3be89968e3614e3bcd57763d6a5df9684e0df36716a3e"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/security/InboundAuthenticator.java",
+          "grade": "medium",
+          "rationale": "Consumes the cached config along the ingress authentication path; evaluator mocks it to isolate cache invalidation and publication assertions.",
+          "pinned_head_git_blob_oid": "02695d82706623c7ef656a4fc4f094bee09af1b8",
+          "pinned_head_file_sha256": "9bb5f6646db742b51c40c451bbb5558af27bfebd9dc3259a9ead8166b063a3ce"
+        },
+        {
+          "path": "backend/core/src/test/java/com/mili/core/webhook/internal/infrastructure/cache/WebhookInboundCacheTest.java",
+          "grade": "medium",
+          "rationale": "Existing test verifies the required cache-hit behavior, a control that must remain true after invalidation is added.",
+          "pinned_head_git_blob_oid": "2c92e50829b347b00cc3747b42a413210b168868",
+          "pinned_head_file_sha256": "c08650ebcc11fcbe5995c74e7a162ed874cf21e64dd4be16d72d6c2959e761cd"
+        },
+        {
+          "path": "backend/core/src/test/java/com/mili/core/webhook/WebhookInboundLifecycleIntegrationTest.java",
+          "grade": "medium",
+          "rationale": "Exercises management lifecycle status/delete behavior as adjacent regression context.",
+          "pinned_head_git_blob_oid": "ef00a5818a3a0945853266c3ab6c2aabc6ad09ba",
+          "pinned_head_file_sha256": "b395085c998080d9b9cb379c88f592d37d772bb1975d634ef3692cd96726247d"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/batch/InboundEventProcessor.java",
+          "grade": "low",
+          "rationale": "Consumes inbound events downstream, but the stale authorization decision occurs before publish in the HTTP/cache path.",
+          "pinned_head_git_blob_oid": "aa569845a021ae94a334ded690260121bcd03508",
+          "pinned_head_file_sha256": "6e4646d84ca1ff3b25395ae6a7f7cde20111ee12dfeffcada88d70532be6f17a"
+        }
+      ],
+      "ambiguities": [
+        "Cache invalidation may be keyed by token, webhook ID, or implemented through an injected invalidation collaborator. The contract requires immediate post-success visibility, not one specific cache API."
+      ]
+    },
+    {
+      "task_id": "MLI-04",
+      "evaluator_contract_summary": "Unknown reprocess returns 404; FAILED returns 204 and resets exactly once; a non-FAILED event returns 409 without reset.",
+      "paths": [
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceImpl.java",
+          "grade": "high",
+          "rationale": "Implements missing-event handling, FAILED state check, and reset decision. Frozen Mli04AcceptanceTest calls this production service directly.",
+          "pinned_head_git_blob_oid": "39ef660b0c07db74d2a90acf6998c1db881c5ad2",
+          "pinned_head_file_sha256": "037aea3eb77640d976d40c1ddef71519b8e293e601f43e17743c55a412e9472c"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/InboundEventRepository.java",
+          "grade": "high",
+          "rationale": "Provides ID lookup and resetToPending mutation invoked by the service. Frozen evaluator verifies lookup and no reset on absent/non-FAILED events.",
+          "pinned_head_git_blob_oid": "8d6dd4596b2d1f30d82b8aa977564eccee68b84c",
+          "pinned_head_file_sha256": "a99d60a1e42f75244f6d54404c7969add82798fc5fcb862ad03bd08339adff1c"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringController.java",
+          "grade": "high",
+          "rationale": "Defines the reprocess endpoint and success response. The frozen evaluator calls it through MockMvc.",
+          "pinned_head_git_blob_oid": "d04252efe35ed34f07335903d0db8adf67dd4ffc",
+          "pinned_head_file_sha256": "d9dc23f351d6e1327adc87137ec0688c391a71b3de92d0dabe75712685ca61af"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/GlobalExceptionHandler.java",
+          "grade": "high",
+          "rationale": "Real MVC advice is installed by the frozen evaluator and maps service exceptions to observable HTTP status/problem responses.",
+          "pinned_head_git_blob_oid": "8c4aa19be1c014f79db9d6aaf7ccdafa99240c47",
+          "pinned_head_file_sha256": "f48fb7f4bd088ecf9111d1d494b5d29f9db1d648447027c661b122722539279e"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/application/monitoring/InvalidReprocessException.java",
+          "grade": "medium",
+          "rationale": "Supports the existing conflict path for non-FAILED events, which the evaluator requires to remain 409.",
+          "pinned_head_git_blob_oid": "e5f6d907971bcbc666c7dcf3cef87927dd9f96bd",
+          "pinned_head_file_sha256": "17b4e077dd032e0b882688432ca94fcf4b2b5dbe2cf04aad793a2ad7c7e6679a"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/WebhookMonitoringService.java",
+          "grade": "medium",
+          "rationale": "Declares the service operation invoked by the controller and directly constructed by the evaluator.",
+          "pinned_head_git_blob_oid": "c894b680ddf87b83ae0ca3654097edfb7f38bf9b",
+          "pinned_head_file_sha256": "e245a049f3fc4c165a87cb0d24a0e94d077f89c112c7abb1fc0ea9947017a4c3"
+        },
+        {
+          "path": "backend/core/src/test/java/com/mili/core/webhook/internal/application/monitoring/WebhookMonitoringServiceTest.java",
+          "grade": "medium",
+          "rationale": "Existing service tests cover FAILED reset and non-FAILED rejection controls.",
+          "pinned_head_git_blob_oid": "a2c93589b5ecedd9737671a9abb180c8a61bee93",
+          "pinned_head_file_sha256": "7cf8564dbb659abdf1ea4df2f2885fd7127ee5e17c84b9e12374e33327c79b79"
+        },
+        {
+          "path": "backend/core/src/test/java/com/mili/core/webhook/internal/infrastructure/http/WebhookMonitoringControllerIntegrationTest.java",
+          "grade": "medium",
+          "rationale": "Existing controller-level response context is adjacent, though the frozen evaluator provides the no-database HTTP acceptance.",
+          "pinned_head_git_blob_oid": "707d241e2b8eeb43ea01afab0eb8764c0c315fbe",
+          "pinned_head_file_sha256": "ef27926beede4a5c51020586822c59f3a314ee97a7ecceb12b979a8e0765172f"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/domain/InboundEventId.java",
+          "grade": "low",
+          "rationale": "Represents an event identifier but does not determine absent-ID HTTP mapping or reprocess state transitions.",
+          "pinned_head_git_blob_oid": "011f4512b92a0f0b1457c8e9e1e51d094900a72e",
+          "pinned_head_file_sha256": "a09748b6805b3806b97f4766909f42dfa52b0f5f93aef2016226e793aeba163b"
+        }
+      ],
+      "ambiguities": [
+        "The evaluator asserts a not-found response and explicitly rejects IllegalArgumentException leakage; it does not mandate a particular not-found exception class or whether repository lookup changes."
+      ]
+    },
+    {
+      "task_id": "MLI-05",
+      "evaluator_contract_summary": "Reject malformed JSONPath before persistence and return HTTP 400; accept $.type. The rubric describes domain, service/controller and no-save assertions.",
+      "paths": [
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/domain/EventTypePath.java",
+          "grade": "high",
+          "rationale": "Constructor currently rejects only blank expressions; JsonPath evaluation occurs in extract, after the path can already be stored. This is the natural syntax-validation locus. The frozen JsonPath probe establishes `$[` versus `$.type` parser behavior.",
+          "pinned_head_git_blob_oid": "a3a964296fb03da430f6478c68f0278c6c15b62c",
+          "pinned_head_file_sha256": "08d087a7404272233baedd82477fde1b156d3f2f33d50ba5b6a85790b8aa1b24"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/application/inbound/CreateInboundWebhookService.java",
+          "grade": "high",
+          "rationale": "Create resolves the raw eventTypePath and performs two repository saves; validation must occur before either save. The rubric specifies zero save calls for malformed input.",
+          "pinned_head_git_blob_oid": "d33843a1956d918790488ee37a8b1558c2bdd55f",
+          "pinned_head_file_sha256": "c74d5cf148f87aa769a00694a6b16d8554c31d537b4b4dc4965ceffa446d0f87"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/WebhookManagementController.java",
+          "grade": "high",
+          "rationale": "Owns the create HTTP boundary whose malformed-path response must be 400.",
+          "pinned_head_git_blob_oid": "5f3e953cde3cdfbd887d53f4971c906ecbd03e01",
+          "pinned_head_file_sha256": "e4524a981820957ee7349cebfb03bfd0cd0ea23ea55d3885cf9490873e3a5fbb"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/api/CreateInboundWebhookCommand.java",
+          "grade": "medium",
+          "rationale": "Carries eventTypePath from the request-facing command into the create service.",
+          "pinned_head_git_blob_oid": "701e0bd28be73f896e137b7ca2a237b739898bac",
+          "pinned_head_file_sha256": "05155236698db3d6fdb4ea4559fe4e1770e64fce6304d4198b56f115ec8af203"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/http/GlobalExceptionHandler.java",
+          "grade": "medium",
+          "rationale": "Potential exception-to-400 mapping path for deterministic syntax errors at the HTTP boundary.",
+          "pinned_head_git_blob_oid": "8c4aa19be1c014f79db9d6aaf7ccdafa99240c47",
+          "pinned_head_file_sha256": "f48fb7f4bd088ecf9111d1d494b5d29f9db1d648447027c661b122722539279e"
+        },
+        {
+          "path": "backend/core/src/test/java/com/mili/core/webhook/internal/domain/EventTypePathTest.java",
+          "grade": "medium",
+          "rationale": "Existing tests exercise EventTypePath extraction behavior and are the closest domain-level regression location, although they do not currently test syntax rejection.",
+          "pinned_head_git_blob_oid": "d0811e0e83be21f4e73e2a2f840977efa46d90c8",
+          "pinned_head_file_sha256": "ebba0974ba5dae0c03c59d0546da3a9fd6f97bc65255290bb2bdfcbb24dd9091"
+        },
+        {
+          "path": "backend/core/src/test/java/com/mili/core/webhook/internal/application/inbound/CreateInboundWebhookServiceTest.java",
+          "grade": "medium",
+          "rationale": "Existing unit tests assert create-service persistence calls and are a natural place to preserve the no-save-on-invalid-input invariant.",
+          "pinned_head_git_blob_oid": "e83dc64805be73d1c6e4d00264f711e80cb62251",
+          "pinned_head_file_sha256": "4ece255df617059a5aefaf9ae9a35b857041984596c64fc96f18d4b27ed99587"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/domain/FieldMapping.java",
+          "grade": "low",
+          "rationale": "Uses JsonPath too, but for payload field mapping rather than the event-type selector; likely a lexical-neighbor false positive.",
+          "pinned_head_git_blob_oid": "bfb82dffc6d68f9f29b20ed122011b173f26d423",
+          "pinned_head_file_sha256": "e9740570ade2c04b5043b371a993cd1d68cd7b759f559b65bf22a8e3aeba9639"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/WebhookConfigRepository.java",
+          "grade": "low",
+          "rationale": "Receives the first save, so it can help trace the no-save assertion, but the likely fix is validation before service persistence rather than repository behavior.",
+          "pinned_head_git_blob_oid": "fd1a24ce72244c7cee20d9dd6715aa56d7012bac",
+          "pinned_head_file_sha256": "027a768afb48c4cf6d7863f08ad001e76abb1408a804175977fc300f0846e859"
+        },
+        {
+          "path": "backend/core/src/main/java/com/mili/core/webhook/internal/infrastructure/persistence/WebhookInboundConfigRepository.java",
+          "grade": "low",
+          "rationale": "Receives the second save after path resolution, but no persistence-layer change is implied by the frozen contract.",
+          "pinned_head_git_blob_oid": "9f0da92745850b4bfbd6c57945595e78319d2406",
+          "pinned_head_file_sha256": "d5e5f1e6b0a17ff8fa4545fb6bf6a3e9a41ab8c85010a1293ea152f080bc4beb"
+        }
+      ],
+      "ambiguities": [
+        "The frozen MLI-05 source is Mli05JsonPathProbe.java, which verifies parser behavior but not the full HTTP/no-save acceptance contract described in the rubric. MLI-05 HTTP and zero-save path judgments rely on rubric text and production code rather than a frozen full acceptance-class source.",
+        "Validation may be placed in EventTypePath construction or explicitly in CreateInboundWebhookService; the contract fixes observable rejection before saves, not a required layer."
+      ]
+    }
+  ],
+  "limitations": [
+    "This is one analyst-agent's provisional path-level judgment, with a separate agent review informing one MLI-03 grade downgrade. It has not been formally adjudicated by domain experts and is not ground truth.",
+    "The candidate path pool is not exhaustive. Do not calculate precision, NDCG, or claim recall against all relevant source files.",
+    "Any coverage calculated from these labels is limited to annotated high/medium paths present in each frozen paired context capture; it is not task-quality evidence.",
+    "No agent task execution, model/provider call, answer correctness review, or paid service was used."
+  ],
+  "frozen_protocol": {
+    "freeze_path": "docs/pilot/mili-condition-freeze-v2.json",
+    "freeze_sha256": "229545a0aa9494ed9102f9842943b0954c8c2a0c773b29b3053ede71249566c6",
+    "rubric_path": "docs/pilot/mili-evaluator-v2.md",
+    "rubric_sha256": "da5705c1feeac2a20deafc1452e3e39f4bd653839cc7e7c278db626dedc70bc9"
+  }
+}

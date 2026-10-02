@@ -1,0 +1,18 @@
+layout_version: 1
+ir_version: 2
+project:
+    name: Mili
+    languages:
+        - Java
+        - TypeScript
+targets:
+    - codex
+references:
+    knowledge: [{id: import-agents-09e217e70d1f, path: .forge/knowledge/items/9cc3e8f34f895854f301a94a6fe88a42407c2f7c15bb3965784f59217153aaca.md}]
+    skills:
+        - id: mili-cycle
+          description: Executar um ciclo funcional do Mili envolvendo frontend, backend e persistência, com contratos compartilhados e validação do fluxo real.
+          path: .forge/skills/mili-cycle/SKILL.md
+        - id: mili-domain
+          description: Modelar operações, webhooks e uso no Mili ou resolver divergências entre materiais de produto e o domínio implementado.
+          path: .forge/skills/mili-domain/SKILL.md

@@ -25,7 +25,7 @@ func TestHelpHasBrandAndKeepsLocalizedHeadings(t *testing.T) {
 
 func TestGuidedSetupHeaderHasBrandWithoutEscapeCodesInCapturedOutput(t *testing.T) {
 	var output bytes.Buffer
-	if err := runGuidedInit(context.Background(), strings.NewReader("\n\nn\n"), &output, t.TempDir(), nil); err != nil {
+	if err := runGuidedInit(context.Background(), strings.NewReader("\nn\n"), &output, t.TempDir(), nil); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "[HF] HarnessForge\nHarnessForge setup\n") || strings.Contains(output.String(), "\x1b[") {

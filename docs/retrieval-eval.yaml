@@ -1,0 +1,35 @@
+version: 1
+dataset_version: retrieval-baseline-v1
+cases:
+  - id: auth-validation
+    query: "onde a autenticação JWT é validada?"
+    relevant_sources:
+      - internal/auth/validator.go
+      - config/auth.yaml
+    required_terms:
+      - JWT
+      - validação
+  - id: test-command
+    query: "qual comando executa os testes?"
+    relevant_sources:
+      - Makefile
+      - .github/workflows/ci.yml
+    required_terms:
+      - teste
+  - id: database-migration
+    query: "onde as migrações do banco são executadas?"
+    relevant_sources:
+      - internal/db/migrations.go
+      - cmd/server/main.go
+    required_terms:
+      - migração
+  - id: handler-registration
+    query: "como novos handlers são registrados?"
+    relevant_sources:
+      - internal/http/routes.go
+      - internal/http/handlers.go
+    required_terms:
+      - handler
+# The evaluator currently reports recall/precision, correctness, faithfulness,
+# token cost, latency, and failures. Duplicate ratio, source diversity, and
+# token efficiency remain planned extensions of the report schema.

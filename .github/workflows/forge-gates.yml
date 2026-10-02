@@ -1,0 +1,35 @@
+name: HarnessForge project gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forge-check:
+    name: Check Forge manifest and run declared gates (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: '1.26.2'
+          check-latest: true
+      - name: Verify Codex clone gate without Forge installed
+        working-directory: testdata/clones/without-forge/codex
+        run: go test ./...
+      - name: Verify Claude clone gate without Forge installed
+        working-directory: testdata/clones/without-forge/claude
+        run: go test ./...
+      - name: Verify generated Forge output
+        run: go run ./cmd/harnessforge sync --repository . --check
+      - name: Check repository and execute declared quality gates
+        run: go run ./cmd/harnessforge check --repository . --layout forge --run-gates --format json

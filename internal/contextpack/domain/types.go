@@ -1,11 +1,32 @@
 package domain
 
+import "context"
+
 const DefaultBudgetTokens = 1800
 
 type Options struct {
 	BudgetTokens    int
 	MaxFiles        int
 	MaxBytesPerFile int
+	// TaskPaths identifies the repository-relative files the task concerns.
+	// Approved knowledge with path scopes is eligible only when one of these
+	// paths matches its scope.
+	TaskPaths []string
+	UseBM25   bool
+	UseMMR    bool
+	Model     string
+	Layout    string
+	// ExcludeKnowledge omits Forge knowledge so paired context plans can compare
+	// the same repository and prompt with and without approved knowledge.
+	ExcludeKnowledge bool
+	Counter          TokenCounter
+}
+
+// TokenCounter lets a provider supply model-specific input token accounting
+// without making the context domain depend on a provider implementation.
+type TokenCounter interface {
+	Name() string
+	Count(context.Context, string, []byte) (int, error)
 }
 
 type Plan struct {
@@ -16,12 +37,16 @@ type Plan struct {
 	Included             []Excerpt  `json:"included"`
 	Excluded             []Excerpt  `json:"excluded"`
 	Comparison           Comparison `json:"comparison"`
+	BudgetOverflow       bool       `json:"budget_overflow"`
+	OverflowExcerptIDs   []string   `json:"overflow_excerpt_ids,omitempty"`
+	OverflowTokens       int        `json:"overflow_tokens,omitempty"`
 }
 
 type Excerpt struct {
 	ID              string   `json:"id"`
 	Source          string   `json:"source"`
 	Path            string   `json:"path,omitempty"`
+	Workspace       string   `json:"workspace,omitempty"`
 	Text            string   `json:"text"`
 	Relevance       int      `json:"relevance"`
 	EstimatedTokens int      `json:"estimated_tokens"`
@@ -30,6 +55,21 @@ type Excerpt struct {
 	Origins         []string `json:"origins"`
 	CompressedFrom  string   `json:"compressed_from,omitempty"`
 	Rank            int      `json:"rank,omitempty"`
+	KnowledgeID     string   `json:"knowledge_id,omitempty"`
+	KnowledgeScope  []string `json:"knowledge_scope,omitempty"`
+}
+
+// Source preserves every selected excerpt, including multiple excerpts from
+// the same file. The legacy map-based payload cannot represent that safely.
+type Source struct {
+	ID          string   `json:"id"`
+	Path        string   `json:"path,omitempty"`
+	Workspace   string   `json:"workspace,omitempty"`
+	StartLine   int      `json:"start_line,omitempty"`
+	EndLine     int      `json:"end_line,omitempty"`
+	Content     string   `json:"content"`
+	KnowledgeID string   `json:"knowledge_id,omitempty"`
+	Origins     []string `json:"origins,omitempty"`
 }
 
 type Comparison struct {

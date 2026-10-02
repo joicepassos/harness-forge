@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "pilot_id": "harnessforge-mili-v1",
+  "check_id": "mli-02-postgresql-keyset-v1",
+  "repository_commit": "49402ad341a7e8a01aee7968d1b10d91b44c0d1c",
+  "evaluator_source": "mili-evaluator-sources-v1/Mli02PostgresKeyset.sql",
+  "evaluator_source_sha256": "5d5adbe0ca210cec16181245a681092179068a9abdcb1aa867170db79cdd5a20",
+  "database": {
+    "product": "PostgreSQL",
+    "version": "18.3",
+    "execution": "isolated temporary cluster on loopback port 55439; disposable role and database; no Docker",
+    "existing_local_service_modified": false,
+    "credentials_recorded": false
+  },
+  "query_contract": {
+    "predicate": "(received_at, id) < (:beforeReceivedAt::timestamptz, :beforeId)",
+    "ordering": ["received_at DESC", "id DESC"],
+    "page_limit": 50,
+    "cursor_encoding": "receivedAt.toEpochMilli()|id"
+  },
+  "results": [
+    {
+      "scenario": "exact_millisecond_ties",
+      "rows_returned": 120,
+      "unique_ids": 120,
+      "expected_rows": 120,
+      "missing_rows": 0,
+      "status": "passed"
+    },
+    {
+      "scenario": "submillisecond_precision",
+      "rows_returned": 50,
+      "unique_ids": 50,
+      "expected_rows": 120,
+      "missing_rows": 70,
+      "status": "failed"
+    }
+  ],
+  "overall_status": "failed",
+  "finding": "The current cursor serializes receivedAt to epoch milliseconds. When PostgreSQL stores submillisecond timestamps, rebuilding the next-page boundary from that cursor truncates the last row's timestamp. The tuple predicate then skips rows between the truncated boundary and the actual last-row timestamp. The SQL orders tied timestamps by id correctly when timestamp precision is preserved, but the API cursor loses precision.",
+  "classification": "baseline defect observed; this is database evaluator evidence, not a coding-agent pilot run"
+}

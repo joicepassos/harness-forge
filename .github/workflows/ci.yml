@@ -37,6 +37,14 @@ jobs:
   test:
     name: Test and vet (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # Keep acceptance tests deterministic and prevent runner/repository
+    # credentials from turning a test into a paid provider call.
+    env:
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      GEMINI_API_KEY: ""
+      GROQ_API_KEY: ""
+      DEEPSEEK_API_KEY: ""
     strategy:
       fail-fast: false
       matrix:
@@ -47,7 +55,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
-      - run: go test ./...
+      - run: go test -count=1 ./...
       - run: go vet ./...
       - run: go run golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }} ./...
 

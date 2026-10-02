@@ -16,6 +16,7 @@ func TestFileReaderFindsSymbolsAndRejectsUnsafePaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer reader.Close()
 	found, err := reader.Contains(context.Background(), "source.go", "Present")
 	if err != nil || !found {
 		t.Fatalf("found=%v err=%v", found, err)
@@ -39,6 +40,7 @@ func TestFileReaderRejectsExternalSymlink(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer reader.Close()
 	if _, err := reader.Contains(context.Background(), "link.go", "Present"); err == nil {
 		t.Fatal("external symlink accepted")
 	}

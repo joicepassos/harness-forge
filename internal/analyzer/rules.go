@@ -20,7 +20,7 @@ func (rule extensionRule) Apply(repository Repository) (Finding, bool) {
 		return Finding{}, false
 	}
 
-	return finding(rule.value, matches...), true
+	return findingWithStrength(rule.value, "medium", matches...), true
 }
 
 type fileRule struct {
@@ -29,9 +29,11 @@ type fileRule struct {
 }
 
 func (rule fileRule) Apply(repository Repository) (Finding, bool) {
-	for _, path := range rule.paths {
-		if repository.HasFile(path) {
-			return finding(rule.value, path), true
+	for _, expected := range rule.paths {
+		for _, actual := range repository.Files {
+			if samePathOrBase(actual, expected) {
+				return findingWithStrength(rule.value, "strong", actual), true
+			}
 		}
 	}
 
@@ -64,7 +66,7 @@ func (rule contentRule) Apply(repository Repository) (Finding, bool) {
 		return Finding{}, false
 	}
 
-	return finding(rule.value, rule.path+" contains "+rule.text), true
+	return findingWithStrength(rule.value, "weak", rule.path+" contains "+rule.text), true
 }
 
 type prefixRule struct {

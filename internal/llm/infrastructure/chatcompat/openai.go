@@ -92,15 +92,19 @@ func (provider *Client) send(ctx context.Context, request Request, stream bool) 
 			req.Header.Set("Authorization", "Bearer "+provider.apiKey)
 		}
 		req.Header.Set("Content-Type", "application/json")
+		started := time.Now().UTC()
+		provider.reportCall(ctx, "started", attempt+1, 0, started, 0)
 		response, err := provider.client.Do(req)
 		if err != nil {
+			provider.reportCall(ctx, "failed", attempt+1, 0, started, 0)
 			return nil, err
 		}
+		provider.reportCall(ctx, "response", attempt+1, response.StatusCode, started, 0)
 		if response.StatusCode >= 200 && response.StatusCode < 300 {
 			return response, nil
 		}
+		failure := provider.responseError(response, request)
 		response.Body.Close()
-		failure := fmt.Errorf("%s request failed (HTTP %d)", provider.providerName(), response.StatusCode)
 		delay := time.Duration(1<<attempt) * 200 * time.Millisecond
 		if after, ok := retryAfter(response.Header.Get("Retry-After")); ok {
 			delay = after
@@ -108,6 +112,7 @@ func (provider *Client) send(ctx context.Context, request Request, stream bool) 
 		if !retryable(response.StatusCode) || attempt+1 == attempts || delay > 10*time.Second {
 			return nil, failure
 		}
+		provider.reportCall(ctx, "retry", attempt+1, response.StatusCode, started, delay)
 		if err := pause(ctx, delay); err != nil {
 			return nil, err
 		}

@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"harnessforge/internal/doctor/domain"
 	harnessdomain "harnessforge/internal/harness/domain"
-	"harnessforge/internal/harness/infrastructure"
+	harnessinfra "harnessforge/internal/harness/infrastructure"
+	"harnessforge/internal/repository"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,6 +23,9 @@ type LocalSource struct{}
 func (LocalSource) Diagnose(ctx context.Context, harnessPath, repository string) ([]domain.Diagnostic, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	if strings.EqualFold(filepath.Base(harnessPath), "forge.yaml") {
+		return diagnoseForge(ctx, harnessPath, repository)
 	}
 	file, err := os.Open(harnessPath)
 	if err != nil {
@@ -43,7 +47,7 @@ func (LocalSource) Diagnose(ctx context.Context, harnessPath, repository string)
 	if len(raw.Rules) == 0 {
 		result = append(result, domain.Diagnostic{Code: "rules.missing", Severity: domain.SeverityWarning, Message: "Harness IR declares no instructions", Suggestion: "Review whether the project needs explicit rules before relying on an empty harness."})
 	}
-	if _, err := (infrastructure.YAMLLoader{}).Load(harnessPath); err != nil {
+	if _, err := (harnessinfra.YAMLLoader{}).Load(harnessPath); err != nil {
 		result = append(result, domain.Diagnostic{Code: "harness.invalid", Severity: domain.SeverityError, Message: "Harness IR fails schema or domain validation", Evidence: []string{err.Error()}, Suggestion: "Correct the reported field while preserving intentional manual decisions."})
 	}
 	if int64(len(data)) > ContextWarningBytes {
@@ -55,7 +59,7 @@ func (LocalSource) Diagnose(ctx context.Context, harnessPath, repository string)
 			return nil, err
 		}
 		result = append(result, diagnostics...)
-		h, err := (infrastructure.YAMLLoader{}).Load(harnessPath)
+		h, err := (harnessinfra.YAMLLoader{}).Load(harnessPath)
 		if err == nil {
 			owners := append([]harnessdomain.Rule{}, h.Rules...)
 			for _, skill := range h.Skills {
@@ -64,7 +68,7 @@ func (LocalSource) Diagnose(ctx context.Context, harnessPath, repository string)
 			for _, owner := range owners {
 				for _, evidence := range owner.Evidence {
 					check := harnessdomain.Harness{Rules: []harnessdomain.Rule{{Evidence: []harnessdomain.Evidence{evidence}}}}
-					if err := infrastructure.CheckEvidence(ctx, repository, check); err != nil {
+					if err := harnessinfra.CheckEvidence(ctx, repository, check); err != nil {
 						if ctx.Err() != nil {
 							return nil, ctx.Err()
 						}
@@ -75,6 +79,72 @@ func (LocalSource) Diagnose(ctx context.Context, harnessPath, repository string)
 		}
 	}
 	return result, ctx.Err()
+}
+
+// diagnoseForge validates the declarative Forge contract and referenced local
+// files. It deliberately never executes quality-gate commands or policies.
+func diagnoseForge(ctx context.Context, manifestPath, repository string) ([]domain.Diagnostic, error) {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return []domain.Diagnostic{{Code: "forge.unreadable", Severity: domain.SeverityError, Message: "Forge manifest cannot be read", Evidence: []string{manifestPath}, Suggestion: "Provide a readable .forge/forge.yaml manifest."}}, nil
+	}
+	if len(data) > 4<<20 {
+		return []domain.Diagnostic{{Code: "forge.oversized", Severity: domain.SeverityError, Message: "Forge manifest exceeds the 4 MiB diagnostic input limit", Suggestion: "Reduce the manifest before requesting schema diagnostics."}}, nil
+	}
+	layout := harnessinfra.ProjectLayout{Root: repository, Kind: harnessinfra.LayoutForge, ManifestPath: manifestPath}
+	if repository == "" {
+		layout.Root = filepath.Dir(filepath.Dir(manifestPath))
+	}
+	manifest, err := (harnessinfra.ManifestLoader{}).Load(manifestPath)
+	if err != nil {
+		return []domain.Diagnostic{{Code: "forge.invalid", Severity: domain.SeverityError, Message: "Forge manifest fails schema or domain validation", Evidence: []string{err.Error()}, Suggestion: "Correct the reported field, target, reference, capability, or gate declaration."}}, nil
+	}
+	var result []domain.Diagnostic
+	if repository != "" {
+		absManifest, _ := filepath.Abs(manifestPath)
+		absRoot, _ := filepath.Abs(repository)
+		if filepath.Clean(filepath.Dir(filepath.Dir(absManifest))) != filepath.Clean(absRoot) {
+			return []domain.Diagnostic{{Code: "forge.root_mismatch", Severity: domain.SeverityError, Message: "Forge manifest is outside the repository being diagnosed", Evidence: []string{manifestPath, repository}, Suggestion: "Use the repository containing this .forge/forge.yaml file."}}, nil
+		}
+	}
+	for _, reference := range manifest.References.Knowledge {
+		probe := manifest
+		probe.References = harnessdomain.ManifestReferences{Knowledge: []harnessdomain.KnowledgeReference{reference}}
+		if err := harnessinfra.ValidateManifestReferences(layout, probe); err != nil {
+			result = append(result, invalidForgeReference("knowledge", reference.ID, err))
+		}
+	}
+	for _, reference := range manifest.References.Skills {
+		probe := manifest
+		probe.References = harnessdomain.ManifestReferences{Skills: []harnessdomain.SkillReference{reference}}
+		if err := harnessinfra.ValidateManifestReferences(layout, probe); err != nil {
+			result = append(result, invalidForgeReference("skill", reference.ID, err))
+		}
+	}
+	for _, gate := range manifest.QualityGates {
+		probe := manifest
+		probe.QualityGates = []harnessdomain.QualityGate{gate}
+		if err := harnessinfra.ValidateManifestReferences(layout, probe); err != nil {
+			result = append(result, invalidForgeReference("gate workspace", gate.ID, err))
+		}
+	}
+	for _, policy := range manifest.Policies {
+		severity := domain.SeverityInfo
+		message := "Policy capability is declarative; doctor does not execute or enforce policies."
+		if policy.Capability == "advisory" || policy.Capability == "unsupported" {
+			severity = domain.SeverityWarning
+			message = "Declared policy is not enforced by this HarnessForge runtime."
+		}
+		result = append(result, domain.Diagnostic{Code: "forge.policy_not_enforced", Severity: severity, Message: message, Evidence: []string{policy.ID, policy.Capability, policy.Executor}, Suggestion: "Treat this policy as metadata until a supported enforcement executor is integrated."})
+	}
+	for _, gate := range manifest.QualityGates {
+		result = append(result, domain.Diagnostic{Code: "forge.gate_not_run", Severity: domain.SeverityInfo, Message: "Quality gate was inspected but not executed by doctor.", Evidence: []string{gate.ID}, Suggestion: "Run the project check command with explicit gate execution when execution is intended."})
+	}
+	return result, ctx.Err()
+}
+
+func invalidForgeReference(kind, id string, err error) domain.Diagnostic {
+	return domain.Diagnostic{Code: "forge.reference_invalid", Severity: domain.SeverityError, Message: "A referenced " + kind + " is invalid", Evidence: []string{id, err.Error()}, Suggestion: "Restore or correct the repository-relative reference and rerun doctor."}
 }
 
 func inspectRepository(ctx context.Context, root string, h rawHarness) ([]domain.Diagnostic, error) {
@@ -92,34 +162,22 @@ func inspectRepository(ctx context.Context, root string, h rawHarness) ([]domain
 		return []domain.Diagnostic{repositoryFailure()}, nil
 	}
 	hasTests := false
-	visited := 0
-	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		if err != nil {
-			return err
-		}
-		visited++
-		if visited > 20000 {
-			return fmt.Errorf("repository scan exceeds 20000 entries")
-		}
-		if entry.IsDir() && path != root {
-			switch entry.Name() {
-			case ".git", "node_modules", "vendor":
-				return filepath.SkipDir
+	snapshot, scanErr := repository.Scan(ctx, root, repository.ScanOptions{SkipDirs: repository.DefaultSkipDirs()})
+	err = scanErr
+	if err == nil {
+		defer snapshot.Close()
+		for _, file := range snapshot.Files {
+			if strings.HasSuffix(file.Path, "_test.go") {
+				hasTests = true
+				break
 			}
 		}
-		if !entry.IsDir() && entry.Type().IsRegular() && strings.HasSuffix(entry.Name(), "_test.go") {
-			hasTests = true
-		}
-		return nil
-	})
+	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
 	if err != nil {
-		diagnostics = append(diagnostics, domain.Diagnostic{Code: "repository.incomplete", Severity: domain.SeverityError, Message: "Repository scan could not complete", Suggestion: "Check directory permissions and the 20000-entry scan limit before relying on this diagnosis."})
+		diagnostics = append(diagnostics, domain.Diagnostic{Code: "repository.incomplete", Severity: domain.SeverityError, Message: "Repository scan could not complete", Suggestion: "Check directory permissions and the 10000-file repository scan limit before relying on this diagnosis."})
 	}
 	if !hasTests && err == nil {
 		diagnostics = append(diagnostics, domain.Diagnostic{Code: "tests.missing", Severity: domain.SeverityWarning, Message: "No Go test files were found in the repository", Suggestion: "Add behavioral tests or document why this repository does not use Go tests."})
