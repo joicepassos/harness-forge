@@ -50,7 +50,7 @@ func showSetupReview(output io.Writer, plan setupPlan) {
 		fmt.Fprintf(plainOutput, "%s  %s\n", p.accent(fmt.Sprintf("%02d/%02d", index+1, len(plan.Files))), p.heading(file.Path))
 		fmt.Fprintln(plainOutput, action)
 		fmt.Fprintln(plainOutput)
-		fmt.Fprintln(plainOutput, file.Content)
+		fmt.Fprintf(plainOutput, "%s\n", file.Content)
 	}
 	fmt.Fprintln(plainOutput, p.paint(strings.Repeat("─", 56), "#526171", false))
 	fmt.Fprintln(plainOutput, p.status("warning", label("Review the files above before choosing an action.", "Revise os arquivos acima antes de escolher uma acao.")))
