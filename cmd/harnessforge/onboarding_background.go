@@ -199,7 +199,7 @@ func runSetupBackgroundWorker(ctx context.Context, input io.Reader, id string, p
 			if run, err := loadSetupBackgroundRun(id); err == nil && (run.Status == "queued" || run.Status == "running") {
 				run.Status = "failed"
 				run.Stage = "failed"
-				run.Error = "The background worker could not complete safely. No project files were written."
+				run.Error = setupWorkerStartupError(workerErr)
 				run.UpdatedAt = time.Now().UTC()
 				_ = saveSetupBackgroundRun(run)
 			}
@@ -304,6 +304,21 @@ func runSetupBackgroundWorker(ctx context.Context, input io.Reader, id string, p
 	}
 	run.Events = append(run.Events, setupRunEvent{Stage: run.Stage, At: run.UpdatedAt})
 	return saveSetupBackgroundRun(run)
+}
+
+func setupWorkerStartupError(err error) string {
+	switch err.Error() {
+	case "could not read worker input":
+		return "The background worker could not read the authorized context from the local pipe. No provider request was sent."
+	case "invalid worker input":
+		return "The background worker received incomplete local input. No provider request was sent."
+	case "worker context does not match the authorized run":
+		return "The background worker rejected a mismatch in the authorized project analysis or provider configuration. No provider request was sent."
+	case "worker document does not match the authorized run":
+		return "The background worker rejected a mismatch in a selected document. No provider request was sent."
+	default:
+		return "The background worker could not read or save its local state. No project files were written."
+	}
 }
 
 func setupWorkerSafeText(value string) string {
